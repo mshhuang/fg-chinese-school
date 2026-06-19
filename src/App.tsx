@@ -10,7 +10,7 @@ import Login from "./pages/Login";
 import PrincipalDashboard from "./pages/PrincipalDashboard";
 import StudentPortal from "./pages/StudentPortal";
 import ParentPortal from "./pages/ParentPortal";
-import ReviewPlans from "./pages/ReviewPlans";
+import MyLessonPlans from "./pages/MyLessonPlans";
 import MainLayout from "./components/layout/MainLayout";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import Diagnostics from "./pages/Diagnostics";
@@ -20,7 +20,6 @@ import Announcements from "./pages/Announcements";
 import PrincipalNewsletters from "./pages/PrincipalNewsletters";
 import TeacherNewsletters from "./pages/TeacherNewsletters";
 import TeacherClasses from "./pages/TeacherClasses";
-import TeacherLessonPlans from "./pages/TeacherLessonPlans";
 import ParentGrades from "./pages/ParentGrades";
 import ParentSchedule from "./pages/ParentSchedule";
 import StudentClubs from "./pages/StudentClubs";
@@ -42,6 +41,7 @@ import AuditLogs from "./pages/AuditLogs";
 import ChangePassword from "./pages/ChangePassword";
 import LiveErrorLogs from "./pages/LiveErrorLogs";
 import BuilderDatabase from "./pages/BuilderDatabase";
+import ForgotPassword from "./pages/ForgotPassword";
 
 import AdminSessions from "./pages/AdminSessions";
 
@@ -62,12 +62,13 @@ export default function App() {
       <PageTracker />
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         
         {/* Layout for logged in views */}
         <Route element={<MainLayout />}>
            {/* Admin (formerly Principal) */}
            <Route path="/admin/dashboard" element={<PrincipalDashboard />} />
-           <Route path="/admin/plans" element={<ReviewPlans />} />
+           <Route path="/admin/plans" element={<MyLessonPlans />} />
            <Route path="/admin/classes" element={<PrincipalClasses />} />
            <Route path="/admin/messages" element={<PrincipalMessages />} />
            <Route path="/admin/announcements" element={<Announcements />} />
@@ -78,7 +79,7 @@ export default function App() {
            {/* Teacher */}
            <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
            <Route path="/teacher/classes" element={<TeacherClasses />} />
-           <Route path="/teacher/lessons" element={<TeacherLessonPlans />} />
+           <Route path="/teacher/lessons" element={<MyLessonPlans />} />
            <Route path="/teacher/messages" element={<PrincipalMessages />} />
            <Route path="/teacher/announcements" element={<Announcements />} />
            <Route path="/teacher/newsletters" element={<TeacherNewsletters />} />

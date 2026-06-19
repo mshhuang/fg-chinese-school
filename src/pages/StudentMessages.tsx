@@ -57,13 +57,14 @@ export default function StudentMessages() {
              Internal Chat
            </button>
            <button 
-             onClick={() => setChatType("external")}
+             disabled
              className={cn(
-               "flex-1 py-2 text-sm font-label rounded-full transition-all",
+               "flex-1 py-2 text-sm font-label rounded-full transition-all opacity-50 cursor-not-allowed",
                chatType === "external" 
                 ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
-                : "text-on-surface-variant hover:text-on-surface"
+                : "text-on-surface-variant"
              )}
+             title="Gmail integration coming soon"
            >
              External (Gmail)
            </button>

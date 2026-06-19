@@ -14,6 +14,10 @@ export default function Login() {
   const [showDemo, setShowDemo] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   
+  const [loginError, setLoginError] = useState("");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+  
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [passcodeVal, setPasscodeVal] = useState("");
   const [passcodeError, setPasscodeError] = useState("");
@@ -97,6 +101,13 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError("");
+
+    if (isLocked) {
+      setLoginError("Too many failed attempts. Please try again in 1 minute.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -111,11 +122,26 @@ export default function Login() {
 
       if (error || !userData) {
         await logSystemEvent('warning', 'Failed login attempt', { email });
-        alert("Invalid credentials, falling back to Demo Mode.");
-        setShowDemo(true);
+        
+        const attempts = failedAttempts + 1;
+        setFailedAttempts(attempts);
+        if (attempts >= 5) {
+           setIsLocked(true);
+           setLoginError("Account locked due to too many failed attempts. Try again in 1 minute.");
+           setTimeout(() => {
+              setIsLocked(false);
+              setFailedAttempts(0);
+           }, 60000);
+        } else {
+           setLoginError(`Invalid username or password. You have ${5 - attempts} attempts remaining.`);
+        }
+        
         setIsLoading(false);
         return;
       }
+      
+      setFailedAttempts(0);
+      setLoginError("");
 
       // Fetch user roles
       const { data: roleData } = await supabase
@@ -280,6 +306,13 @@ export default function Login() {
             Sign in to access your dashboard, schedules, and communications.
           </p>
 
+          {loginError && (
+             <div className="mb-6 p-4 rounded-xl bg-error-container/30 border border-error-container text-error flex gap-3 text-sm font-body">
+               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+               <p>{loginError}</p>
+             </div>
+          )}
+
           <form onSubmit={handleLogin} className="flex flex-col gap-5 bg-surface-container-lowest p-8 rounded-3xl border border-outline-variant/30 shadow-sm">
             <div className="flex flex-col gap-2">
               <label className="font-label text-sm font-bold text-on-surface">User Name</label>
@@ -296,7 +329,7 @@ export default function Login() {
             <div className="flex flex-col gap-2">
                <div className="flex justify-between items-center">
                  <label className="font-label text-sm font-bold text-on-surface">Password</label>
-                 <button type="button" className="text-primary font-label text-xs hover:underline">Forgot password?</button>
+                 <button type="button" onClick={() => navigate('/forgot-password')} className="text-primary font-label text-xs hover:underline cursor-pointer">Forgot password?</button>
                </div>
                <div className="relative">
                  <input 

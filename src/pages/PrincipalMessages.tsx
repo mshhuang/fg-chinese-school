@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Edit, MoreVertical, Paperclip, Send, User, ChevronLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ComposeMessageModal } from "../components/ComposeMessageModal";
@@ -8,6 +8,21 @@ import { InternalMessagesPanel } from "../components/InternalMessagesPanel";
 export default function PrincipalMessages() {
   const [chatType, setChatType] = useState<"internal" | "external">("internal");
   const [showCompose, setShowCompose] = useState(false);
+  const [userRole, setUserRole] = useState<string>("");
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        setUserRole(u.role || "");
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, []);
+
+  const canUseGmail = userRole === "admin" || userRole === "builder";
 
   return (
     <div className="w-full max-w-[1600px] mx-auto flex flex-col lg:h-screen lg:overflow-hidden bg-background">
@@ -28,13 +43,16 @@ export default function PrincipalMessages() {
              Internal Chat
            </button>
            <button 
-             onClick={() => setChatType("external")}
+             onClick={() => canUseGmail && setChatType("external")}
+             disabled={!canUseGmail}
              className={cn(
                "flex-1 py-2 text-sm font-label rounded-full transition-all",
+               !canUseGmail && "opacity-50 cursor-not-allowed",
                chatType === "external" 
                 ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
                 : "text-on-surface-variant hover:text-on-surface"
              )}
+             title={canUseGmail ? "Switch to Gmail" : "Gmail feature not available for this role"}
            >
              External (Gmail)
            </button>

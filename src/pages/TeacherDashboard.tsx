@@ -64,7 +64,7 @@ export default function TeacherDashboard() {
   };
 
   return (
-    <div className="p-6 md:p-8 flex flex-col gap-8 w-full pb-32 md:pb-8">
+    <div className="p-6 md:p-8 flex flex-col gap-8 w-full pb-32 md:pb-8 opacity-50 grayscale pointer-events-none" title="Coming Soon">
       {/* Header */}
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>

@@ -1,4 +1,7 @@
-import { Users, BookOpen, ClipboardCheck, Coins, UserCheck, UserPlus, Megaphone, CheckCircle2, FileText } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import { Users, BookOpen, ClipboardCheck, Coins, UserCheck, UserPlus, Megaphone, CheckCircle2, FileText, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const data = [
@@ -10,16 +13,52 @@ const data = [
 ];
 
 export default function PrincipalDashboard() {
+  const [stats, setStats] = useState({ totalStudents: 0, activeClasses: 0 });
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function loadData() {
+      // Load Stats
+      const { count: classesCount } = await supabase.from('classes').select('*', { count: 'exact', head: true });
+      
+      let studentCount = 0;
+      const { data: roleData } = await supabase.from('roles').select('role_id').ilike('role_name', '%student%');
+      if (roleData && roleData.length > 0) {
+        const studentRoleIds = roleData.map(r => r.role_id);
+        const { count: sCount } = await supabase.from('user_roles').select('*', { count: 'exact', head: true }).in('role_id', studentRoleIds);
+        studentCount = sCount || 0;
+      }
+      
+      setStats({ totalStudents: studentCount, activeClasses: classesCount || 0 });
+
+      // Load Announcements
+      const { data: annData } = await supabase.from('announcements').select('*').order('announcement_id', { ascending: false }).limit(3);
+      if (annData) setAnnouncements(annData);
+
+      // Load Programs
+      const { data: progData } = await supabase.from('programs').select('*').order('program_name', { ascending: true });
+      if (progData) setPrograms(progData);
+    }
+    loadData();
+  }, []);
+
+  const getProgramColor = (index: number) => {
+    const colors = ["primary", "tertiary", "secondary"];
+    return colors[index % colors.length];
+  };
+
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 w-full">
       {/* Summary Cards Bento */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-        <StatCard icon={Users} label="Total Students" value="542" colorClass="text-primary" />
-        <StatCard icon={BookOpen} label="Active Classes" value="32" colorClass="text-primary" />
-        <StatCard icon={ClipboardCheck} label="Attendance Today" value="96%" colorClass="text-tertiary" />
-        <StatCard icon={Coins} label="Tuition Paid" value="88%" colorClass="text-tertiary" />
-        <StatCard icon={UserCheck} label="Teacher Attendance" value="100%" colorClass="text-tertiary" />
-        <StatCard icon={UserPlus} label="New Registration" value="12" colorClass="text-secondary-container" bgClass="bg-surface-container-high" />
+        <StatCard icon={Users} label="Total Students" value={stats.totalStudents} colorClass="text-primary" />
+        <StatCard icon={BookOpen} label="Active Classes" value={stats.activeClasses} colorClass="text-primary" />
+        <StatCard icon={ClipboardCheck} label="Attendance Today" value="--" colorClass="text-tertiary" opacity="opacity-50 grayscale" title="Data coming soon" />
+        <StatCard icon={Coins} label="Tuition Paid" value="--" colorClass="text-tertiary" opacity="opacity-50 grayscale" title="Data coming soon" />
+        <StatCard icon={UserCheck} label="Teacher Attendance" value="--" colorClass="text-tertiary" opacity="opacity-50 grayscale" title="Data coming soon" />
+        <StatCard icon={UserPlus} label="New Registration" value="--" colorClass="text-secondary-container" bgClass="bg-surface-container-high" opacity="opacity-50 grayscale" title="Data coming soon" />
       </section>
 
       {/* Main Split Layout */}
@@ -27,9 +66,10 @@ export default function PrincipalDashboard() {
         
         <div className="lg:col-span-2 flex flex-col gap-8">
           {/* Charts Area */}
-          <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-[0_8px_20px_rgba(212,175,55,0.05)] h-96 flex flex-col relative overflow-hidden">
+          <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-[0_8px_20px_rgba(212,175,55,0.05)] h-96 flex flex-col relative overflow-hidden opacity-50 grayscale" title="Data coming soon">
+             <div className="absolute inset-0 bg-surface/20 z-10"></div>
              <h3 className="font-title text-xl text-on-surface mb-6">Weekly Enrollment Trend</h3>
-             <div className="flex-1 w-full min-h-0">
+             <div className="flex-1 w-full min-h-0 pointer-events-none">
                <ResponsiveContainer width="100%" height="100%">
                  <BarChart data={data}>
                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d0c5af" opacity={0.5} />
@@ -49,10 +89,13 @@ export default function PrincipalDashboard() {
            <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-[0_8px_20px_rgba(212,175,55,0.05)]">
             <h3 className="font-title text-xl text-primary mb-6 border-b border-surface-variant pb-4">Active Programs Overview</h3>
             <div className="flex flex-col gap-4">
-              <ProgramRow name="Chinese School" type="In-person & Online • Kids & Adults" students={320} color="primary" />
-              <ProgramRow name="Summer Camp" type="Seasonal • Kids" students={150} color="tertiary" />
-              <ProgramRow name="Singing Class" type="Weekend • All Ages" students={45} color="secondary" />
-              <ProgramRow name="AP Classes" type="Advanced Placement • High School" students={85} color="primary" />
+              {programs.length > 0 ? (
+                programs.map((prog, idx) => (
+                  <ProgramRow key={prog.program_id} name={prog.program_name} type={`${prog.school_year_or_term || 'Ongoing'} • ${prog.status || 'Active'}`} students="-" color={getProgramColor(idx)} />
+                ))
+              ) : (
+                <div className="text-on-surface-variant text-sm py-4">No active programs found.</div>
+              )}
             </div>
           </div>
         </div>
@@ -66,37 +109,35 @@ export default function PrincipalDashboard() {
                   <Megaphone className="w-5 h-5" /> 
                   Announcements
                 </h3>
-                <button className="font-label text-sm text-primary hover:underline font-bold">New Post</button>
+                <button onClick={() => navigate("/admin/announcements")} className="font-label text-sm text-primary hover:underline font-bold">New Post</button>
               </div>
               <div className="flex flex-col gap-4">
-                 <div className="p-4 rounded-xl border border-outline-variant/30 bg-surface-container-low">
-                    <div className="flex justify-between items-start mb-2">
-                       <h4 className="font-label font-bold text-on-surface">Spring Festival Gala</h4>
-                       <span className="font-caption text-[10px] uppercase tracking-wide text-on-surface-variant">2h ago</span>
-                    </div>
-                    <p className="font-body text-sm text-on-surface-variant line-clamp-2">Rehearsals begin next week. All students in the singing program must attend.</p>
-                 </div>
-                 <div className="p-4 rounded-xl border border-outline-variant/30 bg-surface-container-low">
-                    <div className="flex justify-between items-start mb-2">
-                       <h4 className="font-label font-bold text-on-surface">Summer Camp Spots</h4>
-                       <span className="font-caption text-[10px] uppercase tracking-wide text-on-surface-variant">1d ago</span>
-                    </div>
-                    <p className="font-body text-sm text-on-surface-variant line-clamp-2">Only 10 spots left in Session 1. Remind parents to register early.</p>
-                 </div>
+                 {announcements.length > 0 ? (
+                   announcements.map((ann) => (
+                     <div key={ann.announcement_id} className="p-4 rounded-xl border border-outline-variant/30 bg-surface-container-low">
+                        <div className="flex justify-between items-start mb-2">
+                           <h4 className="font-label font-bold text-on-surface">{ann.title}</h4>
+                        </div>
+                        <p className="font-body text-sm text-on-surface-variant line-clamp-2">{ann.content}</p>
+                     </div>
+                   ))
+                 ) : (
+                    <div className="text-on-surface-variant text-sm">No announcements available.</div>
+                 )}
               </div>
            </div>
 
            {/* Teacher Alerts */}
-           <div className="bg-error-container/30 rounded-3xl p-6 border border-error/10">
+           <div className="bg-error-container/30 rounded-3xl p-6 border border-error/10 opacity-50 grayscale transition-opacity">
               <h3 className="font-title text-lg text-on-error-container mb-4 flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 fill-error text-surface" />
-                Teacher Alerts
+                Teacher Alerts (Coming Soon)
               </h3>
               <div className="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/20">
                 <p className="font-body text-on-surface leading-relaxed">
                   <span className="font-bold">Substitution needed:</span> Grade 4 Math (Mr. Chen - Sick Leave)
                 </p>
-                <button className="mt-4 text-error font-label text-sm hover:underline font-bold">Assign Sub</button>
+                <button className="mt-4 text-error font-label text-sm font-bold opacity-50 cursor-not-allowed">Assign Sub</button>
               </div>
            </div>
 
@@ -104,8 +145,8 @@ export default function PrincipalDashboard() {
            <div className="bg-surface-container-low rounded-3xl p-8 border border-outline-variant/30">
               <h3 className="font-title text-xl text-primary mb-6">Quick Actions</h3>
               <div className="flex flex-col gap-4">
-                <QuickActionButton icon={Megaphone} label="Send Announcement" variant="primary" />
-                <QuickActionButton icon={CheckCircle2} label="Approve Class Changes" variant="tertiary" />
+                <QuickActionButton onClick={() => navigate("/admin/announcements")} icon={Megaphone} label="Send Announcement" variant="primary" />
+                <QuickActionButton icon={CheckCircle2} label="Approve Class Changes" disabled={true} />
                 <QuickActionButton icon={FileText} label="Review Reports" variant="outline" />
               </div>
            </div>
@@ -116,9 +157,9 @@ export default function PrincipalDashboard() {
   );
 }
 
-function StatCard({ icon: Icon, label, value, colorClass, bgClass = "bg-surface-container-lowest" }: any) {
+function StatCard({ icon: Icon, label, value, colorClass, bgClass = "bg-surface-container-lowest", opacity = "opacity-100", title }: any) {
   return (
-    <div className={`${bgClass} rounded-2xl p-6 border border-outline-variant/30 shadow-[0_4px_10px_rgba(212,175,55,0.04)] flex flex-col gap-2 relative overflow-hidden group`}>
+    <div className={`${bgClass} ${opacity} rounded-2xl p-6 border border-outline-variant/30 shadow-[0_4px_10px_rgba(212,175,55,0.04)] flex flex-col gap-2 relative overflow-hidden group`} title={title}>
       <div className={`absolute -right-4 -top-4 opacity-[0.08] group-hover:scale-110 transition-transform duration-500 ${colorClass}`}>
         <Icon className="w-24 h-24" />
       </div>
@@ -153,18 +194,21 @@ function ProgramRow({ name, type, students, color }: any) {
   );
 }
 
-import { AlertTriangle } from "lucide-react";
-
-function QuickActionButton({ icon: Icon, label, variant }: any) {
+function QuickActionButton({ icon: Icon, label, variant, onClick, disabled }: any) {
   const base = "w-full font-label text-sm py-3.5 px-5 rounded-full flex items-center justify-center gap-3 transition-all";
   const variants: any = {
     primary: "bg-primary-container text-on-primary-container hover:bg-primary-container/90 shadow-sm",
     tertiary: "border-2 border-tertiary text-tertiary hover:bg-tertiary/10",
-    outline: "border-2 border-outline-variant text-on-surface-variant hover:bg-surface-variant/50"
+    outline: "border-2 border-outline-variant text-on-surface-variant hover:bg-surface-variant/50",
+    disabled: "border border-outline-variant text-on-surface-variant/50 bg-surface-variant/30 cursor-not-allowed opacity-50 grayscale"
   };
   
   return (
-    <button className={`${base} ${variants[variant]}`}>
+    <button 
+      onClick={onClick}
+      disabled={disabled}
+      className={`${base} ${disabled ? variants.disabled : variants[variant]}`}
+    >
       <Icon className="w-4 h-4" />
       {label}
     </button>

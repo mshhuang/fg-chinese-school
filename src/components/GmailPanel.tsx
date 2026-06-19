@@ -15,6 +15,8 @@ export function GmailPanel() {
   const [activeMessage, setActiveMessage] = useState<any | null>(null);
   const [showCompose, setShowCompose] = useState(false);
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   useEffect(() => {
     const unsubscribe = initAuth(
       (u) => {
@@ -32,6 +34,7 @@ export function GmailPanel() {
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
+    setErrorMsg(null);
     try {
       const result = await googleSignIn();
       if (result) {
@@ -39,9 +42,11 @@ export function GmailPanel() {
         setNeedsAuth(false);
         loadMessages();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Login failed:', err);
+      setErrorMsg(err.message || 'Failed to redirect to Google for sign in. Please try again.');
     } finally {
+      // isLoggingIn will stay true if the page redirects for OAuth
       setIsLoggingIn(false);
     }
   };
@@ -81,6 +86,11 @@ export function GmailPanel() {
           <span className="font-label font-bold text-on-surface">Sign in with Google</span>
           {isLoggingIn && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
         </button>
+        {errorMsg && (
+          <div className="mt-6 p-4 bg-error-container/30 border border-error text-error text-sm rounded-xl max-w-md text-center font-body">
+            {errorMsg}
+          </div>
+        )}
       </div>
     );
   }

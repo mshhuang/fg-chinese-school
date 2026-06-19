@@ -1,53 +1,66 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { supabase } from './supabase';
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-
-const provider = new GoogleAuthProvider();
-provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
-provider.addScope('https://www.googleapis.com/auth/gmail.send');
-provider.setCustomParameters({ prompt: 'select_account' });
-
-let isSigningIn = false;
 let cachedAccessToken: string | null = null;
+let cachedUser: any | null = null;
 
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthSuccess?: (user: any, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
-      }
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    if (session && session.provider_token) {
+      cachedAccessToken = session.provider_token;
+      cachedUser = session.user;
+      if (onAuthSuccess) onAuthSuccess(session.user, session.provider_token);
     } else {
       cachedAccessToken = null;
+      cachedUser = null;
       if (onAuthFailure) onAuthFailure();
     }
   });
+
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session && session.provider_token) {
+      cachedAccessToken = session.provider_token;
+      cachedUser = session.user;
+      if (onAuthSuccess) onAuthSuccess(session.user, session.provider_token);
+    } else {
+      cachedAccessToken = null;
+      cachedUser = null;
+      if (onAuthFailure) onAuthFailure();
+    }
+  });
+
+  return () => {
+    subscription.unsubscribe();
+  };
 };
 
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+export const googleSignIn = async (): Promise<{ user: any; accessToken: string } | null> => {
   try {
-    isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to get access token from Firebase Auth');
-    }
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        scopes: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
+        redirectTo: window.location.href, // Redirects back to the current page
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      }
+    });
 
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
+    if (error) {
+       console.error('Supabase Sign in error:', error);
+       throw error;
+    }
+    
+    // In OAuth flows, this won't return immediately if it redirects.
+    // However, if the session is somehow already established, it might.
+    return null;
   } catch (error: any) {
     console.error('Sign in error:', error);
     throw error;
-  } finally {
-    isSigningIn = false;
   }
 };
 
@@ -56,6 +69,7 @@ export const getAccessToken = async (): Promise<string | null> => {
 };
 
 export const logout = async () => {
-  await auth.signOut();
+  await supabase.auth.signOut();
   cachedAccessToken = null;
+  cachedUser = null;
 };
