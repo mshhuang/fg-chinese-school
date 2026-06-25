@@ -11,6 +11,9 @@ export default function AdminEnrollments() {
   
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [enrollmentMode, setEnrollmentMode] = useState<"parent" | "direct">("parent");
+  const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [studentSearchTerm, setStudentSearchTerm] = useState("");
   
   // Form State
   const [selectedParent, setSelectedParent] = useState("");
@@ -76,12 +79,13 @@ export default function AdminEnrollments() {
 
   async function fetchData() {
     setLoading(true);
-    try { const [usersRes, familiesRes, enrollmentsRes, classesRes, programsRes] = await Promise.all([
+    try { const [usersRes, familiesRes, enrollmentsRes, classesRes, programsRes, userRolesRes] = await Promise.all([
       supabase.from('users').select('*'),
       supabase.from('parent_child').select('*'),
       supabase.from('enrollments').select('*'),
       supabase.from('classes').select('*'),
-      supabase.from('programs').select('*').order('program_name', { ascending: true })
+      supabase.from('programs').select('*').order('program_name', { ascending: true }),
+      supabase.from('user_roles').select('user_id, roles!inner(role_name)').eq('roles.role_name', 'Student')
     ]);
     if (usersRes.error) console.error("Users Fetch Error:", usersRes.error);
     if (usersRes.data) setUsers(usersRes.data);
@@ -92,6 +96,13 @@ export default function AdminEnrollments() {
     if (classesRes.data) setClasses(classesRes.data);
     if (programsRes.error) console.error("Programs Fetch Error:", programsRes.error);
     if (programsRes.data) setPrograms(programsRes.data);
+    if (userRolesRes && userRolesRes.data && usersRes.data) {
+       const studentRoleMappings = userRolesRes.data.filter((ur: any) => ur.roles?.role_name?.toLowerCase() === 'student');
+       const studentIds = new Set(studentRoleMappings.map((ur: any) => ur.user_id));
+       const studentsList = usersRes.data.filter(u => studentIds.has(u.user_id));
+       studentsList.sort((a, b) => a.last_name?.localeCompare(b.last_name));
+       setAllStudents(studentsList);
+    }
     setLoading(false);
     } catch (e) { console.error("Promise.all error:", e); setLoading(false); }
   }
@@ -107,8 +118,13 @@ export default function AdminEnrollments() {
     try {
       if (e && typeof e.preventDefault === "function") e.preventDefault();
       
-      if (!selectedParent || selectedChildren.length === 0) {
-         showToast("Please select a parent and at least one child.", "error");
+      if (enrollmentMode === "parent" && !selectedParent) {
+         showToast("Please select a parent.", "error");
+         return;
+      }
+      
+      if (selectedChildren.length === 0) {
+         showToast("Please select at least one student.", "error");
          return;
       }
       if (!enrollmentDetails.program) {
@@ -202,50 +218,126 @@ export default function AdminEnrollments() {
            <h3 className="font-title text-xl font-bold text-on-surface">Create Enrollments</h3>
            <form onSubmit={handleSubmit} className="flex flex-col gap-8">
               
-              {/* Parent Section */}
-              <div className="flex flex-col gap-4 bg-surface-container p-5 rounded-2xl">
-                 <div className="flex items-center gap-2 text-primary font-bold font-label">
-                    <Users className="w-5 h-5" /> Parent / Guardian selection
-                 </div>
-                 <select value={selectedParent} onChange={(e) => {
-                    setSelectedParent(e.target.value);
-                    setSelectedChildren([]); // reset children on parent change
-                 }} className="px-4 py-3 rounded-xl border border-outline-variant/50 popup focus:border-primary outline-none font-body bg-surface text-on-surface">
-                    <option value="">-- Select Parent --</option>
-                    {parentUsers.map(p => (
-                       <option key={p.user_id} value={p.user_id}>{p.first_name} {p.last_name}</option>
-                    ))}
-                 </select>
+              {/* Selection Mode Toggle */}
+              <div className="flex gap-4 border-b border-outline-variant/30 pb-4">
+                 <button 
+                    type="button"
+                    onClick={() => { setEnrollmentMode("parent"); setSelectedChildren([]); setSelectedParent(""); }}
+                    className={`font-label font-bold text-sm px-4 py-2 rounded-full transition-colors ${enrollmentMode === "parent" ? "bg-primary text-on-primary" : "bg-surface-variant text-on-surface-variant hover:bg-surface-container-high"}`}
+                 >
+                    By Parent / Family
+                 </button>
+                 <button 
+                    type="button"
+                    onClick={() => { setEnrollmentMode("direct"); setSelectedChildren([]); }}
+                    className={`font-label font-bold text-sm px-4 py-2 rounded-full transition-colors ${enrollmentMode === "direct" ? "bg-primary text-on-primary" : "bg-surface-variant text-on-surface-variant hover:bg-surface-container-high"}`}
+                 >
+                    Direct Student Selection
+                 </button>
               </div>
 
-              {/* Children Section */}
-              {selectedParent && (
-                <div className="flex flex-col gap-4 bg-surface-container p-5 rounded-2xl">
-                   <div className="flex items-center gap-2 text-secondary font-bold font-label">
-                      <GraduationCap className="w-5 h-5" /> Select Children
-                   </div>
-                   <div className="flex flex-col gap-3">
-                     {currentChildren.length === 0 ? (
-                        <p className="text-on-surface-variant font-body py-2 italic text-sm">No children linked to this parent.</p>
-                     ) : currentChildren.map((child: any) => (
-                        <label key={child.user_id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-outline-variant/30 cursor-pointer hover:border-primary/50 transition-colors">
-                           <input 
-                              type="checkbox" 
-                              checked={selectedChildren.includes(child.user_id)}
-                              onChange={(e) => {
-                                 if (e.target.checked) setSelectedChildren([...selectedChildren, child.user_id]);
-                                 else setSelectedChildren(selectedChildren.filter(id => id !== child.user_id));
-                              }}
-                              className="w-5 h-5 text-primary rounded border-outline-variant" 
-                           />
-                           <div className="flex flex-col">
-                              <span className="font-label font-bold text-on-surface">{child.first_name} {child.last_name}</span>
-                              <span className="font-body text-xs text-on-surface-variant">Grade: {child.grade || 'N/A'}</span>
-                           </div>
-                        </label>
-                     ))}
-                   </div>
-                </div>
+              {enrollmentMode === "parent" && (
+                <>
+                  <div className="flex flex-col gap-4 bg-surface-container p-5 rounded-2xl">
+                     <div className="flex items-center gap-2 text-primary font-bold font-label">
+                        <Users className="w-5 h-5" /> Parent / Guardian selection
+                     </div>
+                     <select value={selectedParent} onChange={(e) => {
+                        setSelectedParent(e.target.value);
+                        setSelectedChildren([]); 
+                     }} className="px-4 py-3 rounded-xl border border-outline-variant/50 popup focus:border-primary outline-none font-body bg-surface text-on-surface">
+                        <option value="">-- Select Parent --</option>
+                        {parentUsers.map(p => (
+                           <option key={p.user_id} value={p.user_id}>{p.first_name} {p.last_name}</option>
+                        ))}
+                     </select>
+                  </div>
+
+                  {selectedParent && (
+                    <div className="flex flex-col gap-4 bg-surface-container p-5 rounded-2xl">
+                       <div className="flex items-center gap-2 text-secondary font-bold font-label">
+                          <GraduationCap className="w-5 h-5" /> Select Children
+                       </div>
+                       <div className="flex flex-col gap-3">
+                         {currentChildren.length === 0 ? (
+                            <p className="text-on-surface-variant font-body py-2 italic text-sm">No children linked to this parent.</p>
+                         ) : currentChildren.map((child: any) => (
+                            <label key={child.user_id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-outline-variant/30 cursor-pointer hover:border-primary/50 transition-colors">
+                               <input 
+                                  type="checkbox" 
+                                  checked={selectedChildren.includes(child.user_id)}
+                                  onChange={(e) => {
+                                     if (e.target.checked) setSelectedChildren([...selectedChildren, child.user_id]);
+                                     else setSelectedChildren(selectedChildren.filter(id => id !== child.user_id));
+                                  }}
+                                  className="w-5 h-5 text-primary rounded border-outline-variant" 
+                               />
+                               <div className="flex flex-col">
+                                  <span className="font-label font-bold text-on-surface">{child.first_name} {child.last_name}</span>
+                               </div>
+                            </label>
+                         ))}
+                       </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {enrollmentMode === "direct" && (
+                 <div className="flex flex-col gap-4 bg-surface-container p-5 rounded-2xl">
+                    <div className="flex items-center gap-2 text-secondary font-bold font-label">
+                       <GraduationCap className="w-5 h-5" /> Select Students
+                    </div>
+                    
+                    <input 
+                       type="text" 
+                       placeholder="Search students by name..."
+                       value={studentSearchTerm}
+                       onChange={(e) => setStudentSearchTerm(e.target.value)}
+                       className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface mb-2"
+                    />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto pr-2">
+                       {allStudents
+                         .filter(student => (student.first_name + " " + student.last_name).toLowerCase().includes(studentSearchTerm.toLowerCase()))
+                         .filter(student => {
+                            if (!enrollmentDetails.class_id) return true;
+                            // Filter out students already enrolled in the selected class
+                            const isAlreadyEnrolled = enrollments.some(e => 
+                               e.student_id === student.user_id && 
+                               e.class_id === Number(enrollmentDetails.class_id)
+                            );
+                            return !isAlreadyEnrolled;
+                         })
+                         .map(student => {
+                          const studentEnrollments = enrollments.filter(e => e.student_id === student.user_id && e.class_id);
+                          const currentClasses = studentEnrollments.map(e => classes.find(c => c.class_id === e.class_id)?.class_name).filter(Boolean);
+                          
+                          return (
+                          <label key={student.user_id} className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-outline-variant/30 cursor-pointer hover:border-primary/50 transition-colors">
+                             <input 
+                                type="checkbox" 
+                                checked={selectedChildren.includes(student.user_id)}
+                                onChange={(e) => {
+                                   if (e.target.checked) setSelectedChildren([...selectedChildren, student.user_id]);
+                                   else setSelectedChildren(selectedChildren.filter(id => id !== student.user_id));
+                                }}
+                                className="w-5 h-5 text-primary rounded border-outline-variant" 
+                             />
+                             <div className="flex flex-col">
+                                <span className="font-label font-bold text-on-surface">{student.first_name} {student.last_name}</span>
+                                {currentClasses.length > 0 && (
+                                   <span className="font-body text-xs text-secondary mt-0.5">Classes: {currentClasses.join(", ")}</span>
+                                )}
+                             </div>
+                          </label>
+                          );
+                       })}
+                       {allStudents.filter(student => (student.first_name + " " + student.last_name).toLowerCase().includes(studentSearchTerm.toLowerCase())).filter(student => !enrollmentDetails.class_id || !enrollments.some(e => e.student_id === student.user_id && e.class_id === Number(enrollmentDetails.class_id))).length === 0 && (
+                          <p className="text-on-surface-variant font-body py-2 italic text-sm col-span-2">No students found or all match current class.</p>
+                       )}
+                    </div>
+                 </div>
               )}
 
               {/* Enrollment Details */}
@@ -311,10 +403,10 @@ export default function AdminEnrollments() {
 
       {/* Enrollments List */}
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl overflow-hidden shadow-sm">
-         <div className="overflow-x-auto p-1">
-            <table className="w-full text-left border-collapse min-w-[800px]">
-               <thead>
-                  <tr className="bg-surface-container-low border-b border-outline-variant/30 text-on-surface-variant">
+         <div className="overflow-x-auto overflow-y-auto max-h-[600px] p-0">
+            <table className="w-full text-left border-collapse min-w-[800px] relative">
+               <thead className="sticky top-0 z-10">
+                  <tr className="bg-surface-container-low border-b border-outline-variant/30 text-on-surface-variant shadow-sm">
                      <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Student</th>
                      <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Parent</th>
                      <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Program</th>

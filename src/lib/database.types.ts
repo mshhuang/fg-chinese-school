@@ -168,6 +168,32 @@ export type Database = {
         Insert: Omit<Database['public']['Tables']['announcements']['Row'], 'announcement_id'>;
         Update: Partial<Database['public']['Tables']['announcements']['Row']>;
       },
+      assignments: {
+        Row: {
+          assignment_id: number;
+          class_id: number | null;
+          teacher_id: string | null;
+          title: string;
+          description: string | null;
+          due_date: string | null;
+          type: string | null;
+          created_at: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['assignments']['Row'], 'assignment_id'>;
+        Update: Partial<Database['public']['Tables']['assignments']['Row']>;
+      },
+      assignment_students: {
+        Row: {
+          assignment_student_id: number;
+          assignment_id: number | null;
+          student_id: string | null;
+          status: string | null;
+          grade: string | null;
+          feedback: string | null;
+        };
+        Insert: Omit<Database['public']['Tables']['assignment_students']['Row'], 'assignment_student_id'>;
+        Update: Partial<Database['public']['Tables']['assignment_students']['Row']>;
+      },
       internal_messages: {
         Row: {
           message_id: number;

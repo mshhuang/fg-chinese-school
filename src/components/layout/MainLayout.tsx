@@ -2,7 +2,7 @@ import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
   Building2, User, Users as ParentUsers, GraduationCap, Settings as Wrench, Pickaxe,
   LayoutDashboard, School, MessageSquare, Calendar, Users, Bell, Flower2, BookOpen, Settings, Megaphone, Newspaper, ChevronDown, Check, LogOut, Database, KeyRound, Clock, Activity, TerminalSquare, RefreshCcw, Server, ShieldAlert, AlertCircle,
-  Menu, X
+  Menu, X, FileText
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useState, useRef, useEffect } from "react";
@@ -12,11 +12,11 @@ import { logSystemEvent } from "../../lib/logSystemEvent";
 
 const ROLE_CONFIGS: Record<string, any> = {
   admin: { name: "Emily", roleLabel: "School Admin", badge: "Admin", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" }, { icon: School, label: "Classes", href: "/admin/classes" }, { icon: BookOpen, label: "My Lesson Plans", href: "/admin/plans" }, { icon: MessageSquare, label: "Messages", href: "/admin/messages" }, { icon: Megaphone, label: "Announcements", href: "/admin/announcements" }, { icon: Newspaper, label: "Newsletters", href: "/admin/newsletters" }, { icon: Settings, label: "Management", href: "/admin/management" }, { icon: Activity, label: "Recent Activities", href: "/admin/activities" }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  teacher: { name: "Chen Jian", roleLabel: "Teacher", badge: "Faculty", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/teacher/dashboard" }, { icon: School, label: "My Classes", href: "/teacher/classes" }, { icon: BookOpen, label: "My Lesson Plans", href: "/teacher/lessons" }, { icon: MessageSquare, label: "Messages", href: "/teacher/messages" }, { icon: Megaphone, label: "Announcements", href: "/teacher/announcements" }, { icon: Newspaper, label: "Newsletters", href: "/teacher/newsletters" }, { icon: User, label: "My Profile", href: "/profile" } ] },
+  teacher: { name: "Chen Jian", roleLabel: "Teacher", badge: "Faculty", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/teacher/dashboard" }, { icon: School, label: "My Classes", href: "/teacher/classes" }, { icon: BookOpen, label: "My Lesson Plans", href: "/teacher/lessons" }, { icon: FileText, label: "Assignments", href: "/teacher/assignments" }, { icon: MessageSquare, label: "Messages", href: "/teacher/messages" }, { icon: Megaphone, label: "Announcements", href: "/teacher/announcements" }, { icon: Newspaper, label: "Newsletters", href: "/teacher/newsletters" }, { icon: User, label: "My Profile", href: "/profile" } ] },
   parent: { name: "Wei Lin", roleLabel: "Parent", badge: "Family", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/parent/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/parent/announcements" }, { icon: BookOpen, label: "Grades", href: "/parent/grades" }, { icon: Calendar, label: "Schedule", href: "/parent/schedule" }, { icon: MessageSquare, label: "Messages", href: "/parent/messages" }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  student: { name: "Mei Lin", roleLabel: "Student", badge: "Grade 4", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/student/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/student/announcements" }, { icon: MessageSquare, label: "Messages", href: "/student/messages" }, { icon: User, label: "My Profile", href: "/profile" }, { icon: BookOpen, label: "Assignments", href: "/student/assignments" }, { icon: Calendar, label: "Schedule", href: "/student/schedule" }, { icon: Users, label: "Clubs", href: "/student/clubs" } ] },
+  student: { name: "Mei Lin", roleLabel: "Student", badge: "Grade 4", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/student/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/student/announcements" }, { icon: MessageSquare, label: "Messages", href: "/student/messages" }, { icon: User, label: "My Profile", href: "/profile" }, { icon: BookOpen, label: "Assignments", href: "/student/assignments" }, { icon: Calendar, label: "Schedule", href: "/student/schedule" }, { icon: Users, label: "Clubs", href: "/student/clubs", disabled: true } ] },
   staff: { name: "David", roleLabel: "Staff", badge: "Operations", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/staff/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/staff/announcements" }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  builder: { name: "Vickie", roleLabel: "Builder", badge: "System", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/builder/dashboard" }, { icon: Database, label: "Database", href: "/builder/database" }, { icon: Megaphone, label: "Announcements", href: "/builder/announcements" }, { icon: MessageSquare, label: "Messages", href: "/builder/messages" }, { icon: Users, label: "User Management", href: "/builder/users" }, { icon: Clock, label: "Sessions", href: "/builder/sessions" } ] }
+  builder: { name: "Vickie", roleLabel: "Builder", badge: "System", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/builder/dashboard" }, { icon: Database, label: "Database", href: "/builder/database" }, { icon: Megaphone, label: "Announcements", href: "/builder/announcements" }, { icon: MessageSquare, label: "Messages", href: "/builder/messages" }, { icon: Users, label: "User Management", href: "/builder/users" }, { icon: Clock, label: "Sessions", href: "/builder/sessions" }, { icon: ShieldAlert, label: "Password Reminders", href: "/builder/password-reminders" } ] }
 };
 
 export default function MainLayout() {
@@ -166,7 +166,18 @@ export default function MainLayout() {
          </div>
          
          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-            {currentRole.nav.map((item: any, idx: number) => (
+            {currentRole.nav.map((item: any, idx: number) => {
+                if (item.disabled) {
+                    return (
+                        <div key={idx} className="flex items-center justify-between px-4 py-3 rounded-full text-sm font-label font-bold transition-all text-on-surface-variant/50 cursor-not-allowed">
+                            <div className="flex items-center gap-3">
+                               <item.icon className="w-5 h-5 opacity-50" />
+                               {item.label}
+                            </div>
+                        </div>
+                    );
+                }
+                return (
                 <NavLink key={idx} to={item.href} className={({isActive}) => cn("flex items-center justify-between px-4 py-3 rounded-full text-sm font-label font-bold transition-all", isActive ? "bg-secondary-container text-on-secondary-container" : "text-on-surface hover:bg-surface-variant/50")}>
                     <div className="flex items-center gap-3">
                        <item.icon className="w-5 h-5" />
@@ -179,7 +190,8 @@ export default function MainLayout() {
                        </span>
                     )}
                 </NavLink>
-            ))}
+                );
+            })}
          </div>
 
          {/* Role Switcher */}
@@ -251,7 +263,18 @@ export default function MainLayout() {
                   <button onClick={() => setIsMobileMenuOpen(false)}><X className="w-6 h-6 text-on-surface-variant" /></button>
                </div>
                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-                  {currentRole.nav.map((item: any, idx: number) => (
+                  {currentRole.nav.map((item: any, idx: number) => {
+                      if (item.disabled) {
+                          return (
+                              <div key={idx} className="flex items-center justify-between px-4 py-3 rounded-full text-sm font-label font-bold transition-all text-on-surface-variant/50 cursor-not-allowed">
+                                  <div className="flex items-center gap-3">
+                                     <item.icon className="w-5 h-5 opacity-50" />
+                                     {item.label}
+                                  </div>
+                              </div>
+                          );
+                      }
+                      return (
                       <NavLink key={idx} onClick={() => setIsMobileMenuOpen(false)} to={item.href} className={({isActive}) => cn("flex items-center justify-between px-4 py-3 rounded-full text-sm font-label font-bold transition-all", isActive ? "bg-secondary-container text-on-secondary-container" : "text-on-surface hover:bg-surface-variant/50")}>
                           <div className="flex items-center gap-3">
                              <item.icon className="w-5 h-5" />
@@ -264,7 +287,8 @@ export default function MainLayout() {
                              </span>
                           )}
                       </NavLink>
-                  ))}
+                      );
+                  })}
                </div>
                {/* Mobile Role Switcher */}
                <div className="p-4 border-t border-outline-variant/20">

@@ -269,7 +269,6 @@ export function InternalMessagesPanel() {
 
   // Also include all users so we can start new chats
   const conversationsList = allUsers
-    .filter(u => u.user_id !== currentUserId)
     .map(u => {
       const conv = conversationsMap.get(u.user_id);
       return {
@@ -278,6 +277,7 @@ export function InternalMessagesPanel() {
         first_name: u.first_name || '',
         last_name: u.last_name || '',
         role: "User",
+        role_names: u.role_names || [],
         avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150&auto=format&fit=crop", // placeholder
         lastMessage: conv ? conv.lastMessage : "Start a conversation",
         time: conv ? conv.time : "",
@@ -296,7 +296,8 @@ export function InternalMessagesPanel() {
 
   const filteredConversations = conversationsList.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return c.hasHistory && matchesSearch;
+    if (searchQuery.trim().length > 0) return matchesSearch;
+    return c.hasHistory;
   });
 
   const activeConversation = conversationsList.find(c => c.id === activeChatUserId);
@@ -378,7 +379,14 @@ export function InternalMessagesPanel() {
                     </div>
                     <div className="flex-1 min-w-0 pr-1">
                        <div className="flex justify-between items-center mb-0.5">
-                          <span className="font-label text-base font-bold text-on-surface truncate pr-2">{chat.name}</span>
+                          <span className="font-label text-base font-bold text-on-surface truncate pr-2 flex items-baseline">
+                             {chat.name}
+                             {chat.role_names && chat.role_names.length > 0 && (
+                                <span className="text-[11px] font-normal text-on-surface-variant ml-2 opacity-80 shrink-0">
+                                   ({chat.role_names.map((r: string) => r.toLowerCase() === 'admin' ? 'School Admin' : r).join(', ')})
+                                </span>
+                             )}
+                          </span>
                           {chat.unread > 0 && (
                              <span className="flex w-3 h-3 relative shrink-0">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -410,7 +418,14 @@ export function InternalMessagesPanel() {
                        {activeConversation?.first_name?.[0]?.toUpperCase()}{activeConversation?.last_name?.[0]?.toUpperCase()}
                     </div>
                     <div>
-                       <h3 className="font-label font-bold text-lg text-on-surface">{activeConversation?.name}</h3>
+                       <h3 className="font-label font-bold text-lg text-on-surface flex items-baseline gap-2">
+                          {activeConversation?.name}
+                          {activeConversation?.role_names && activeConversation.role_names.length > 0 && (
+                             <span className="text-xs font-normal text-on-surface-variant opacity-80">
+                                ({activeConversation.role_names.map((r: string) => r.toLowerCase() === 'admin' ? 'School Admin' : r).join(', ')})
+                             </span>
+                          )}
+                       </h3>
                     </div>
                  </div>
               </div>
@@ -536,24 +551,45 @@ export function InternalMessagesPanel() {
                     }}
                   >
                     <option value="" disabled>Choose a user...</option>
-                    {["Teacher", "Student", "Parent", "Staff", "Principal", "Others"].map(r => {
-                      const group = allUsers.filter(u => {
-                         if (u.user_id === currentUserId) return false;
-                         const roles = u.role_names || [];
-                         if (r === "Others") return roles.length === 0;
-                         return roles.some((role: string) => role.toLowerCase() === r.toLowerCase());
+                    {(() => {
+                      const rolesList = new Set<string>();
+                      allUsers.forEach(u => {
+                        (u.role_names || []).forEach((r: string) => rolesList.add(r));
                       });
-                      if (group.length === 0) return null;
-                      return (
-                         <optgroup key={r} label={r === "Staff" ? "Staff" : r === "Others" ? "Others" : `${r}s`}>
-                            {group.map(u => (
-                               <option key={u.user_id} value={u.user_id}>
-                                  {u.first_name} {u.last_name}
-                               </option>
-                            ))}
-                         </optgroup>
-                      );
-                    })}
+                      const desiredOrder = ['Admin', 'Teacher', 'Student', 'Parent', 'Volunteer', 'Staff', 'Builder'];
+                      const sortedRoles = Array.from(rolesList).sort((a, b) => {
+                        const idxA = desiredOrder.indexOf(a);
+                        const idxB = desiredOrder.indexOf(b);
+                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                        if (idxA !== -1) return -1;
+                        if (idxB !== -1) return 1;
+                        return a.localeCompare(b);
+                      });
+                      const finalRoles = [...sortedRoles, "Others"];
+                      
+                      return finalRoles.map(r => {
+                          const group = allUsers.filter(u => {
+                            const userRoles = u.role_names || [];
+                            if (r === "Others") return userRoles.length === 0;
+                            return userRoles.includes(r);
+                          });
+                          
+                          if (group.length === 0) return null;
+                          
+                          // Sort group by last name alphabetically
+                          group.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
+                          
+                          return (
+                            <optgroup key={r} label={r === "Others" ? "Unassigned" : (r === "Admin" ? "School Admin" : (r === "Teacher" ? "Teachers" : (r === "Student" ? "Students" : (r === "Parent" ? "Parents" : r))))}>
+                                {group.map(u => (
+                                  <option key={u.user_id} value={u.user_id}>
+                                      {u.first_name} {u.last_name}
+                                  </option>
+                                ))}
+                            </optgroup>
+                          );
+                      });
+                    })()}
                   </select>
                   <ChevronDown className="absolute right-4 top-[38px] w-5 h-5 text-on-surface-variant pointer-events-none" />
                </div>

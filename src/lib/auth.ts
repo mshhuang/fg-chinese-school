@@ -36,13 +36,14 @@ export const initAuth = (
   };
 };
 
-export const googleSignIn = async (): Promise<{ user: any; accessToken: string } | null> => {
+export const googleSignIn = async (): Promise<{ user: any; accessToken: string, url?: string } | null> => {
   try {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         scopes: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
         redirectTo: window.location.href, // Redirects back to the current page
+        skipBrowserRedirect: true, // MUST be true for iframe
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -55,8 +56,10 @@ export const googleSignIn = async (): Promise<{ user: any; accessToken: string }
        throw error;
     }
     
-    // In OAuth flows, this won't return immediately if it redirects.
-    // However, if the session is somehow already established, it might.
+    if (data?.url) {
+       return { user: null, accessToken: '', url: data.url };
+    }
+    
     return null;
   } catch (error: any) {
     console.error('Sign in error:', error);

@@ -3,6 +3,7 @@ import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { DashboardNotifications } from "../components/DashboardNotifications";
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
@@ -64,9 +65,11 @@ export default function TeacherDashboard() {
   };
 
   return (
-    <div className="p-6 md:p-8 flex flex-col gap-8 w-full pb-32 md:pb-8 opacity-50 grayscale pointer-events-none" title="Coming Soon">
+    <div className="p-6 md:p-8 flex flex-col gap-8 w-full pb-32 md:pb-8">
+      <DashboardNotifications />
+      <div className="opacity-50 grayscale pointer-events-none" title="Coming Soon">
       {/* Header */}
-      <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         <div>
            <h2 className="font-display text-4xl text-on-surface font-bold">Good morning, Chen</h2>
            <p className="font-body text-lg text-on-surface-variant mt-2">You have 4 classes today. 2 assignments need grading.</p>
@@ -229,6 +232,7 @@ export default function TeacherDashboard() {
         </div>
 
       </div>
+     </div>
     </div>
   );
 }

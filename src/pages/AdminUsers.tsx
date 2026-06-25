@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
-import { Users, Plus, Trash2, Mail, Phone, Globe, FileText, Pencil, Wand2, Check, X, School, Shield, Link, Home, Briefcase, Heart, Wrench, User as UserIcon } from "lucide-react";
+import { Users, Plus, Trash2, Mail, Phone, Globe, FileText, Pencil, Wand2, Check, X, School, Shield, Link, Home, Briefcase, Heart, Wrench, User as UserIcon, Search } from "lucide-react";
 import { Database } from "../lib/database.types";
 import { BuilderIconCustom, AdminIconCustom, StaffIconCustom, VolunteerIconCustom, TeacherIconCustom, StudentIconCustom } from "../components/icons";
 import { logSystemActivity } from "../lib/logger";
@@ -56,6 +56,7 @@ export default function AdminUsers() {
   };
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [filterRole, setFilterRole] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState("");
   
   const [showAddFamily, setShowAddFamily] = useState(false);
   const [parentChildRelations, setParentChildRelations] = useState<any[]>([]);
@@ -146,6 +147,19 @@ export default function AdminUsers() {
       medical_condition: formData.medical_condition || null,
       password_hash: formData.password_hash || null,
     };
+    
+    if (payload.user_name) {
+      let query = supabase.from('users').select('user_id').eq('user_name', payload.user_name);
+      if (editingUserId) {
+        query = query.neq('user_id', editingUserId);
+      }
+      const { data: existingUser } = await query.maybeSingle();
+      if (existingUser) {
+         setErrorMsg("Warning: The username you entered already exists in the system.");
+         return;
+      }
+    }
+
     try {
       let error;
       let finalUserId = editingUserId;
@@ -391,12 +405,19 @@ export default function AdminUsers() {
 
   const filteredUsers = users.filter(user => {
     const userRoleMappings = userRoles.filter(ur => ur.user_id === user.user_id);
-    const hasHiddenRole = userRoleMappings.some(ur => {
-      const r = roles.find(role => role.role_id === ur.role_id);
-      return r && ['builder'].includes(r.role_name.toLowerCase());
-    });
-    if (hasHiddenRole) return false;
     
+    let matchesSearch = true;
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      matchesSearch = 
+        (user.first_name && user.first_name.toLowerCase().includes(q)) ||
+        (user.last_name && user.last_name.toLowerCase().includes(q)) ||
+        (user.user_name && user.user_name.toLowerCase().includes(q)) ||
+        (user.email && user.email.toLowerCase().includes(q));
+    }
+    
+    if (!matchesSearch) return false;
+
     if (filterRole === "All") return true;
     if (filterRole === "Unassigned") return userRoleMappings.length === 0;
 
@@ -474,22 +495,22 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      <div className="flex gap-4 border-b border-outline-variant/30 overflow-x-auto hide-scrollbar">
+      <div className="sticky top-[56px] z-30 flex p-1.5 bg-surface-container-lowest/80 backdrop-blur-md rounded-2xl w-full md:w-fit border border-outline-variant/30 shadow-sm overflow-x-auto hide-scrollbar shrink-0">
           <button 
             onClick={() => setActiveTab('users')}
-            className={`pb-4 font-label font-bold text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === 'users' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
+            className={`px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50'}`}
           >
             Directory
           </button>
           <button 
             onClick={() => setActiveTab('roles')}
-            className={`pb-4 font-label font-bold text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === 'roles' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
+            className={`px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'roles' ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50'}`}
           >
             Roles & Permissions
           </button>
           <button 
             onClick={() => setActiveTab('families')}
-            className={`pb-4 font-label font-bold text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === 'families' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
+            className={`px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'families' ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50'}`}
           >
             Families
           </button>
@@ -500,7 +521,7 @@ export default function AdminUsers() {
               setShowAddRole(false);
               setShowAddFamily(false);
             }}
-            className={`pb-4 font-label font-bold text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === 'icons' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
+            className={`px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'icons' ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50'}`}
           >
             Icon Reference
           </button>
@@ -513,20 +534,32 @@ export default function AdminUsers() {
       )}
 
       {activeTab === 'users' && !showAdd && (
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-            {["All", ...roles.filter(r => r.role_name.toLowerCase() !== 'builder').map(r => r.role_name), "Unassigned"].map(rName => (
-               <button
-                  key={rName}
-                  onClick={() => setFilterRole(rName)}
-                  className={`px-4 py-2 rounded-full font-label text-sm font-bold whitespace-nowrap transition-colors ${
-                    filterRole === rName 
-                      ? 'bg-primary text-on-primary' 
-                      : 'bg-surface-container-low text-on-surface hover:bg-surface-variant'
-                  }`}
-               >
-                  {rName}
-               </button>
-            ))}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-2">
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto">
+              {["All", ...roles.map(r => r.role_name), "Unassigned"].map(rName => (
+                 <button
+                    key={rName}
+                    onClick={() => setFilterRole(rName)}
+                    className={`px-4 py-2 rounded-full font-label text-sm font-bold whitespace-nowrap transition-colors ${
+                      filterRole === rName 
+                        ? 'bg-primary text-on-primary' 
+                        : 'bg-surface-container-low text-on-surface hover:bg-surface-variant'
+                    }`}
+                 >
+                    {rName}
+                 </button>
+              ))}
+          </div>
+          <div className="relative w-full md:w-72 flex-shrink-0">
+             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+             <input 
+               type="text" 
+               placeholder="Search users..." 
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               className="w-full pl-10 pr-4 py-2 bg-surface border border-outline-variant/30 rounded-xl outline-none focus:border-primary text-on-surface transition-colors font-body text-sm shadow-sm"
+             />
+          </div>
         </div>
       )}
 
@@ -613,7 +646,7 @@ export default function AdminUsers() {
               <div className="md:col-span-2 flex flex-col gap-2">
                 <label className="font-label text-sm font-bold text-on-surface-variant">Assign Roles</label>
                 <div className="flex flex-wrap gap-4 mt-1">
-                  {roles.filter(role => role.role_name.toLowerCase() !== 'builder').map(role => (
+                  {roles.map(role => (
                     <label key={role.role_id} className="flex items-center gap-2 cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -664,13 +697,14 @@ export default function AdminUsers() {
 
       {activeTab === 'users' && (
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl overflow-hidden shadow-sm">
-           <div className="overflow-x-auto p-1">
-             <table className="w-full text-left border-collapse min-w-[700px]">
-               <thead>
-                 <tr className="bg-surface-container-low border-b border-outline-variant/30 text-on-surface-variant">
+           <div className="overflow-x-auto overflow-y-auto max-h-[600px] p-0">
+             <table className="w-full text-left border-collapse min-w-[700px] relative">
+               <thead className="sticky top-0 z-10">
+                 <tr className="bg-surface-container-low border-b border-outline-variant/30 text-on-surface-variant shadow-sm">
                    <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Name</th>
                    <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Contact</th>
                    <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Details</th>
+                   <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Password</th>
                    <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Roles</th>
                    <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Status</th>
                    <th className="p-4 font-label text-xs uppercase tracking-wider font-bold text-right">Actions</th>
@@ -712,10 +746,11 @@ export default function AdminUsers() {
                        {user.medical_condition && <div className="text-error" title={user.medical_condition}><span className="font-bold">Med:</span> {user.medical_condition.length > 20 ? user.medical_condition.substring(0, 20) + '...' : user.medical_condition}</div>}
                        {!user.school && !user.grade && !user.medical_condition && <span>-</span>}
                      </td>
-                     <td className="p-4">
-                        <div className="flex flex-wrap gap-2">
-                          {(() => {
-                             const uRoles = userRoles.filter(ur => ur.user_id === user.user_id);
+                      <td className="p-4 font-mono text-xs text-on-surface">{user.password_hash || <span className="text-on-surface-variant opacity-60">Not set</span>}</td>
+                      <td className="p-4">
+                         <div className="flex flex-wrap gap-2">
+                           {(() => {
+                              const uRoles = userRoles.filter(ur => ur.user_id === user.user_id);
                              if (uRoles.length === 0) return <span className="text-xs font-body text-on-surface-variant opacity-60">No roles</span>;
                              return uRoles.map(ur => {
                                const r = roles.find(role => role.role_id === ur.role_id);
@@ -782,7 +817,7 @@ export default function AdminUsers() {
                  </tr>
                </thead>
                <tbody className="divide-y divide-outline-variant/20">
-                 {roles.filter(role => role.role_name.toLowerCase() !== 'builder').map((role) => (
+                 {roles.map((role) => (
                    <tr key={role.role_id} className="hover:bg-surface-container-low/50 transition-colors">
                      <td className="p-4">
                         <span className="font-mono text-sm text-on-surface-variant">#{role.role_id}</span>

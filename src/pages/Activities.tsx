@@ -89,11 +89,29 @@ export default function Activities() {
   };
 
   const [selectedUser, setSelectedUser] = useState<string>("All Users");
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("All Time");
 
   const groupedLogs = React.useMemo(() => {
+    const now = new Date();
+    let cutoffDate: Date | null = null;
+    
+    if (selectedPeriod === "Today") {
+      cutoffDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (selectedPeriod === "Last 7 Days") {
+      cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (selectedPeriod === "Last 30 Days") {
+      cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
     const filtered = logs.filter(log => {
       const userName = log.user_name || 'System';
       if (userRole === 'admin' && (userName === 'System Event' || userName === 'System' || userName.toLowerCase().includes('system'))) return false;
+      
+      if (cutoffDate) {
+        const logDate = new Date(log.created_at);
+        if (logDate < cutoffDate) return false;
+      }
+
       return true;
     });
 
@@ -103,7 +121,7 @@ export default function Activities() {
       acc[userName].push(log);
       return acc;
     }, {} as Record<string, any[]>);
-  }, [logs, userRole]);
+  }, [logs, userRole, selectedPeriod]);
 
   const uniqueUsers = React.useMemo(() => {
     return Object.keys(groupedLogs).sort();
@@ -188,18 +206,33 @@ export default function Activities() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="p-4 bg-surface-container-low border border-outline-variant/30 rounded-xl flex items-center justify-between">
-               <span className="font-medium text-sm text-on-surface-variant">Filter by User:</span>
-               <select 
-                 className="bg-surface border border-outline-variant text-on-surface text-sm rounded-lg block p-2"
-                 value={selectedUser}
-                 onChange={(e) => setSelectedUser(e.target.value)}
-               >
-                 <option value="All Users">All Users</option>
-                 {uniqueUsers.map(name => (
-                   <option key={name} value={name}>{name}</option>
-                 ))}
-               </select>
+            <div className="p-4 bg-surface-container-low border border-outline-variant/30 rounded-xl flex items-center justify-between gap-4">
+               <div className="flex items-center gap-3">
+                 <span className="font-medium text-sm text-on-surface-variant">Filter by User:</span>
+                 <select 
+                   className="bg-surface border border-outline-variant text-on-surface text-sm rounded-lg block p-2"
+                   value={selectedUser}
+                   onChange={(e) => setSelectedUser(e.target.value)}
+                 >
+                   <option value="All Users">All Users</option>
+                   {uniqueUsers.map(name => (
+                     <option key={name} value={name}>{name}</option>
+                   ))}
+                 </select>
+               </div>
+               <div className="flex items-center gap-3">
+                 <span className="font-medium text-sm text-on-surface-variant">Time Period:</span>
+                 <select 
+                   className="bg-surface border border-outline-variant text-on-surface text-sm rounded-lg block p-2"
+                   value={selectedPeriod}
+                   onChange={(e) => setSelectedPeriod(e.target.value)}
+                 >
+                   <option value="All Time">All Time</option>
+                   <option value="Today">Today</option>
+                   <option value="Last 7 Days">Last 7 Days</option>
+                   <option value="Last 30 Days">Last 30 Days</option>
+                 </select>
+               </div>
             </div>
              <div>
                   {Object.entries(groupedLogs)

@@ -10,6 +10,7 @@ export default function PrincipalNewsletters() {
   const [showPdfModal, setShowPdfModal] = useState<any>(null);
   const [rejectModal, setRejectModal] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -110,21 +111,20 @@ export default function PrincipalNewsletters() {
      }
   };
 
-  const handleDelete = async (id: string | number) => {
-     if (!window.confirm("Are you sure you want to delete this newsletter?")) return;
+  const handleDelete = async (id: string | number, confirmed: boolean = false) => {
+     if (!confirmed) return;
      
      try {
          // @ts-ignore
          const { error } = await supabase.from('newsletters').delete().eq('newsletter_id', id);
          
          if (error) {
-             if (error.code === '42501') alert("RLS blocks deletion. Please check table policies.");
              throw error;
          }
+         setConfirmDeleteId(null);
          await loadNewsletters();
      } catch(e) {
          console.error("Delete failed", e);
-         alert("Failed to delete newsletter");
      }
   };
 
@@ -204,9 +204,16 @@ export default function PrincipalNewsletters() {
                            </button>
                          </>
                        )}
-                       <button onClick={() => handleDelete(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete">
+                       {confirmDeleteId === news.id ? (
+                           <div className="flex items-center gap-1 bg-error-container/20 px-2 rounded-full">
+                               <button onClick={() => setConfirmDeleteId(null)} className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface px-1 py-1">Cancel</button>
+                               <button onClick={() => handleDelete(news.id, true)} className="text-[10px] font-bold text-error hover:underline px-1 py-1">Confirm</button>
+                           </div>
+                       ) : (
+                       <button onClick={() => setConfirmDeleteId(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete">
                           <Trash2 className="w-4 h-4" />
                        </button>
+                       )}
                     </div>
                  </div>
 
@@ -293,13 +300,23 @@ export default function PrincipalNewsletters() {
                        <button onClick={() => { handleDelete(showPdfModal.id); setShowPdfModal(null); }} className="bg-error/10 text-error hover:bg-error/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                           <Trash2 className="w-4 h-4" /> Delete
                        </button>
+                       <button onClick={() => {
+                          const w = window.open();
+                          if(w) {
+                              w.document.write('<iframe src="' + showPdfModal.pdfData + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
+                              setTimeout(() => { w.print(); }, 500);
+                          }
+                       }} className="bg-primary text-on-primary hover:bg-primary/90 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
+                          <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+                          Print
+                       </button>
                        <button onClick={() => setShowPdfModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant ml-2">
                           <X className="w-5 h-5" />
                        </button>
                    </div>
                 </div>
                 <div className="flex-1 bg-surface-container-lowest p-2">
-                    <iframe src={`${showPdfModal.pdfData}#toolbar=0&navpanes=0&view=FitH`} className="w-full h-full rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                    <iframe src={showPdfModal.pdfData} className="w-full h-full rounded-xl border border-outline-variant/20" title="PDF Viewer" />
                 </div>
              </div>
           </div>

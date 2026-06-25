@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Plus, Users, BookOpen, Clock, Calendar, Loader2, X } from "lucide-react";
-import { cn } from "../lib/utils";
+import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
 export default function TeacherClasses() {
@@ -8,6 +8,7 @@ export default function TeacherClasses() {
   const [classesData, setClassesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchData() {
@@ -23,8 +24,8 @@ export default function TeacherClasses() {
          return;
        }
 
-       // Fetch classes where this user is the primary teacher
-       const { data: clsData } = await supabase.from('classes').select('*').eq('primary_teacher_id', u.id);
+       // Fetch classes where this user is the primary teacher, and also fetch enrollment count
+       const { data: clsData } = await supabase.from('classes').select('*, enrollments(count)').eq('primary_teacher_id', u.id);
        
        if (clsData) {
          setClassesData(clsData);
@@ -51,7 +52,6 @@ export default function TeacherClasses() {
 
        {/* Toolbar */}
        <div className="flex flex-col xl:flex-row justify-between gap-6">
-          {/* Search */}
           <div className="flex items-center gap-3 bg-surface-container-low rounded-full px-4 py-2 border border-outline-variant/40 shrink-0 w-full xl:w-80 shadow-sm focus-within:border-primary/50 transition-colors">
              <Search className="w-5 h-5 text-on-surface-variant" />
              <input 
@@ -70,7 +70,7 @@ export default function TeacherClasses() {
        {/* List / Grid */}
        {loading ? (
           <div className="flex items-center justify-center p-12">
-             <Loader2 className="w-8 h-8 animate-spin text-primary" />
+             <div className="w-8 h-8 animate-spin text-primary border-4 border-primary border-t-transparent rounded-full" />
           </div>
        ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-6 gap-4">
@@ -100,18 +100,13 @@ export default function TeacherClasses() {
                       </div>
                     )}
 
-                    <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant/20 mb-6">
-                       <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant font-bold mb-1">Next Topic</p>
-                       <p className="font-body text-sm text-on-surface font-medium">Coming soon</p>
-                    </div>
-
                     <div className="flex items-center justify-between pt-4 border-t border-outline-variant/20 mt-auto">
                        <div className="flex items-center gap-2 text-on-surface-variant">
                           <Users className="w-4 h-4 shrink-0" />
-                          <span className="font-label text-sm font-bold">Students</span>
+                          <span className="font-label text-sm font-bold">{cls.enrollments?.[0]?.count || 0} Students Enrolled</span>
                        </div>
-                       <button className="text-primary font-label text-sm font-bold hover:underline">
-                         View Roster
+                       <button onClick={() => navigate('/teacher/assignments')} className="text-primary font-label text-sm font-bold flex items-center gap-1 hover:underline">
+                         Assign Homework <ArrowRight className="w-4 h-4" />
                        </button>
                     </div>
                 </div>

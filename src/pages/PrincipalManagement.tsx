@@ -9,8 +9,8 @@ export default function PrincipalManagement() {
   const [activeTab, setActiveTab] = useState('reference');
 
   return (
-    <div className="flex flex-col w-full h-full">
-      <div className="px-6 md:px-8 py-2 bg-surface/80 border-b border-outline-variant/30 select-none overflow-x-auto overflow-y-hidden hide-scrollbar">
+    <div className="flex flex-col w-full min-h-full">
+      <div className="sticky top-0 z-40 px-6 md:px-8 py-2 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 select-none overflow-x-auto overflow-y-hidden hide-scrollbar">
         <div className="flex gap-2 max-w-7xl mx-auto min-w-max">
           {[
             { id: 'reference', label: 'Directory & Reference', icon: Database },
@@ -34,7 +34,7 @@ export default function PrincipalManagement() {
         </div>
       </div>
       
-      <div className="flex-1 relative w-full h-full">
+      <div className="flex-1 relative w-full">
         {activeTab === 'academic' && <AdminAcademic />}
         {activeTab === 'content' && <AdminContent />}
         {activeTab === 'reference' && <AdminDataEntry />}

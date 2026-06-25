@@ -7,6 +7,7 @@ export default function AdminContent() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [confirmId, setConfirmId] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -20,10 +21,11 @@ export default function AdminContent() {
     setLoading(false);
   }
 
-  async function handleDelete(id: any) {
-    if (!confirm("Are you sure?")) return;
+  async function handleDelete(id: any, confirmed: boolean = false) {
+    if (!confirmed) return;
     const idField = activeTab === 'announcements' ? 'announcement_id' : 'newsletter_id';
     await supabase.from(activeTab).delete().eq(idField, id);
+    setConfirmId(null);
     fetchData();
   }
 
@@ -42,16 +44,16 @@ export default function AdminContent() {
         </button>
       </header>
 
-      <div className="flex gap-4 border-b border-outline-variant/30">
+      <div className="sticky top-[56px] z-30 flex p-1.5 bg-surface-container-lowest/80 backdrop-blur-md rounded-2xl w-full md:w-fit border border-outline-variant/30 shadow-sm overflow-x-auto hide-scrollbar shrink-0">
           <button 
             onClick={() => setActiveTab('announcements')}
-            className={`pb-4 font-label font-bold text-sm transition-all border-b-2 ${activeTab === 'announcements' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
+            className={`px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'announcements' ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50'}`}
           >
             Announcements
           </button>
           <button 
             onClick={() => setActiveTab('newsletters')}
-            className={`pb-4 font-label font-bold text-sm transition-all border-b-2 ${activeTab === 'newsletters' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'}`}
+            className={`px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'newsletters' ? 'bg-surface shadow-sm text-primary' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/50'}`}
           >
             Newsletters
           </button>
@@ -100,9 +102,16 @@ export default function AdminContent() {
                         </p>
                      </td>
                      <td className="p-4 text-right">
-                        <button onClick={() => handleDelete(row.announcement_id || row.newsletter_id)} className="w-8 h-8 rounded-full inline-flex flex items-center justify-center text-on-surface-variant hover:bg-error-container hover:text-error transition-colors">
-                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        {confirmId === (row.announcement_id || row.newsletter_id) ? (
+                            <div className="flex items-center justify-end gap-2">
+                                <button onClick={() => setConfirmId(null)} className="text-xs font-bold text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
+                                <button onClick={() => handleDelete(row.announcement_id || row.newsletter_id, true)} className="text-xs font-bold text-error bg-error-container/20 px-3 py-1 rounded-full hover:bg-error-container">Delete</button>
+                            </div>
+                        ) : (
+                            <button onClick={() => setConfirmId(row.announcement_id || row.newsletter_id)} className="w-8 h-8 rounded-full inline-flex flex items-center justify-center text-on-surface-variant hover:bg-error-container hover:text-error transition-colors">
+                               <Trash2 className="w-4 h-4" />
+                            </button>
+                        )}
                      </td>
                    </tr>
                  ))}

@@ -19,7 +19,7 @@ const AdminNewUser = () => {
   useEffect(() => {
     async function fetchData() {
       const { data: roleData } = await supabase.from('roles').select('*').order('role_name');
-      if (roleData) setRoles((roleData as any[]).filter(r => !['builder'].includes(r.role_name.toLowerCase())));
+      if (roleData) setRoles((roleData as any[]));
       
       const { data: userData } = await supabase.from('users').select('user_id, first_name, last_name').order('first_name');
       if (userData) setUsers(userData);
@@ -117,6 +117,14 @@ const AdminNewUser = () => {
       Object.entries(insertData).map(([k, v]) => [k, v === '' ? null : v])
     ) as any;
     
+    if (payload.user_name) {
+      const { data: existingUser } = await supabase.from('users').select('user_id').eq('user_name', payload.user_name).maybeSingle();
+      if (existingUser) {
+         setErrorMsg("Warning: The username you entered already exists in the system.");
+         return;
+      }
+    }
+
     payload.user_id = finalUserId; // explicitly assign primary key
 
     const { error } = await (supabase as any)
@@ -264,8 +272,8 @@ const AdminNewUser = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-              <input required type="email" name="email" value={formData.email || ''} onChange={handleChange} className="w-full px-3 py-2 border rounded-md" />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className="w-full px-3 py-2 border rounded-md" />
             </div>
 
             <div>

@@ -4,7 +4,7 @@ export const fetchGmailMessages = async () => {
   const token = await getAccessToken();
   if (!token) throw new Error('Not authenticated with Google');
 
-  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=15', {
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=15&q=in:inbox', {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -32,8 +32,17 @@ export const sendGmailMessage = async (to: string, subject: string, body: string
   const token = await getAccessToken();
   if (!token) throw new Error('Not authenticated with Google');
 
+  const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const profile = await profileRes.json();
+  const emailAddress = profile.emailAddress;
+
   const emailLines = [];
   emailLines.push(`To: ${to}`);
+  if (emailAddress) {
+    emailLines.push(`From: "School Administrator" <${emailAddress}>`);
+  }
   emailLines.push('Content-type: text/html;charset=utf-8');
   emailLines.push('MIME-Version: 1.0');
   emailLines.push(`Subject: =?utf-8?B?${btoa(encodeURIComponent(subject).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode(parseInt(p1, 16))))}?=`);
@@ -49,7 +58,7 @@ export const sendGmailMessage = async (to: string, subject: string, body: string
     .replace(/\//g, '_')
     .replace(/=+$/, '');
 
-  const res = await fetch('https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send', {
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
     method: 'POST',
     headers: { 
       Authorization: `Bearer ${token}`,

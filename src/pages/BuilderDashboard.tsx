@@ -10,7 +10,6 @@ export default function BuilderDashboard() {
   const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
   const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
   const [serverLoad, setServerLoad] = useState<string>("24%");
-  const [passwordRequests, setPasswordRequests] = useState<any[]>([]);
   const [isMaintenance, setIsMaintenance] = useState(localStorage.getItem('system_maintenance') === 'true');
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -90,16 +89,6 @@ export default function BuilderDashboard() {
         .from('users')
         .select('*', { count: 'exact', head: true });
       if (count !== null) setTotalUsersCount(count);
-
-      const { data: requestLogs } = await supabase
-        .from('system_logs')
-        .select('*')
-        .ilike('activity', '%Password Reminder Request%')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      if (requestLogs) {
-        setPasswordRequests(requestLogs);
-      }
     }
     fetchData();
     
@@ -132,7 +121,8 @@ export default function BuilderDashboard() {
     { title: 'System Logs', desc: 'General system logs, lifecycle, and operations.', icon: Server, href: '/builder/system-logs', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'Live Error Logs', desc: 'Real-time feed of system warnings and errors.', icon: TerminalSquare, href: '/builder/error-logs', color: 'text-error', bg: 'bg-error-container' },
     { title: 'Audit Logs', desc: 'Comprehensive record of data creation, updates, and deletions.', icon: ShieldAlert, href: '/builder/audit-logs', color: 'text-secondary', bg: 'bg-secondary-container' },
-    { title: 'Recent Activities', desc: 'User login events and page interactions.', icon: Activity, href: '/builder/activities', color: 'text-tertiary', bg: 'bg-tertiary-container' }
+    { title: 'Recent Activities', desc: 'User login events and page interactions.', icon: Activity, href: '/builder/activities', color: 'text-tertiary', bg: 'bg-tertiary-container' },
+    { title: 'Password Reminders', desc: 'View and manage password reset requests.', icon: Unlock, href: '/builder/password-reminders', color: 'text-primary', bg: 'bg-primary-container' }
   ];
 
   return (
@@ -237,58 +227,6 @@ export default function BuilderDashboard() {
               <p className="font-body text-on-surface-variant">{card.desc}</p>
             </div>
           ))}
-        </div>
-
-        {/* Password Reminder Requests Panel */}
-        <div className="mt-8 p-6 md:p-8 rounded-3xl bg-surface-container-low border border-outline-variant/30 shadow-sm">
-           <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-primary-container text-primary flex items-center justify-center">
-                 <Unlock className="w-5 h-5" />
-              </div>
-              <div>
-                 <h3 className="font-title text-xl font-bold text-on-surface">Password Reminder Requests</h3>
-                 <p className="text-sm text-on-surface-variant hidden md:block">Recent requests submitted via the Forgot Password portal.</p>
-              </div>
-           </div>
-           
-           {passwordRequests && passwordRequests.length > 0 ? (
-               <div className="overflow-x-auto">
-                   <table className="w-full text-left border-collapse">
-                       <thead>
-                           <tr className="border-b border-outline-variant/30 text-on-surface-variant font-label text-sm">
-                               <th className="pb-3 font-medium">Time (UTC)</th>
-                               <th className="pb-3 font-medium">Requested User Name</th>
-                               <th className="pb-3 font-medium">IP Addr / Device</th>
-                               <th className="pb-3 font-medium text-right">Status</th>
-                           </tr>
-                       </thead>
-                       <tbody className="divide-y divide-outline-variant/30">
-                           {passwordRequests.map((req) => (
-                               <tr key={req.log_id || Math.random()} className="hover:bg-surface/50 transition-colors">
-                                   <td className="py-3 text-sm text-on-surface">
-                                       {new Date(req.created_at).toLocaleString()}
-                                   </td>
-                                   <td className="py-3 text-sm font-bold text-on-surface">
-                                       {req.data_changed?.username || req.user_name || "Unknown"}
-                                   </td>
-                                   <td className="py-3 text-sm text-on-surface-variant">
-                                       <span className="font-mono text-xs bg-surface-variant px-2 py-1 rounded">{req.ip_address || "Unknown"}</span>
-                                   </td>
-                                   <td className="py-3 text-sm text-right">
-                                       <span className="inline-flex items-center gap-1 text-tertiary font-label text-xs uppercase tracking-wider bg-tertiary-container/30 px-2 py-1 rounded-full">
-                                          <Clock className="w-3 h-3" /> Pending Review
-                                       </span>
-                                   </td>
-                               </tr>
-                           ))}
-                       </tbody>
-                   </table>
-               </div>
-           ) : (
-               <div className="text-center p-8 border border-dashed border-outline-variant/40 rounded-2xl text-on-surface-variant text-sm font-medium">
-                   No recent password reminder requests.
-               </div>
-           )}
         </div>
 
         <div className="mt-8 relative p-6 md:p-8 rounded-3xl bg-surface-container-low border border-outline-variant/30 shadow-sm overflow-hidden">

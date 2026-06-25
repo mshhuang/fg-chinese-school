@@ -4,6 +4,8 @@ import { supabase } from "../lib/supabase";
 import { Users, BookOpen, ClipboardCheck, Coins, UserCheck, UserPlus, Megaphone, CheckCircle2, FileText, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
+import { DashboardNotifications } from "../components/DashboardNotifications";
+
 const data = [
   { name: 'Mon', students: 500 },
   { name: 'Tue', students: 512 },
@@ -51,6 +53,7 @@ export default function PrincipalDashboard() {
 
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 w-full">
+      <DashboardNotifications />
       {/* Summary Cards Bento */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
         <StatCard icon={Users} label="Total Students" value={stats.totalStudents} colorClass="text-primary" />
