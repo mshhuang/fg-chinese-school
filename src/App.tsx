@@ -19,7 +19,7 @@ import PrincipalClasses from "./pages/PrincipalClasses";
 import Announcements from "./pages/Announcements";
 import PrincipalNewsletters from "./pages/PrincipalNewsletters";
 import TeacherNewsletters from "./pages/TeacherNewsletters";
-import TeacherAssignments from "./pages/TeacherAssignments";
+import TeacherAssignmentsPage from "./pages/TeacherAssignmentsPage";
 import TeacherClasses from "./pages/TeacherClasses";
 import ParentGrades from "./pages/ParentGrades";
 import ParentSchedule from "./pages/ParentSchedule";
@@ -92,7 +92,7 @@ export default function App() {
            <Route path="/teacher/messages" element={<PrincipalMessages />} />
            <Route path="/teacher/announcements" element={<Announcements />} />
            <Route path="/teacher/newsletters" element={<TeacherNewsletters />} />
-           <Route path="/teacher/assignments" element={<TeacherAssignments />} />
+           <Route path="/teacher/assignments" element={<TeacherAssignmentsPage />} />
            
            {/* Parent */}
            <Route path="/parent/dashboard" element={<ParentPortal />} />
