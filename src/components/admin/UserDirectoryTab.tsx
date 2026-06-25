@@ -171,13 +171,6 @@ export default function UserDirectoryTab() {
   const filteredUsers = users.filter(user => {
     const userRoleMappings = userRoles.filter(ur => ur.user_id === user.user_id);
     
-    // Hide users with 'builder' role
-    const hasHiddenRole = userRoleMappings.some(ur => {
-       const r = roles.find(role => role.role_id === ur.role_id);
-       return r && ['builder'].includes(r.role_name.toLowerCase());
-    });
-    if (hasHiddenRole) return false;
-
     if (filterRole === "All") return true;
     if (filterRole === "Unassigned") return userRoleMappings.length === 0;
 
@@ -194,13 +187,25 @@ export default function UserDirectoryTab() {
             <h2 className="font-display text-2xl font-bold text-on-surface">Users Directory</h2>
             <p className="font-body text-on-surface-variant mt-1">Manage system accounts.</p>
          </div>
-         <button onClick={() => { setShowAdd(!showAdd); setEditingUserId(null); setErrorMsg(""); }} className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label font-bold flex items-center gap-2">
+         <button onClick={() => { 
+            setShowAdd(!showAdd); 
+            setEditingUserId(null); 
+            setErrorMsg(""); 
+            if (!showAdd) {
+               setFormData({
+                 email: '', first_name: '', last_name: '', phone1: '', phone2: '',
+                 school: '', grade: '', dob: '', user_name: '', password_hash: '', address: '',
+                 emergency_contact: '', medical_condition: '', status: 'Active'
+               });
+               setSelectedRoleIds([]);
+            }
+         }} className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label font-bold flex items-center gap-2">
             <Plus className="w-5 h-5" /> Add User
          </button>
       </div>
 
       <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-          {["All", ...roles.filter(r => !['builder'].includes(r.role_name.toLowerCase())).map(r => r.role_name), "Unassigned"].map(rName => (
+          {["All", ...roles.map(r => r.role_name), "Unassigned"].map(rName => (
              <button
                 key={rName}
                 onClick={() => setFilterRole(rName)}
@@ -231,7 +236,7 @@ export default function UserDirectoryTab() {
                </div>
                <div className="flex flex-col gap-2">
                  <label className="font-label text-sm font-bold text-on-surface-variant">Email</label>
-                 <input required type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface" />
+                 <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface" />
                </div>
                <div className="flex flex-col gap-2">
                  <label className="font-label text-sm font-bold text-on-surface-variant">Username</label>
@@ -300,7 +305,7 @@ export default function UserDirectoryTab() {
                <div className="flex flex-col gap-2 md:col-span-2">
                  <label className="font-label text-sm font-bold text-on-surface-variant">Assign Roles</label>
                  <div className="flex flex-wrap gap-4 mt-2">
-                   {roles.filter(role => !['builder'].includes(role.role_name?.toLowerCase())).map(role => (
+                   {roles.map(role => (
                      <label key={role.role_id} className="flex items-center gap-2 cursor-pointer">
                        <input 
                          type="checkbox" 
@@ -344,10 +349,10 @@ export default function UserDirectoryTab() {
       )}
 
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl overflow-hidden shadow-sm">
-         <div className="overflow-x-auto p-1">
-           <table className="w-full text-left border-collapse min-w-[700px]">
-             <thead>
-               <tr className="bg-surface-container-low border-b border-outline-variant/30 text-on-surface-variant">
+         <div className="overflow-x-auto overflow-y-auto max-h-[600px] p-0">
+           <table className="w-full text-left border-collapse min-w-[700px] relative">
+             <thead className="sticky top-0 z-10">
+               <tr className="bg-surface-container-low border-b border-outline-variant/30 text-on-surface-variant shadow-sm">
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Name</th>
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Contact</th>
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Details</th>

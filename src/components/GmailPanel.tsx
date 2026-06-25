@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Mail, Edit, Inbox, Loader2, Send } from 'lucide-react';
+import { Mail, Edit, Inbox, Loader2, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { initAuth, googleSignIn, logout } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 import { fetchGmailMessages, sendGmailMessage } from '../lib/gmail';
 import { cn } from '../lib/utils';
 import { ComposeMessageModal } from './ComposeMessageModal';
@@ -16,6 +17,8 @@ export function GmailPanel() {
   const [showCompose, setShowCompose] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [authUrl, setAuthUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = initAuth(
@@ -37,7 +40,21 @@ export function GmailPanel() {
     setErrorMsg(null);
     try {
       const result = await googleSignIn();
-      if (result) {
+      if (result?.url) {
+        setAuthUrl(result.url);
+        // Try to pop it
+        const width = 500;
+        const height = 600;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        const authWindow = window.open(result.url, 'oauth_popup', `width=${width},height=${height},left=${left},top=${top},toolbar=0,scrollbars=1,status=1,resizable=1,location=1,menuBar=0`);
+        
+        if (!authWindow || authWindow.closed || typeof authWindow.closed === 'undefined') {
+            setErrorMsg("Popup blocked. Please click the link below to authenticate.");
+        } else {
+            setErrorMsg("Authentication window opened. Complete sign-in there, then click Refresh below.");
+        }
+      } else if (result && result.user) {
         setUser(result.user);
         setNeedsAuth(false);
         loadMessages();
@@ -46,7 +63,6 @@ export function GmailPanel() {
       console.error('Login failed:', err);
       setErrorMsg(err.message || 'Failed to redirect to Google for sign in. Please try again.');
     } finally {
-      // isLoggingIn will stay true if the page redirects for OAuth
       setIsLoggingIn(false);
     }
   };
@@ -86,6 +102,12 @@ export function GmailPanel() {
           <span className="font-label font-bold text-on-surface">Sign in with Google</span>
           {isLoggingIn && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
         </button>
+        {authUrl && (
+           <div className="mt-8 flex flex-col items-center">
+             <a href={authUrl} target="_blank" rel="noopener noreferrer" className="px-6 py-2 bg-primary text-on-primary rounded-full font-label text-sm font-bold shadow-sm hover:opacity-90">Open Sign-in Tab</a>
+             <button onClick={() => window.location.reload()} className="mt-4 font-label text-sm text-primary hover:underline">I have authenticated, refresh page</button>
+           </div>
+        )}
         {errorMsg && (
           <div className="mt-6 p-4 bg-error-container/30 border border-error text-error text-sm rounded-xl max-w-md text-center font-body">
             {errorMsg}
@@ -214,6 +236,70 @@ function GmailComposeModal({ onClose, onSent }: { onClose: () => void; onSent: (
   const [content, setContent] = useState('');
   const [status, setStatus] = useState<{type: "error"|"success", msg:string}|null>(null);
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+  const [showRecipientDropdown, setShowRecipientDropdown] = useState(false);
+  const [expandedRoles, setExpandedRoles] = useState<Record<string, boolean>>({});
+
+  const toggleRole = (role: string, e: any) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setExpandedRoles(prev => ({ ...prev, [role]: !prev[role] }));
+  };
+
+  useEffect(() => {
+    async function fetchUsers() {
+      const { data } = await supabase
+        .from('users')
+        .select(`
+          user_id, first_name, last_name, email,
+          user_roles (
+            roles ( role_name )
+          )
+        `);
+      if (data) {
+        setUsers(data);
+      }
+    }
+    fetchUsers();
+  }, []);
+
+  const getGroupedUsers = () => {
+    const rolesMap: Record<string, any[]> = {};
+    users.forEach(u => {
+      const uRoles = u.user_roles?.map((ur: any) => ur.roles?.role_name).filter(Boolean) || [];
+      if (uRoles.length === 0) {
+        if (!rolesMap['Unassigned']) rolesMap['Unassigned'] = [];
+        rolesMap['Unassigned'].push(u);
+      } else {
+        uRoles.forEach((role: string) => {
+          if (!rolesMap[role]) rolesMap[role] = [];
+          if (!rolesMap[role].find((existing: any) => existing.user_id === u.user_id)) {
+             rolesMap[role].push(u);
+          }
+        });
+      }
+    });
+
+    const validRolesMap: Record<string, any[]> = {};
+    
+    Object.keys(rolesMap).forEach(role => {
+      let filtered = rolesMap[role];
+      filtered.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
+      
+      if (filtered.length > 0) {
+        validRolesMap[role] = filtered;
+      }
+    });
+    
+    const sortedRolesMap: Record<string, any[]> = {};
+    Object.keys(validRolesMap).sort().forEach(key => {
+      sortedRolesMap[key] = validRolesMap[key];
+    });
+    return sortedRolesMap;
+  };
+
+  const groupedUsers = getGroupedUsers();
+  const sortedRolesList = Object.keys(groupedUsers);
 
   const handleSend = async () => {
     if (!to || !content) return;
@@ -242,17 +328,80 @@ function GmailComposeModal({ onClose, onSent }: { onClose: () => void; onSent: (
            <h2 className="font-title text-lg font-bold">New Email</h2>
            <button onClick={onClose} className="p-2 rounded-full hover:bg-surface-variant/50"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 flex-1 overflow-y-auto">
            {status && (
              <div className={cn("p-3 rounded-lg text-sm", status.type === "success" ? "bg-primary-container text-on-primary-container" : "bg-error-container text-on-error-container")}>
                {status.msg}
              </div>
            )}
-           <input type="email" placeholder="To" value={to} onChange={(e) => setTo(e.target.value)} className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body" />
+           <div className="relative">
+             <div className="relative flex items-center">
+               <input 
+                 type="email" 
+                 placeholder="To (Type email or select from list)" 
+                 value={to} 
+                 onChange={(e) => setTo(e.target.value)} 
+                 onFocus={() => setShowRecipientDropdown(true)}
+                 className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body pr-10" 
+               />
+               <button 
+                 type="button" 
+                 onClick={() => setShowRecipientDropdown(!showRecipientDropdown)} 
+                 className="absolute right-3 text-on-surface-variant hover:text-on-surface p-1"
+               >
+                  {showRecipientDropdown ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+               </button>
+             </div>
+
+             {showRecipientDropdown && (
+               <div className="absolute z-10 w-full mt-1 bg-surface-container-lowest border border-outline-variant/50 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                  <div className="p-2 border-b border-outline-variant/30 text-xs font-label text-on-surface-variant">Select a recipient:</div>
+                  {sortedRolesList.map(role => (
+                     <div key={role} className="border-b border-outline-variant/20 last:border-0">
+                        <button 
+                           type="button" 
+                           onClick={(e) => toggleRole(role, e)} 
+                           className="w-full text-left px-4 py-3 bg-surface-container hover:bg-surface-container-high transition-colors text-sm font-label font-bold flex justify-between items-center text-on-surface"
+                        >
+                           <span>{role.toLowerCase() === "admin" ? "School Admin" : role} <span className="text-on-surface-variant font-normal">({groupedUsers[role].length})</span></span>
+                           {expandedRoles[role] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                        {expandedRoles[role] && (
+                           <div className="py-1 bg-surface">
+                             {groupedUsers[role].map(u => (
+                               <button 
+                                 key={`${role}-${u.user_id}`} 
+                                 type="button"
+                                 disabled={!u.email}
+                                 onClick={() => {
+                                    if(u.email) {
+                                       setTo(u.email);
+                                       setShowRecipientDropdown(false);
+                                    }
+                                 }}
+                                 className={cn(
+                                   "w-full text-left px-6 py-2.5 text-sm font-body hover:bg-primary-container/50 hover:text-on-surface transition-colors flex items-center justify-between",
+                                   !u.email && "opacity-50 cursor-not-allowed hover:bg-transparent"
+                                 )}
+                               >
+                                 <span className="font-medium">{u.first_name} {u.last_name}</span>
+                                 <span className="text-xs text-on-surface-variant truncate ml-2">
+                                   {u.email ? u.email : '(No Email)'}
+                                 </span>
+                               </button>
+                             ))}
+                           </div>
+                        )}
+                     </div>
+                  ))}
+               </div>
+             )}
+           </div>
+           
            <input type="text" placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body" />
            <textarea placeholder="Message" value={content} onChange={(e) => setContent(e.target.value)} rows={6} className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body resize-y" />
         </div>
-        <div className="p-4 border-t flex justify-end gap-3 bg-surface-container-low">
+        <div className="p-4 border-t flex justify-end gap-3 bg-surface-container-low shrink-0">
           <button onClick={onClose} disabled={loading} className="px-6 py-2.5 rounded-full text-on-surface-variant hover:bg-surface-variant font-label">Cancel</button>
           <button onClick={handleSend} disabled={loading || !to || !content} className="flex px-6 py-2.5 rounded-full bg-primary text-on-primary font-label gap-2 items-center hover:opacity-90 disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

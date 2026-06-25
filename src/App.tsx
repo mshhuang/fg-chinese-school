@@ -19,6 +19,7 @@ import PrincipalClasses from "./pages/PrincipalClasses";
 import Announcements from "./pages/Announcements";
 import PrincipalNewsletters from "./pages/PrincipalNewsletters";
 import TeacherNewsletters from "./pages/TeacherNewsletters";
+import TeacherAssignments from "./pages/TeacherAssignments";
 import TeacherClasses from "./pages/TeacherClasses";
 import ParentGrades from "./pages/ParentGrades";
 import ParentSchedule from "./pages/ParentSchedule";
@@ -28,6 +29,9 @@ import StudentAssignments from "./pages/StudentAssignments";
 import Profile from "./pages/Profile";
 import StudentMessages from "./pages/StudentMessages";
 import StaffDashboard from "./pages/StaffDashboard";
+import StaffAttendance from "./pages/StaffAttendance";
+import StaffAvailability from "./pages/StaffAvailability";
+import StaffMessages from "./pages/StaffMessages";
 import AdminAcademic from "./pages/AdminAcademic";
 import Activities from "./pages/Activities";
 import AdminContent from "./pages/AdminContent";
@@ -41,7 +45,10 @@ import AuditLogs from "./pages/AuditLogs";
 import ChangePassword from "./pages/ChangePassword";
 import LiveErrorLogs from "./pages/LiveErrorLogs";
 import BuilderDatabase from "./pages/BuilderDatabase";
+import PasswordReminderRequests from "./pages/PasswordReminderRequests";
 import ForgotPassword from "./pages/ForgotPassword";
+import PrivacyPolicy from "./pages/Privacy";
+import TermsOfService from "./pages/Terms";
 
 import AdminSessions from "./pages/AdminSessions";
 
@@ -63,6 +70,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         
         {/* Layout for logged in views */}
         <Route element={<MainLayout />}>
@@ -83,6 +92,7 @@ export default function App() {
            <Route path="/teacher/messages" element={<PrincipalMessages />} />
            <Route path="/teacher/announcements" element={<Announcements />} />
            <Route path="/teacher/newsletters" element={<TeacherNewsletters />} />
+           <Route path="/teacher/assignments" element={<TeacherAssignments />} />
            
            {/* Parent */}
            <Route path="/parent/dashboard" element={<ParentPortal />} />
@@ -102,6 +112,9 @@ export default function App() {
            
            {/* Staff & Volunteer */}
            <Route path="/staff/dashboard" element={<StaffDashboard />} />
+           <Route path="/staff/attendance" element={<StaffAttendance />} />
+           <Route path="/staff/availability" element={<StaffAvailability />} />
+           <Route path="/staff/messages" element={<StaffMessages />} />
            <Route path="/staff/announcements" element={<Announcements />} />
            <Route path="/staff/new-user" element={<AdminNewUser />} />
 
@@ -118,6 +131,7 @@ export default function App() {
            <Route path="/builder/audit-logs" element={<AuditLogs />} />
            <Route path="/builder/error-logs" element={<LiveErrorLogs />} />
            <Route path="/builder/database" element={<BuilderDatabase />} />
+           <Route path="/builder/password-reminders" element={<PasswordReminderRequests />} />
 
            {/* Shared utility routes */}
            <Route path="/change-password" element={<ChangePassword />} />

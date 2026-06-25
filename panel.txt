@@ -1,0 +1,608 @@
+0: import React, { useState, useEffect, useCallback, useRef } from "react";
+1: import { Search, Edit, MoreVertical, Paperclip, Send, User as UserIcon, ChevronLeft, ChevronDown, Loader2, Trash2, Edit2, RefreshCw, X, ImageIcon } from "lucide-react";
+2: import { cn } from "../lib/utils";
+3: import { supabase } from "../lib/supabase";
+4: 
+5: export function InternalMessagesPanel() {
+6:   const [currentUser, setCurrentUser] = useState<any>(null);
+7:   const [allUsers, setAllUsers] = useState<any[]>([]);
+8:   const [messages, setMessages] = useState<any[]>([]);
+9:   const [loading, setLoading] = useState(true);
+10:   
+11:   const [activeChatUserId, setActiveChatUserId] = useState<string | null>(null);
+12:   const [searchQuery, setSearchQuery] = useState("");
+13:   const [showCompose, setShowCompose] = useState(false);
+14:   const [newMessageText, setNewMessageText] = useState("");
+15:   const [sending, setSending] = useState(false);
+16:   
+17:   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+18:   const [editMessageText, setEditMessageText] = useState("");
+19:   const [isRefreshing, setIsRefreshing] = useState(false);
+20:   const [attachedImage, setAttachedImage] = useState<string | null>(null);
+21:   const fileInputRef = useRef<HTMLInputElement>(null);
+22: 
+23:   const handleAttachImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+24:     const file = e.target.files?.[0];
+25:     if (!file) return;
+26: 
+27:     if (!file.type.startsWith('image/')) {
+28:        alert("Please select an image file.");
+29:        return;
+30:     }
+31: 
+32:     const reader = new FileReader();
+33:     reader.onload = (event) => {
+34:       const dataUrl = event.target?.result as string;
+35:       const img = new Image();
+36:       img.onload = () => {
+37:          const canvas = document.createElement("canvas");
+38:          let w = img.width;
+39:          let h = img.height;
+40:          
+41:          const MAX_WIDTH = 800; // Limit width to keep payload small
+42:          if (w > MAX_WIDTH) {
+43:            h = (MAX_WIDTH / w) * h;
+44:            w = MAX_WIDTH;
+45:          }
+46:          canvas.width = w;
+47:          canvas.height = h;
+48:          const ctx = canvas.getContext("2d");
+49:          if (ctx) {
+50:            ctx.drawImage(img, 0, 0, w, h);
+51:            // compress heavily for pg payload limit
+52:            const compressed = canvas.toDataURL("image/webp", 0.6);
+53:            setAttachedImage(compressed);
+54:          }
+55:       };
+56:       img.src = dataUrl;
+57:     };
+58:     reader.readAsDataURL(file);
+59:     // reset input
+60:     if (fileInputRef.current) fileInputRef.current.value = '';
+61:   };
+62: 
+63:   const fetchMessages = useCallback(async () => {
+64:     setIsRefreshing(true);
+65:     try {
+66:       const { data } = await supabase.from("internal_messages").select("*").order("sent_at", { ascending: true });
+67:       if (data) setMessages(data);
+68:     } catch (e) {
+69:       console.error(e);
+70:     } finally {
+71:       setIsRefreshing(false);
+72:     }
+73:   }, []);
+74: 
+75:   useEffect(() => {
+76:     let channel: any;
+77: 
+78:     const init = async () => {
+79:       setLoading(true);
+80:       try {
+81:         const { data: { session } } = await supabase.auth.getSession();
+82:         if (session?.user) {
+83:           setCurrentUser(session.user);
+84:         } else {
+85:           // If no session, fallback to local storage user (useful for some mocked flows)
+86:           const localStr = localStorage.getItem('user');
+87:           if (localStr) setCurrentUser(JSON.parse(localStr));
+88:         }
+89: 
+90:         const [usersRes, messagesRes] = await Promise.all([
+91:           supabase.from("users").select("user_id, first_name, last_name, user_roles(roles(role_name))"),
+92:           supabase.from("internal_messages").select("*").order("sent_at", { ascending: true })
+93:         ]);
+94:         
+95:         if (usersRes.data) {
+96:           const mappedUsers = usersRes.data.map((u: any) => ({
+97:             ...u,
+98:             role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
+99:           }));
+100:           setAllUsers(mappedUsers);
+101:         }
+102:         if (messagesRes.data) setMessages(messagesRes.data);
+103: 
+104:         // Supabase realtime channel
+105:         channel = supabase
+106:           .channel('public:internal_messages_' + Math.random().toString(36).substring(7))
+107:           .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'internal_messages' }, (payload: any) => {
+108:             if (payload.eventType === 'INSERT') {
+109:                setMessages((prev: any[]) => {
+110:                  if (prev.find(m => m.message_id === payload.new.message_id)) return prev;
+111:                  return [...prev, payload.new].sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
+112:                });
+113:             } else if (payload.eventType === 'UPDATE') {
+114:                setMessages((prev: any[]) => prev.map(m => m.message_id === payload.new.message_id ? payload.new : m));
+115:             } else if (payload.eventType === 'DELETE') {
+116:                setMessages((prev: any[]) => prev.filter(m => m.message_id !== payload.old.message_id));
+117:             }
+118:           })
+119:           .subscribe();
+120: 
+121:         // Fallback polling
+122:         const intervalId = setInterval(async () => {
+123:            const res = await supabase.from("internal_messages").select("*").order("sent_at", { ascending: true });
+124:            if (res.data) setMessages(res.data);
+125:         }, 5000);
+126: 
+127:         (channel as any)._pollingInterval = intervalId;
+128: 
+129:       } catch (e) {
+130:         console.error(e);
+131:       } finally {
+132:         setLoading(false);
+133:       }
+134:     };
+135:     init();
+136: 
+137:     return () => {
+138:       if (channel) {
+139:         if ((channel as any)._pollingInterval) clearInterval((channel as any)._pollingInterval);
+140:         supabase.removeChannel(channel);
+141:       }
+142:     };
+143:   }, []);
+144: 
+145:   useEffect(() => {
+146:     if (!activeChatUserId || !currentUser) return;
+147:     
+148:     // Mark unread messages as read
+149:     const unreadMessages = messages.filter(
+150:       m => m.recipient_id === (currentUser.id || currentUser.user_id) && 
+151:            m.sender_id === activeChatUserId && 
+152:            !m.read_at
+153:     );
+154:     
+155:     if (unreadMessages.length > 0) {
+156:       const markAsRead = async () => {
+157:         const now = new Date().toISOString();
+158:         const promises = unreadMessages.map(m => 
+159:           supabase
+160:             .from("internal_messages")
+161:             .update({ read_at: now })
+162:             .eq("message_id", m.message_id)
+163:         );
+164:         await Promise.all(promises);
+165:       };
+166:       markAsRead();
+167:     }
+168:   }, [activeChatUserId, messages, currentUser]);
+169: 
+170:   const handleSendMessage = async () => {
+171:     if ((!newMessageText.trim() && !attachedImage) || !activeChatUserId || !currentUser) return;
+172:     setSending(true);
+173:     try {
+174:       const finalBody = attachedImage ? `${newMessageText.trim()}\n\n[ATTACHMENT]:${attachedImage}` : newMessageText.trim();
+175:       const { data, error } = await supabase.from("internal_messages").insert({
+176:         sender_id: currentUser.id || currentUser.user_id,
+177:         recipient_id: activeChatUserId,
+178:         body: finalBody,
+179:         subject: "Message"
+180:       }).select().single();
+181:       
+182:       if (error) {
+183:         console.error(error);
+184:         alert("Failed to send message: " + error.message);
+185:       } else {
+186:         setNewMessageText("");
+187:         setAttachedImage(null);
+188:         if (data) {
+189:            setMessages(prev => {
+190:               if (prev.find(m => m.message_id === data.message_id)) return prev;
+191:               return [...prev, data].sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
+192:            });
+193:         }
+194:       }
+195:     } catch (e) {
+196:       console.error(e);
+197:     } finally {
+198:       setSending(false);
+199:     }
+200:   };
+201: 
+202:   const handleEditMessage = async (msgId: string) => {
+203:     if (!editMessageText.trim()) return;
+204:     try {
+205:       const { error } = await supabase.from("internal_messages").update({ body: editMessageText.trim() }).eq("message_id", msgId);
+206:       if (!error) {
+207:          setMessages(prev => prev.map(m => m.message_id === msgId ? { ...m, body: editMessageText.trim() } : m));
+208:          setEditingMessageId(null);
+209:       } else {
+210:          alert("Failed to edit message");
+211:       }
+212:     } catch(e) { console.error(e); }
+213:   };
+214: 
+215:   const handleDeleteMessage = async (msgId: string) => {
+216:     try {
+217:       const { error } = await supabase.from("internal_messages").delete().eq("message_id", msgId);
+218:       if (!error) {
+219:         setMessages(prev => prev.filter(m => m.message_id !== msgId));
+220:       } else {
+221:         alert("Failed to delete message");
+222:       }
+223:     } catch(e) { console.error(e); }
+224:   };
+225: 
+226:   const handleDeleteConversation = async () => {
+227:     if (!activeChatUserId || !currentUser) return;
+228:     try {
+229:       const currentUserId = currentUser.id || currentUser.user_id;
+230:       const { error } = await supabase.from('internal_messages')
+231:         .delete()
+232:         .or(`and(sender_id.eq.${currentUserId},recipient_id.eq.${activeChatUserId}),and(sender_id.eq.${activeChatUserId},recipient_id.eq.${currentUserId})`);
+233:           
+234:       if (!error) {
+235:         setMessages(prev => prev.filter(m => !(
+236:           (m.sender_id === currentUserId && m.recipient_id === activeChatUserId) ||
+237:           (m.sender_id === activeChatUserId && m.recipient_id === currentUserId)
+238:         )));
+239:         setActiveChatUserId(null);
+240:       } else {
+241:         alert("Failed to clear conversation");
+242:       }
+243:     } catch(e) { console.error(e); }
+244:   };
+245: 
+246:   const currentUserId = currentUser?.id || currentUser?.user_id;
+247: 
+248:   // Derive conversations from messages
+249:   const conversationsMap = new Map();
+250:   
+251:   if (currentUserId) {
+252:     messages.forEach(m => {
+253:       if (m.sender_id === currentUserId || m.recipient_id === currentUserId) {
+254:         const otherId = m.sender_id === currentUserId ? m.recipient_id : m.sender_id;
+255:         if (!conversationsMap.has(otherId)) {
+256:           conversationsMap.set(otherId, { unread: 0, lastMessage: '', time: '', messages: [] });
+257:         }
+258:         const conv = conversationsMap.get(otherId);
+259:         conv.messages.push(m);
+260:         conv.lastMessage = m.body;
+261:         conv.time = "Recent"; // Mocking time since no created_at
+262:         if (m.recipient_id === currentUserId && !m.read_at) {
+263:           conv.unread += 1;
+264:         }
+265:       }
+266:     });
+267:   }
+268: 
+269:   // Also include all users so we can start new chats
+270:   const conversationsList = allUsers
+271:     .filter(u => u.user_id !== currentUserId)
+272:     .map(u => {
+273:       const conv = conversationsMap.get(u.user_id);
+274:       return {
+275:         id: u.user_id,
+276:         name: `${u.first_name} ${u.last_name}`,
+277:         first_name: u.first_name || '',
+278:         last_name: u.last_name || '',
+279:         role: "User",
+280:         role_names: u.role_names || [],
+281:         avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150&auto=format&fit=crop", // placeholder
+282:         lastMessage: conv ? conv.lastMessage : "Start a conversation",
+283:         time: conv ? conv.time : "",
+284:         unread: conv ? conv.unread : 0,
+285:         online: false,
+286:         messages: conv ? conv.messages : [],
+287:         hasHistory: !!conv
+288:       };
+289:     });
+290: 
+291:   conversationsList.sort((a, b) => {
+292:     if (a.hasHistory && !b.hasHistory) return -1;
+293:     if (!a.hasHistory && b.hasHistory) return 1;
+294:     return a.name.localeCompare(b.name);
+295:   });
+296: 
+297:   const filteredConversations = conversationsList.filter(c => {
+298:     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
+299:     if (searchQuery.trim().length > 0) return matchesSearch;
+300:     return c.hasHistory;
+301:   });
+302: 
+303:   const activeConversation = conversationsList.find(c => c.id === activeChatUserId);
+304: 
+305:   if (loading) {
+306:     return (
+307:       <div className="flex-1 flex items-center justify-center bg-surface-container-lowest rounded-3xl border border-outline-variant/30">
+308:         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+309:       </div>
+310:     );
+311:   }
+312: 
+313:   return (
+314:     <>
+315:       {/* Left Column: Chat List */}
+316:       <div className={cn(
+317:         "w-full lg:w-[380px] flex-col gap-4 lg:h-full shrink-0",
+318:         (activeChatUserId !== null || showCompose) ? "hidden lg:flex" : "flex"
+319:       )}>
+320:          <div className="flex flex-col gap-3">
+321:            <div className="flex items-center gap-2">
+322:              <div className="flex-1 flex items-center gap-3 bg-surface-container-low rounded-2xl p-2 border border-outline-variant/30 relative">
+323:                <Search className="w-5 h-5 text-on-surface-variant absolute left-3" />
+324:                <input 
+325:                  type="text" 
+326:                  placeholder="Search recent chats..." 
+327:                  className="w-full bg-transparent border-none outline-none font-body text-on-surface placeholder:text-on-surface-variant/50 pl-9"
+328:                  value={searchQuery}
+329:                  onChange={(e) => setSearchQuery(e.target.value)}
+330:                />
+331:              </div>
+332:              <button 
+333:                onClick={fetchMessages}
+334:                disabled={isRefreshing}
+335:                className="p-2.5 bg-surface-container-low hover:bg-surface-variant border border-outline-variant/30 rounded-xl transition-colors shrink-0"
+336:                title="Refresh Messages"
+337:              >
+338:                <RefreshCw className={cn("w-5 h-5 text-on-surface", isRefreshing && "animate-spin")} />
+339:              </button>
+340:              <button
+341:                onClick={() => { setShowCompose(true); setActiveChatUserId(null); }}
+342:                className="p-2.5 bg-primary text-on-primary hover:bg-primary/90 border border-transparent rounded-xl transition-colors shrink-0"
+343:                title="Compose New Message"
+344:              >
+345:                <Edit2 className="w-5 h-5" />
+346:              </button>
+347:            </div>
+348:          </div>
+349: 
+350:          <div className="flex-1 overflow-y-auto space-y-2 pr-2 hide-scrollbar">
+351:             {filteredConversations.length === 0 ? (
+352:                <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-surface border border-outline-variant/30 rounded-3xl">
+353:                   <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
+354:                      <Search className="w-8 h-8" />
+355:                   </div>
+356:                   <h3 className="font-label text-lg text-on-surface mb-2">No conversations found</h3>
+357:                   <p className="font-body text-sm text-on-surface-variant">
+358:                      {!searchQuery.trim() 
+359:                         ? "Search for users above to start a new conversation." 
+360:                         : "No users matched your search."}
+361:                   </p>
+362:                </div>
+363:             ) : (
+364:                filteredConversations.map((chat) => (
+365:                   <button 
+366:                     key={chat.id}
+367:                     onClick={() => setActiveChatUserId(chat.id)}
+368:                     className={cn(
+369:                       "w-full flex items-start gap-3 p-4 rounded-2xl transition-all border outline-none text-left",
+370:                       activeChatUserId === chat.id 
+371:                         ? "bg-primary-container/10 border-primary-container/30 shadow-sm"
+372:                         : "bg-surface hover:bg-surface-container-low border-transparent hover:border-outline-variant/30"
+373:                     )}
+374:                   >
+375:                     <div className="relative shrink-0">
+376:                        <div className="w-12 h-12 rounded-full border border-outline-variant/20 bg-primary-container text-on-primary-container font-bold flex items-center justify-center text-lg">
+377:                           {chat.first_name?.[0]?.toUpperCase()}{chat.last_name?.[0]?.toUpperCase()}
+378:                        </div>
+379:                     </div>
+380:                     <div className="flex-1 min-w-0 pr-1">
+381:                        <div className="flex justify-between items-center mb-0.5">
+382:                           <span className="font-label text-base font-bold text-on-surface truncate pr-2 flex items-baseline">
+383:                              {chat.name}
+384:                              {chat.role_names && chat.role_names.length > 0 && (
+385:                                 <span className="text-[11px] font-normal text-on-surface-variant ml-2 opacity-80 shrink-0">
+386:                                    ({chat.role_names.map((r: string) => r.toLowerCase() === 'admin' ? 'School Admin' : r).join(', ')})
+387:                                 </span>
+388:                              )}
+389:                           </span>
+390:                           {chat.unread > 0 && (
+391:                              <span className="flex w-3 h-3 relative shrink-0">
+392:                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+393:                                 <span className="relative inline-flex rounded-full w-3 h-3 bg-primary"></span>
+394:                              </span>
+395:                           )}
+396:                        </div>
+397:                        <p className={cn("font-body tracking-wide text-sm truncate", chat.unread > 0 ? "text-on-surface font-semibold" : "text-on-surface-variant")}>
+398:                           {chat.lastMessage}
+399:                        </p>
+400:                     </div>
+401:                   </button>
+402:                ))
+403:             )}
+404:          </div>
+405:       </div>
+406: 
+407:       {/* Right Column: Active Chat */}
+408:       {activeChatUserId !== null ? (
+409:         <div className="flex-1 bg-surface-container-lowest rounded-3xl border border-outline-variant/40 shadow-sm flex flex-col h-[700px] lg:h-full lg:overflow-hidden relative">
+410:            
+411:            <div className="flex items-center justify-between p-4 md:p-6 border-b border-surface-variant shrink-0 bg-surface/50 backdrop-blur-md rounded-t-3xl">
+412:               <div className="flex items-center gap-4">
+413:                  <button className="lg:hidden p-2 -ml-2 rounded-full hover:bg-surface-variant/50 text-on-surface-variant" onClick={() => setActiveChatUserId(null)}>
+414:                     <ChevronLeft className="w-6 h-6" />
+415:                  </button>
+416:                  <div className="flex items-center gap-3">
+417:                     <div className="w-12 h-12 rounded-full border border-outline-variant/30 bg-primary-container text-on-primary-container font-bold flex items-center justify-center text-lg shrink-0">
+418:                        {activeConversation?.first_name?.[0]?.toUpperCase()}{activeConversation?.last_name?.[0]?.toUpperCase()}
+419:                     </div>
+420:                     <div>
+421:                        <h3 className="font-label font-bold text-lg text-on-surface flex items-baseline gap-2">
+422:                           {activeConversation?.name}
+423:                           {activeConversation?.role_names && activeConversation.role_names.length > 0 && (
+424:                              <span className="text-xs font-normal text-on-surface-variant opacity-80">
+425:                                 ({activeConversation.role_names.map((r: string) => r.toLowerCase() === 'admin' ? 'School Admin' : r).join(', ')})
+426:                              </span>
+427:                           )}
+428:                        </h3>
+429:                     </div>
+430:                  </div>
+431:               </div>
+432:               <button 
+433:                 onClick={handleDeleteConversation}
+434:                 className="p-2 text-error hover:bg-error/10 rounded-full transition-colors"
+435:                 title="Clear Conversation"
+436:               >
+437:                 <Trash2 className="w-5 h-5" />
+438:               </button>
+439:            </div>
+440: 
+441:            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col">
+442:               {activeConversation?.messages.length === 0 && (
+443:                 <div className="text-center text-on-surface-variant font-body py-10 opacity-70">
+444:                   No messages yet. Send a message to start the conversation!
+445:                 </div>
+446:               )}
+447:               {activeConversation?.messages.map((msg: any) => {
+448:                  const isMe = msg.sender_id === currentUserId;
+449:                  const isEditing = editingMessageId === msg.message_id;
+450:                  const bodyText = msg.body?.split?.('\n\n[ATTACHMENT]:')?.[0] || '';
+451:                  const attachmentData = msg.body?.split?.('\n\n[ATTACHMENT]:')?.[1];
+452: 
+453:                  return (
+454:                  <div key={msg.message_id} className={cn("flex flex-col max-w-[80%] group", isMe ? "self-end items-end" : "self-start items-start")}>
+455:                     <div className={cn(
+456:                        "p-4 rounded-2xl relative shadow-sm text-sm md:text-base leading-relaxed tracking-wide font-body whitespace-pre-wrap min-w-[120px]",
+457:                        isMe 
+458:                           ? "bg-primary text-on-primary rounded-tr-sm" 
+459:                           : "bg-surface-container text-on-surface rounded-tl-sm border border-outline-variant/20"
+460:                     )}>
+461:                        {isEditing ? (
+462:                          <div className="flex flex-col gap-3 min-w-[200px]">
+463:                             <textarea 
+464:                               className="w-full bg-surface-container-highest text-on-surface p-2 rounded-lg text-sm border-none outline-none resize-none"
+465:                               value={editMessageText}
+466:                               onChange={(e) => setEditMessageText(e.target.value)}
+467:                               rows={2}
+468:                             />
+469:                             <div className="flex justify-end gap-2">
+470:                                <button onClick={() => setEditingMessageId(null)} className="text-xs px-3 py-1.5 bg-surface-variant hover:bg-surface text-on-surface rounded-md">Cancel</button>
+471:                                <button onClick={() => handleEditMessage(msg.message_id)} className="text-xs px-3 py-1.5 bg-primary-container text-on-primary-container hover:brightness-110 rounded-md">Save</button>
+472:                             </div>
+473:                          </div>
+474:                        ) : (
+475:                          <>
+476:                            {bodyText}
+477:                            {attachmentData && (
+478:                              <img src={attachmentData} alt="attachment" className="mt-3 max-h-64 rounded-xl object-contain bg-black/5" />
+479:                            )}
+480:                            {isMe && (
+481:                               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 backdrop-blur-sm rounded-lg flex items-center p-1 gap-1">
+482:                                 <button onClick={() => { setEditingMessageId(msg.message_id); setEditMessageText(bodyText); }} className="p-1 hover:bg-white/20 rounded-md text-white transition-colors" title="Edit">
+483:                                   <Edit2 className="w-3.5 h-3.5" />
+484:                                 </button>
+485:                                 <button onClick={() => handleDeleteMessage(msg.message_id)} className="p-1 hover:bg-white/20 rounded-md text-white transition-colors" title="Delete">
+486:                                   <Trash2 className="w-3.5 h-3.5" />
+487:                                 </button>
+488:                               </div>
+489:                            )}
+490:                          </>
+491:                        )}
+492:                     </div>
+493:                  </div>
+494:               )})}
+495:            </div>
+496: 
+497:            <div className="p-4 md:p-6 border-t border-surface-variant bg-surface-container-lowest shrink-0 rounded-b-3xl">
+498:               {attachedImage && (
+499:                 <div className="mb-3 relative inline-block">
+500:                    <img src={attachedImage} alt="attachment preview" className="h-24 w-auto rounded-lg border border-outline-variant/30 object-cover" />
+501:                    <button onClick={() => setAttachedImage(null)} className="absolute -top-2 -right-2 bg-surface text-on-surface p-1 rounded-full border border-outline-variant/30 shadow-sm hover:bg-surface-variant transition-colors">
+502:                       <X className="w-4 h-4" />
+503:                    </button>
+504:                 </div>
+505:               )}
+506:               <div className="flex items-end gap-2 md:gap-4 bg-surface rounded-2xl p-2 border border-outline-variant/40 focus-within:border-primary/50 transition-colors shadow-sm">
+507:                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleAttachImage} />
+508:                  <button onClick={() => fileInputRef.current?.click()} className="p-2 md:p-3 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-xl transition-colors shrink-0 mb-0.5 ml-0.5">
+509:                     <ImageIcon className="w-6 h-6" />
+510:                  </button>
+511:                  <textarea 
+512:                     className="flex-1 bg-transparent border-none outline-none resize-none font-body text-base py-3 px-2 max-h-32 hide-scrollbar"
+513:                     placeholder="Type a message..."
+514:                     rows={1}
+515:                     value={newMessageText}
+516:                     onChange={(e) => setNewMessageText(e.target.value)}
+517:                     onKeyDown={(e) => {
+518:                       if (e.key === 'Enter' && !e.shiftKey) {
+519:                         e.preventDefault();
+520:                         handleSendMessage();
+521:                       }
+522:                     }}
+523:                  ></textarea>
+524:                  <button 
+525:                    onClick={handleSendMessage}
+526:                    disabled={sending || (!newMessageText.trim() && !attachedImage)}
+527:                    className="p-3 bg-primary text-on-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm shrink-0 mb-0.5 mr-0.5">
+528:                     {sending ? <Loader2 className="w-5 h-5 animate-spin ml-1" /> : <Send className="w-5 h-5 ml-1" />}
+529:                  </button>
+530:               </div>
+531:            </div>
+532: 
+533:         </div>
+534:       ) : (
+535:          <div className={cn("hidden lg:flex flex-1 items-center justify-center bg-surface-container-lowest rounded-3xl border border-outline-variant/30", showCompose ? "!flex lg:!flex" : "")}>
+536:             <div className="text-center flex flex-col items-center gap-4 w-full max-w-md p-8">
+537:                <div className="w-16 h-16 bg-surface-variant rounded-full flex items-center justify-center text-on-surface-variant mb-2">
+538:                   <Edit2 className="w-8 h-8 opacity-50" />
+539:                </div>
+540:                <h3 className="font-label text-xl text-on-surface">Compose Message</h3>
+541:                <p className="font-body text-on-surface-variant mb-6">Select a user below to start a conversation</p>
+542:                
+543:                <div className="w-full text-left relative">
+544:                   <label className="block text-sm font-medium text-on-surface-variant mb-2">Select Recipient</label>
+545:                   <select 
+546:                     className="w-full bg-surface border border-outline-variant rounded-xl p-3 text-on-surface outline-none focus:border-primary transition-colors appearance-none pr-10"
+547:                     value=""
+548:                     onChange={(e) => {
+549:                        setActiveChatUserId(e.target.value);
+550:                        setShowCompose(false);
+551:                     }}
+552:                   >
+553:                     <option value="" disabled>Choose a user...</option>
+554:                     {(() => {
+555:                       const rolesList = new Set<string>();
+556:                       allUsers.forEach(u => {
+557:                         if (u.user_id !== currentUserId) {
+558:                           (u.role_names || []).forEach((r: string) => rolesList.add(r));
+559:                         }
+560:                       });
+561:                       const sortedRoles = Array.from(rolesList).sort();
+562:                       const finalRoles = [...sortedRoles, "Others"];
+563:                       
+564:                       return finalRoles.map(r => {
+565:                           const group = allUsers.filter(u => {
+566:                             if (u.user_id === currentUserId) return false;
+567: 
+568:                             const userRoles = u.role_names || [];
+569:                             if (r === "Others") return userRoles.length === 0;
+570:                             return userRoles.includes(r);
+571:                           });
+572:                           
+573:                           if (group.length === 0) return null;
+574:                           
+575:                           // Sort group by last name alphabetically
+576:                           group.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
+577:                           
+578:                           return (
+579:                             <optgroup key={r} label={r === "Others" ? "Unassigned" : (r.toLowerCase() === "admin" ? "School Admin" : r)}>
+580:                                 {group.map(u => (
+581:                                   <option key={u.user_id} value={u.user_id}>
+582:                                       {u.first_name} {u.last_name}
+583:                                   </option>
+584:                                 ))}
+585:                             </optgroup>
+586:                           );
+587:                       });
+588:                     })()}
+589:                   </select>
+590:                   <ChevronDown className="absolute right-4 top-[38px] w-5 h-5 text-on-surface-variant pointer-events-none" />
+591:                </div>
+592: 
+593:                {showCompose && (
+594:                   <button 
+595:                     onClick={() => setShowCompose(false)} 
+596:                     className="mt-6 text-sm text-on-surface-variant hover:text-on-surface underline lg:hidden"
+597:                   >
+598:                     Cancel
+599:                   </button>
+600:                )}
+601:             </div>
+602:          </div>
+603:       )}
+604:     </>
+605:   );
+606: }
+607: 
