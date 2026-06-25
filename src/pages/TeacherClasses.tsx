@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight } from "lucide-react";
+import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight, BuildingIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { cn } from "../lib/utils";
 
 export default function TeacherClasses() {
   const [searchQuery, setSearchQuery] = useState("");
   const [classesData, setClassesData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'my_classes' | 'all_classes'>('my_classes');
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,9 +26,11 @@ export default function TeacherClasses() {
          setLoading(false);
          return;
        }
+       
+       setCurrentUserId(u.id);
 
-       // Fetch classes where this user is the primary teacher, and also fetch enrollment count
-       const { data: clsData } = await supabase.from('classes').select('*, enrollments(count)').eq('primary_teacher_id', u.id);
+       // Fetch ALL classes, so teachers can view/assign homework to any class if they are a co-teacher
+       const { data: clsData } = await supabase.from('classes').select('*, enrollments(count)');
        
        if (clsData) {
          setClassesData(clsData);
@@ -36,22 +41,48 @@ export default function TeacherClasses() {
     fetchData();
   }, []);
 
-  const filteredClasses = classesData.filter(c => 
-    c.class_name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredClasses = classesData.filter(c => {
+    if (viewMode === 'my_classes' && c.primary_teacher_id !== currentUserId) return false;
+    return c.class_name?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col gap-8 pb-32 md:pb-8">
        {/* Header */}
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
          <div>
-           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">My Classes</h1>
+           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Classes</h1>
            <p className="font-body text-lg text-on-surface-variant mt-2">Manage your classes and students.</p>
          </div>
        </header>
 
        {/* Toolbar */}
        <div className="flex flex-col xl:flex-row justify-between gap-6">
+          <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar w-full xl:w-auto">
+             <button
+               onClick={() => setViewMode('my_classes')}
+               className={cn(
+                 "whitespace-nowrap px-6 py-2.5 rounded-full font-label text-sm transition-all border font-bold shrink-0",
+                 viewMode === 'my_classes' 
+                   ? "bg-primary-container text-on-primary-container border-primary-container shadow-sm" 
+                   : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
+               )}
+             >
+                My Homeroom Classes
+             </button>
+             <button
+               onClick={() => setViewMode('all_classes')}
+               className={cn(
+                 "whitespace-nowrap px-6 py-2.5 rounded-full font-label text-sm transition-all border font-bold shrink-0",
+                 viewMode === 'all_classes' 
+                   ? "bg-primary-container text-on-primary-container border-primary-container shadow-sm" 
+                   : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
+               )}
+             >
+                All Classes (Co-Teacher)
+             </button>
+          </div>
+
           <div className="flex items-center gap-3 bg-surface-container-low rounded-full px-4 py-2 border border-outline-variant/40 shrink-0 w-full xl:w-80 shadow-sm focus-within:border-primary/50 transition-colors">
              <Search className="w-5 h-5 text-on-surface-variant" />
              <input 

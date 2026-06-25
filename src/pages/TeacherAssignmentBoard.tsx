@@ -53,7 +53,7 @@ export default function TeacherAssignmentBoard() {
        const u = JSON.parse(uStr);
        teacherId = u.id;
     }
-    const { data } = await supabase.from('classes').select('*').eq('primary_teacher_id', teacherId).order('class_name');
+    const { data } = await supabase.from('classes').select('*').order('class_name');
     if (data) setClasses(data);
   };
 
@@ -202,9 +202,16 @@ export default function TeacherAssignmentBoard() {
           className="flex-1 max-w-sm px-4 py-2.5 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
         >
           <option value="">-- Choose a class --</option>
-          {classes.map(c => (
-            <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
-          ))}
+          <optgroup label="My Homeroom Classes">
+            {classes.filter(c => c.primary_teacher_id === user?.id).map(c => (
+              <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
+            ))}
+          </optgroup>
+          <optgroup label="All Other Classes (Co-Teacher)">
+            {classes.filter(c => c.primary_teacher_id !== user?.id).map(c => (
+              <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
+            ))}
+          </optgroup>
         </select>
         
         {selectedClassId && (
