@@ -259,7 +259,7 @@ export default function BuilderDashboard() {
                              availableRoles: userRoles
                           }));
                           window.dispatchEvent(new Event('storage'));
-                          navigate(`/${role.id === 'volunteer' ? 'staff' : role.id}/dashboard`);
+                          navigate(`/${role.id}/dashboard`);
                        }}
                        className="flex items-center justify-between text-left bg-surface-container rounded-2xl p-4 border border-outline-variant/20 transition-all hover:bg-surface-variant hover:border-primary/50 group"
                    >

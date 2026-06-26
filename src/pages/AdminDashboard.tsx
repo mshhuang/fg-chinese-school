@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Users, BookOpen, Clock, Building2, Save, FileText, Download, Upload, Shield } from "lucide-react";
+import { Users, BookOpen, Clock, Building2, Save, FileText, Download, Upload, Shield, Printer } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
@@ -134,12 +135,12 @@ export default function AdminDashboard() {
          </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-surface-container-low rounded-3xl p-8 border border-outline-variant/30 shadow-sm flex flex-col items-center text-center">
              <Save className="w-12 h-12 text-primary opacity-50 mb-4" />
              <h3 className="font-title text-xl font-bold text-on-surface mb-2">Data Backups</h3>
-             <p className="font-body text-on-surface-variant mb-6 max-w-sm">Run a manual database export for safe keeping. Exports include user lists, class directories, and historical transactions.</p>
-             <button className="flex items-center gap-2 px-6 py-2 border border-primary text-primary rounded-full font-label font-bold hover:bg-primary-container transition-colors">
+             <p className="font-body text-on-surface-variant mb-6 max-w-sm flex-1">Run a manual database export for safe keeping. Exports include user lists, class directories, and historical transactions.</p>
+             <button className="flex items-center gap-2 px-6 py-2 border border-primary text-primary rounded-full font-label font-bold hover:bg-primary-container transition-colors w-full justify-center">
                 <Download className="w-4 h-4" /> Export CSV
              </button>
           </div>
@@ -147,10 +148,19 @@ export default function AdminDashboard() {
           <div className="bg-surface-container-low rounded-3xl p-8 border border-outline-variant/30 shadow-sm flex flex-col items-center text-center">
              <Upload className="w-12 h-12 text-secondary opacity-50 mb-4" />
              <h3 className="font-title text-xl font-bold text-on-surface mb-2">Bulk Import</h3>
-             <p className="font-body text-on-surface-variant mb-6 max-w-sm">Import enrollments, staff assignments, or user updates via batch CSV files directly into the database.</p>
-             <button className="flex items-center gap-2 px-6 py-2 border border-secondary text-secondary rounded-full font-label font-bold hover:bg-secondary-container transition-colors">
+             <p className="font-body text-on-surface-variant mb-6 max-w-sm flex-1">Import enrollments, staff assignments, or user updates via batch CSV files directly into the database.</p>
+             <button className="flex items-center gap-2 px-6 py-2 border border-secondary text-secondary rounded-full font-label font-bold hover:bg-secondary-container transition-colors w-full justify-center">
                 <Upload className="w-4 h-4" /> Upload CSV
              </button>
+          </div>
+          
+          <div className="bg-surface-container-low rounded-3xl p-8 border border-outline-variant/30 shadow-sm flex flex-col items-center text-center">
+             <FileText className="w-12 h-12 text-tertiary opacity-50 mb-4" />
+             <h3 className="font-title text-xl font-bold text-on-surface mb-2">System Reports</h3>
+             <p className="font-body text-on-surface-variant mb-6 max-w-sm flex-1">View and print comprehensive data reports for teachers, students, and active classes.</p>
+             <Link to="/admin/reports" className="flex items-center gap-2 px-6 py-2 bg-tertiary text-on-tertiary rounded-full font-label font-bold hover:bg-tertiary/90 transition-colors w-full justify-center shadow-sm">
+                <Printer className="w-4 h-4" /> View & Print
+             </Link>
           </div>
       </div>
 

@@ -26,7 +26,7 @@ export async function logSystemEvent(
              details: details ? details : null,
              path: path || window.location.pathname
           });
-          if (err) console.error('Failed to log to error_logs. Is the table created?', err);
+          if (err) console.warn('Failed to log to error_logs. Is the table created?', err);
        } catch (e) {}
     }
 
@@ -46,9 +46,9 @@ export async function logSystemEvent(
 
     const { error } = await supabase.from('system_logs').insert(payload);
     if (error) {
-      console.error('Failed to log system event:', error);
+      console.warn('Failed to log system event:', error);
     }
   } catch (err) {
-    console.error('Error logging system event:', err);
+    console.warn('Error logging system event:', err);
   }
 }

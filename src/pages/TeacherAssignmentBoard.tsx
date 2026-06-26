@@ -37,14 +37,14 @@ export default function TeacherAssignmentBoard() {
   }, []);
 
   useEffect(() => {
-    if (selectedClassId) {
+    if (selectedClassId && user) {
       fetchAssignments(selectedClassId);
       fetchStudents(selectedClassId);
     } else {
       setAssignments([]);
       setStudents([]);
     }
-  }, [selectedClassId]);
+  }, [selectedClassId, user]);
 
   const fetchClasses = async () => {
     const uStr = localStorage.getItem('user');
@@ -58,10 +58,12 @@ export default function TeacherAssignmentBoard() {
   };
 
   const fetchAssignments = async (classId: string) => {
+    if (!user) return;
     const { data } = await supabase
       .from('assignments')
       .select('*, assignment_students(*)')
       .eq('class_id', classId)
+      .eq('teacher_id', user.id)
       .order('due_date', { ascending: false });
     if (data) setAssignments(data);
   };

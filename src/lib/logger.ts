@@ -56,6 +56,6 @@ export async function logSystemActivity(
 
     await supabase.from('system_logs').insert(payload);
   } catch (err) {
-    console.error("Failed to log activity:", err);
+    console.warn("Failed to log activity:", err);
   }
 }

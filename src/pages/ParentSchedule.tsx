@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Calendar, Clock, MapPin } from "lucide-react";
 import { cn } from "../lib/utils";
+import { EventCalendar } from "../components/EventCalendar";
 
 const SCHEDULE = {
   mei: [
@@ -86,67 +87,7 @@ export default function ParentSchedule() {
              <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold mb-2">
                 <Calendar className="text-primary w-6 h-6" /> School Calendar
              </h3>
-             <div className="flex flex-col gap-8">
-                {/* Visual Calendar Grid */}
-                <div className="flex flex-col bg-surface-container-low p-6 rounded-2xl border border-outline-variant/30">
-                   <div className="flex justify-between items-center mb-6">
-                      <h4 className="font-label font-bold text-on-surface text-lg">October 2023</h4>
-                      <div className="flex gap-2 text-on-surface-variant">
-                        <button className="w-8 h-8 flex items-center justify-center hover:bg-surface-variant rounded-full transition-colors">&lt;</button>
-                        <button className="w-8 h-8 flex items-center justify-center hover:bg-surface-variant rounded-full transition-colors">&gt;</button>
-                      </div>
-                   </div>
-                   <div className="grid grid-cols-7 gap-2 text-center mb-4 border-b border-outline-variant/20 pb-2">
-                      {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => (
-                        <span key={d} className="font-label text-xs font-bold text-on-surface-variant">{d}</span>
-                      ))}
-                   </div>
-                   <div className="grid grid-cols-7 gap-y-4 gap-x-2 text-center font-body text-sm">
-                      {/* Empty slots for start of month */}
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                        <div key={d} className="flex items-center justify-center">
-                           <span className={cn(
-                             "w-8 h-8 flex items-center justify-center rounded-full",
-                             d === 25 ? "bg-primary text-on-primary font-bold shadow-sm" :
-                             d === 12 ? "bg-surface-variant text-on-surface-variant font-bold" :
-                             "text-on-surface hover:bg-surface-variant cursor-pointer transition-colors"
-                           )}>
-                              {d}
-                           </span>
-                        </div>
-                      ))}
-                   </div>
-                </div>
-
-                {/* Upcoming Events */}
-                <div className="flex flex-col gap-4">
-                   <h4 className="font-label font-bold text-on-surface mb-2">Upcoming Events</h4>
-                   <div className="flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl border border-outline-variant/30 hover:shadow-sm transition-shadow">
-                      <div className="w-14 h-14 bg-primary-container/30 rounded-xl flex flex-col items-center justify-center shrink-0 border border-primary/10">
-                         <span className="font-caption text-[10px] text-primary uppercase font-bold">Oct</span>
-                         <span className="font-label text-xl text-primary font-bold leading-none mt-0.5">25</span>
-                      </div>
-                      <div>
-                         <h4 className="font-label font-bold text-on-surface text-base">Spring Festival Gala</h4>
-                         <p className="font-caption text-xs text-on-surface-variant flex items-center gap-1.5 mt-1.5">
-                            <Clock className="w-3.5 h-3.5" /> 6:00 PM - 8:30 PM
-                         </p>
-                      </div>
-                   </div>
-                   <div className="flex items-center gap-4 bg-surface-container-low p-4 rounded-2xl border border-outline-variant/30 hover:shadow-sm transition-shadow">
-                      <div className="w-14 h-14 bg-surface-variant uppercase items-center justify-center flex flex-col rounded-xl shrink-0 border border-outline-variant/50">
-                         <span className="font-caption text-[10px] text-on-surface-variant font-bold">Nov</span>
-                         <span className="font-label text-xl text-on-surface-variant font-bold leading-none mt-0.5">12</span>
-                      </div>
-                      <div>
-                         <h4 className="font-label font-bold text-on-surface text-base">Parent-Teacher Conference</h4>
-                         <p className="font-caption text-xs text-on-surface-variant flex items-center gap-1.5 mt-1.5">
-                            <Clock className="w-3.5 h-3.5" /> 2:00 PM - 5:00 PM
-                         </p>
-                      </div>
-                   </div>
-                </div>
-             </div>
+             <EventCalendar roleFilter={["Academic", "School", "Holiday", "Extracurricular"]} />
            </div>
        </div>
     </div>

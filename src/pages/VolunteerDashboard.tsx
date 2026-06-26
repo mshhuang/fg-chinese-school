@@ -3,7 +3,7 @@ import { Calendar, CheckCircle2, Clock, MapPin, Megaphone, CheckSquare, Users, B
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 
-export default function StaffDashboard() {
+export default function VolunteerDashboard() {
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ export default function StaffDashboard() {
       {/* Announcement Headline */}
       {announcements.length > 0 && !loading && (
         <div 
-          onClick={() => navigate('/staff/announcements')}
+          onClick={() => navigate('/volunteer/announcements')}
           className="bg-primary-container text-on-primary-container p-4 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-primary/20 transition-colors border border-primary/20 shadow-sm"
         >
           <div className="flex items-center gap-3 overflow-hidden">
@@ -85,7 +85,7 @@ export default function StaffDashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
         <div>
-          <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">Staff Portal</h1>
+          <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">Volunteer Portal</h1>
           <p className="font-body text-on-surface-variant max-w-2xl text-lg">
             View your upcoming shifts, events, and manage daily operations.
           </p>
@@ -103,7 +103,7 @@ export default function StaffDashboard() {
                Operations
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <button onClick={() => navigate('/staff/attendance')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
+               <button onClick={() => navigate('/volunteer/attendance')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
                   <div className="bg-secondary/10 p-3 rounded-xl text-secondary group-hover:bg-secondary group-hover:text-on-primary transition-colors">
                      <ClipboardEdit className="w-6 h-6" />
                   </div>
@@ -112,7 +112,7 @@ export default function StaffDashboard() {
                     <p className="font-body text-sm text-on-surface-variant mt-1">Submit student headcount and reports</p>
                   </div>
                </button>
-               <button onClick={() => navigate('/staff/availability')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
+               <button onClick={() => navigate('/volunteer/availability')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
                   <div className="bg-tertiary/10 p-3 rounded-xl text-tertiary group-hover:bg-tertiary group-hover:text-on-primary transition-colors">
                      <Building className="w-6 h-6" />
                   </div>
@@ -136,16 +136,7 @@ export default function StaffDashboard() {
                Quick Actions
             </h2>
             <div className="flex flex-col gap-3">
-               <button onClick={() => navigate('/staff/new-user')} className="flex items-center gap-3 p-4 bg-surface-container-low rounded-xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
-                  <div className="bg-primary/10 p-2 rounded-lg text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
-                     <Users className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-label font-bold text-on-surface">Add New User</h4>
-                    <p className="font-body text-xs text-on-surface-variant mt-0.5">Register new students or staff</p>
-                  </div>
-               </button>
-               <button onClick={() => navigate('/staff/messages')} className="flex items-center gap-3 p-4 bg-surface-container-low rounded-xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
+               <button onClick={() => navigate('/volunteer/messages')} className="flex items-center gap-3 p-4 bg-surface-container-low rounded-xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
                   <div className="bg-primary/10 p-2 rounded-lg text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                   </div>

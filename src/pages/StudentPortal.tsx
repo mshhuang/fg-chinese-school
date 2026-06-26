@@ -6,7 +6,8 @@ import { supabase } from "../lib/supabase";
 import { DashboardNotifications } from "../components/DashboardNotifications";
 
 export default function StudentPortal() {
-  const [userName, setUserName] = useState("Mei");
+  const [userName, setUserName] = useState("");
+  const [programDays, setProgramDays] = useState(0);
   const [parents, setParents] = useState<any[]>([]);
   const [announcement, setAnnouncement] = useState<any>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -39,6 +40,20 @@ export default function StudentPortal() {
                     relationship_type: d.relationship_type
                 })).filter((u: any) => u && u.first_name);
                 setParents(parentsData);
+            }
+
+            const { data: userData } = await supabase
+              .from('users')
+              .select('created_at')
+              .eq('id', user.id)
+              .single();
+            if (userData?.created_at) {
+               const start = new Date(userData.created_at);
+               const now = new Date();
+               const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+               setProgramDays(diff >= 0 ? diff : 0);
+            } else {
+               setProgramDays(14);
             }
 
             // Fetch latest announcement
@@ -104,7 +119,7 @@ export default function StudentPortal() {
             className="w-full h-full rounded-full border-4 border-primary-container object-cover"
           />
           <div className="absolute -bottom-2 -right-2 bg-secondary-container text-on-secondary px-3 py-1 rounded-full border-[3px] border-surface font-caption text-xs font-bold flex items-center gap-1 shadow-md">
-            🔥 14 Days
+            🔥 {programDays} Days
           </div>
         </div>
         
@@ -212,8 +227,8 @@ export default function StudentPortal() {
              <div className="grid grid-cols-2 gap-4">
                 <Badge icon={Star} label="Week Scholar" color="tertiary" />
                 <Badge icon={Edit3} label="Calligraphy Pro" color="secondary" />
-                <Badge icon={Lock} label="Math Master" />
-                <Badge icon={Lock} label="Perfect Attend" />
+                <Badge icon={Lock} label="Math Master" active={false} />
+                <Badge icon={Lock} label="Perfect Attend" active={false} />
              </div>
            </section>
 
@@ -225,10 +240,11 @@ export default function StudentPortal() {
   );
 }
 
-function Badge({ icon: Icon, label, active, color }: any) {
+function Badge({ icon: Icon, label, active = true, color }: any) {
   const colors: any = {
     tertiary: "bg-tertiary-container text-on-tertiary-container",
-    secondary: "bg-secondary-container text-on-secondary-container"
+    secondary: "bg-secondary-container text-on-secondary-container",
+    primary: "bg-primary-container text-on-primary-container"
   };
 
   return (
@@ -238,7 +254,7 @@ function Badge({ icon: Icon, label, active, color }: any) {
     )}>
       <div className={cn(
         "w-14 h-14 rounded-full flex items-center justify-center mb-3 shadow-sm",
-        active ? colors[color] : "bg-surface-variant text-on-surface-variant"
+        active && color ? colors[color] : "bg-surface-variant text-on-surface-variant"
       )}>
         <Icon className={cn("w-6 h-6", active ? "fill-current" : "")} />
       </div>

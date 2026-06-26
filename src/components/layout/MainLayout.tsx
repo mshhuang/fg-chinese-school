@@ -11,12 +11,13 @@ import { logSystemActivity } from "../../lib/logger";
 import { logSystemEvent } from "../../lib/logSystemEvent";
 
 const ROLE_CONFIGS: Record<string, any> = {
-  admin: { name: "Emily", roleLabel: "School Admin", badge: "Admin", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" }, { icon: School, label: "Classes", href: "/admin/classes" }, { icon: BookOpen, label: "My Lesson Plans", href: "/admin/plans" }, { icon: MessageSquare, label: "Messages", href: "/admin/messages" }, { icon: Megaphone, label: "Announcements", href: "/admin/announcements" }, { icon: Newspaper, label: "Newsletters", href: "/admin/newsletters" }, { icon: Settings, label: "Management", href: "/admin/management" }, { icon: Activity, label: "Recent Activities", href: "/admin/activities" }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  teacher: { name: "Chen Jian", roleLabel: "Teacher", badge: "Faculty", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/teacher/dashboard" }, { icon: School, label: "My Classes", href: "/teacher/classes" }, { icon: BookOpen, label: "My Lesson Plans", href: "/teacher/lessons" }, { icon: FileText, label: "Assignments", href: "/teacher/assignments" }, { icon: MessageSquare, label: "Messages", href: "/teacher/messages" }, { icon: Megaphone, label: "Announcements", href: "/teacher/announcements" }, { icon: Newspaper, label: "Newsletters", href: "/teacher/newsletters" }, { icon: User, label: "My Profile", href: "/profile" } ] },
+  admin: { name: "Emily", roleLabel: "School Admin", badge: "Admin", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/admin/dashboard" }, { icon: Calendar, label: "Calendar", href: "/admin/calendar" }, { icon: School, label: "Classes", href: "/admin/classes" }, { icon: FileText, label: "Reports", href: "/admin/reports" }, { icon: BookOpen, label: "My Lesson Plans", href: "/admin/plans" }, { icon: MessageSquare, label: "Messages", href: "/admin/messages" }, { icon: Megaphone, label: "Announcements", href: "/admin/announcements" }, { icon: Newspaper, label: "Newsletters", href: "/admin/newsletters" }, { icon: Settings, label: "Management", href: "/admin/management" }, { icon: Activity, label: "Recent Activities", href: "/admin/activities" }, { icon: User, label: "My Profile", href: "/profile" } ] },
+  teacher: { name: "Chen Jian", roleLabel: "Teacher", badge: "Faculty", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/teacher/dashboard" }, { icon: Calendar, label: "Calendar", href: "/teacher/calendar" }, { icon: School, label: "My Classes", href: "/teacher/classes" }, { icon: BookOpen, label: "My Lesson Plans", href: "/teacher/lessons" }, { icon: FileText, label: "Assignments", href: "/teacher/assignments" }, { icon: MessageSquare, label: "Messages", href: "/teacher/messages" }, { icon: Megaphone, label: "Announcements", href: "/teacher/announcements" }, { icon: Newspaper, label: "Newsletters", href: "/teacher/newsletters" }, { icon: User, label: "My Profile", href: "/profile" } ] },
   parent: { name: "Wei Lin", roleLabel: "Parent", badge: "Family", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/parent/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/parent/announcements" }, { icon: BookOpen, label: "Grades", href: "/parent/grades" }, { icon: Calendar, label: "Schedule", href: "/parent/schedule" }, { icon: MessageSquare, label: "Messages", href: "/parent/messages" }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  student: { name: "Mei Lin", roleLabel: "Student", badge: "Grade 4", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/student/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/student/announcements" }, { icon: MessageSquare, label: "Messages", href: "/student/messages" }, { icon: User, label: "My Profile", href: "/profile" }, { icon: BookOpen, label: "Assignments", href: "/student/assignments" }, { icon: Calendar, label: "Schedule", href: "/student/schedule" }, { icon: Users, label: "Clubs", href: "/student/clubs", disabled: true } ] },
-  staff: { name: "David", roleLabel: "Staff", badge: "Operations", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/staff/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/staff/announcements" }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  builder: { name: "Vickie", roleLabel: "Builder", badge: "System", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/builder/dashboard" }, { icon: Database, label: "Database", href: "/builder/database" }, { icon: Megaphone, label: "Announcements", href: "/builder/announcements" }, { icon: MessageSquare, label: "Messages", href: "/builder/messages" }, { icon: Users, label: "User Management", href: "/builder/users" }, { icon: Clock, label: "Sessions", href: "/builder/sessions" }, { icon: ShieldAlert, label: "Password Reminders", href: "/builder/password-reminders" } ] }
+  student: { name: "Mei Lin", roleLabel: "Student", badge: "Grade 4", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/student/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/student/announcements" }, { icon: Calendar, label: "Schedule and Calendar", href: "/student/schedule" }, { icon: BookOpen, label: "Assignments", href: "/student/assignments" }, { icon: MessageSquare, label: "Messages", href: "/student/messages" }, { icon: Users, label: "Clubs", href: "/student/clubs", disabled: true }, { icon: User, label: "My Profile", href: "/profile" } ] },
+  staff: { name: "David", roleLabel: "Staff", badge: "Operations", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/staff/dashboard" }, { icon: Calendar, label: "Calendar", href: "/staff/calendar" }, { icon: Megaphone, label: "Announcements", href: "/staff/announcements" }, { icon: User, label: "My Profile", href: "/profile" } ] },
+  volunteer: { name: "Sarah", roleLabel: "Volunteer", badge: "Support", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/volunteer/dashboard" }, { icon: Calendar, label: "Calendar", href: "/volunteer/calendar" }, { icon: Megaphone, label: "Announcements", href: "/volunteer/announcements" }, { icon: User, label: "My Profile", href: "/profile" } ] },
+  builder: { name: "Vickie", roleLabel: "Builder", badge: "System", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/builder/dashboard" }, { icon: Calendar, label: "Calendar", href: "/builder/calendar" }, { icon: Database, label: "Database", href: "/builder/database" }, { icon: Megaphone, label: "Announcements", href: "/builder/announcements" }, { icon: MessageSquare, label: "Messages", href: "/builder/messages" }, { icon: Users, label: "User Management", href: "/builder/users" }, { icon: Clock, label: "Sessions", href: "/builder/sessions" }, { icon: ShieldAlert, label: "Password Reminders", href: "/builder/password-reminders" } ] }
 };
 
 export default function MainLayout() {
@@ -109,17 +110,21 @@ export default function MainLayout() {
 
   const isUtilityRoute = location.pathname.startsWith("/profile") || location.pathname.startsWith("/change-password");
   const targetRoleKey = Object.keys(ROLE_CONFIGS).find(key => location.pathname.startsWith("/" + key));
-  const pathRoleKey = targetRoleKey || (userRole === "volunteer" ? "staff" : (userRole || "admin"));
-  const resolvedAvailableRoles = userInfo?.availableRoles?.map((r: string) => r === "volunteer" ? "staff" : r) || [];
+  const pathRoleKey = targetRoleKey || userRole || "admin";
+  const resolvedAvailableRoles = userInfo?.availableRoles || [];
   
-  const hasAccessToPathRole = isUtilityRoute || pathRoleKey === "builder" || resolvedAvailableRoles.includes(pathRoleKey) || (userInfo && (userInfo.role === pathRoleKey || (userInfo.role === "volunteer" && pathRoleKey === "staff")));
+  const hasAccessToPathRole = isUtilityRoute || pathRoleKey === "builder" || resolvedAvailableRoles.includes(pathRoleKey) || (userInfo && userInfo.role === pathRoleKey);
   
-  const currentRoleKey = isUtilityRoute ? (userRole === "volunteer" ? "staff" : (userRole || "admin")) : (hasAccessToPathRole ? pathRoleKey : (userRole === "volunteer" ? "staff" : (userRole || "admin")));
+  const currentRoleKey = isUtilityRoute ? (userRole || "admin") : (hasAccessToPathRole ? pathRoleKey : (userRole || "admin"));
   const currentRole = ROLE_CONFIGS[currentRoleKey] || ROLE_CONFIGS["admin"];
 
   useEffect(() => {
      if (userInfo && !hasAccessToPathRole) {
-        navigate("/" + (userRole === "volunteer" ? "staff" : userRole) + "/dashboard");
+        if (userRole === "teacher") {
+           navigate("/teacher/classes");
+        } else {
+           navigate("/" + userRole + "/dashboard");
+        }
      }
   }, [userInfo, hasAccessToPathRole, navigate, userRole, location.pathname]);
 
@@ -207,7 +212,7 @@ export default function MainLayout() {
                          if (key === "builder") {
                              return userInfo?.user_name === "hhuang" || userInfo?.email === "hhuang@example.com" || userInfo?.email === "hhuang";
                          }
-                         return (userInfo?.availableRoles?.includes(key)) || (userInfo?.availableRoles?.includes("volunteer") && key === "staff");
+                         return userInfo?.availableRoles?.includes(key);
                      })
                      .map(([key, roleInfo]) => (
                         <button key={key} onClick={() => handleRoleSelect(key)} className={cn("flex items-center justify-between px-3 py-2 rounded-xl text-left hover:bg-surface-variant/50", currentRoleKey === key && "bg-surface-variant/80")}>
@@ -299,7 +304,7 @@ export default function MainLayout() {
                               if (key === "builder") {
                                   return userInfo?.user_name === "hhuang" || userInfo?.email === "hhuang@example.com" || userInfo?.email === "hhuang";
                               }
-                              return (userInfo?.availableRoles?.includes(key)) || (userInfo?.availableRoles?.includes("volunteer") && key === "staff");
+                              return userInfo?.availableRoles?.includes(key);
                          })
                          .map(([key, roleInfo]) => (
                             <button key={key} onClick={() => handleRoleSelect(key)} className={cn("flex items-center justify-between px-3 py-3 rounded-xl text-left hover:bg-surface-variant/50", currentRoleKey === key && "bg-surface-variant/80")}>

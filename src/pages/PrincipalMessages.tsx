@@ -22,7 +22,7 @@ export default function PrincipalMessages() {
     }
   }, []);
 
-  const canUseGmail = userRole === "admin" || userRole === "builder";
+  const canUseGmail = userRole === "admin" || userRole === "builder" || userRole === "teacher";
 
   return (
     <div className="w-full max-w-[1600px] mx-auto flex flex-col lg:h-screen lg:overflow-hidden bg-background">

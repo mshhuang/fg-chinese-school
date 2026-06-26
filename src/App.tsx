@@ -29,6 +29,7 @@ import StudentAssignments from "./pages/StudentAssignments";
 import Profile from "./pages/Profile";
 import StudentMessages from "./pages/StudentMessages";
 import StaffDashboard from "./pages/StaffDashboard";
+import VolunteerDashboard from "./pages/VolunteerDashboard";
 import StaffAttendance from "./pages/StaffAttendance";
 import StaffAvailability from "./pages/StaffAvailability";
 import StaffMessages from "./pages/StaffMessages";
@@ -51,6 +52,11 @@ import PrivacyPolicy from "./pages/Privacy";
 import TermsOfService from "./pages/Terms";
 
 import AdminSessions from "./pages/AdminSessions";
+import AdminCalendar from "./pages/AdminCalendar";
+import TeacherCalendar from "./pages/TeacherCalendar";
+import StaffCalendar from "./pages/StaffCalendar";
+import VolunteerCalendar from "./pages/VolunteerCalendar";
+import AdminReports from "./pages/AdminReports";
 
 function PageTracker() {
   const location = useLocation();
@@ -77,8 +83,10 @@ export default function App() {
         <Route element={<MainLayout />}>
            {/* Admin (formerly Principal) */}
            <Route path="/admin/dashboard" element={<PrincipalDashboard />} />
+           <Route path="/admin/calendar" element={<AdminCalendar />} />
            <Route path="/admin/plans" element={<MyLessonPlans />} />
            <Route path="/admin/classes" element={<PrincipalClasses />} />
+           <Route path="/admin/reports" element={<AdminReports />} />
            <Route path="/admin/messages" element={<PrincipalMessages />} />
            <Route path="/admin/announcements" element={<Announcements />} />
            <Route path="/admin/newsletters" element={<PrincipalNewsletters />} />
@@ -87,6 +95,7 @@ export default function App() {
            
            {/* Teacher */}
            <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
+           <Route path="/teacher/calendar" element={<TeacherCalendar />} />
            <Route path="/teacher/classes" element={<TeacherClasses />} />
            <Route path="/teacher/lessons" element={<MyLessonPlans />} />
            <Route path="/teacher/messages" element={<PrincipalMessages />} />
@@ -110,16 +119,25 @@ export default function App() {
            <Route path="/student/schedule" element={<StudentSchedule />} />
            <Route path="/student/clubs" element={<StudentClubs />} />
            
-           {/* Staff & Volunteer */}
+           {/* Staff */}
            <Route path="/staff/dashboard" element={<StaffDashboard />} />
+           <Route path="/staff/calendar" element={<StaffCalendar />} />
            <Route path="/staff/attendance" element={<StaffAttendance />} />
            <Route path="/staff/availability" element={<StaffAvailability />} />
            <Route path="/staff/messages" element={<StaffMessages />} />
            <Route path="/staff/announcements" element={<Announcements />} />
            <Route path="/staff/new-user" element={<AdminNewUser />} />
 
+           {/* Volunteer */}
+           <Route path="/volunteer/dashboard" element={<VolunteerDashboard />} />
+           <Route path="/volunteer/calendar" element={<VolunteerCalendar />} />
+           <Route path="/volunteer/availability" element={<StaffAvailability />} />
+           <Route path="/volunteer/messages" element={<StaffMessages />} />
+           <Route path="/volunteer/announcements" element={<Announcements />} />
+
            {/* Builder (formerly Admin) */}
            <Route path="/builder/dashboard" element={<BuilderDashboard />} />
+           <Route path="/builder/calendar" element={<AdminCalendar />} />
            <Route path="/builder/messages" element={<PrincipalMessages />} />
            <Route path="/builder/announcements" element={<Announcements />} />
            <Route path="/builder/users" element={<AdminUsers />} />

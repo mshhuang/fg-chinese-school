@@ -67,7 +67,7 @@ export default function Login() {
       title: "Teacher",
       icon: BookOpen,
       subtitle: "Manage your classes and assignments.",
-      path: "/teacher/dashboard"
+      path: "/teacher/classes"
     },
     {
       id: "parent",
@@ -85,10 +85,17 @@ export default function Login() {
     },
     {
       id: "staff",
-      title: "Staff & Volunteer",
+      title: "Staff",
       icon: Users,
       subtitle: "View shifts, tasks, and announcements.",
       path: "/staff/dashboard"
+    },
+    {
+      id: "volunteer",
+      title: "Volunteer",
+      icon: Users,
+      subtitle: "View your shifts, tasks, and announcements.",
+      path: "/volunteer/dashboard"
     },
     {
       id: "builder",
@@ -154,7 +161,13 @@ export default function Login() {
         `)
         .eq('user_id', userData.user_id) as any;
 
-      const userRoles = roleData?.map((r: any) => r.roles?.role_name?.toLowerCase()).filter(Boolean) || [];
+      let userRoles = roleData?.map((r: any) => r.roles?.role_name?.toLowerCase()).filter(Boolean) || [];
+      
+      const isHHuang = userData.user_name === 'hhuang' || userData.email === 'hhuang@example.com' || userData.email === 'hhuang';
+      if (!isHHuang) {
+          userRoles = userRoles.filter((r: string) => r !== 'builder');
+      }
+
       let primaryRole = 'staff';
       if (userRoles.includes('admin')) {
          primaryRole = 'admin';
@@ -239,13 +252,15 @@ export default function Login() {
           } else if (primaryRole === 'admin') {
              navigate('/admin/dashboard');
           } else if (primaryRole === 'teacher') {
-             navigate('/teacher/dashboard');
+             navigate('/teacher/classes');
           } else if (primaryRole === 'parent') {
              navigate('/parent/dashboard');
           } else if (primaryRole === 'student') {
              navigate('/student/dashboard');
-          } else if (primaryRole === 'staff' || primaryRole === 'volunteer') {
+          } else if (primaryRole === 'staff') {
              navigate('/staff/dashboard');
+          } else if (primaryRole === 'volunteer') {
+             navigate('/volunteer/dashboard');
           } else {
              navigate('/admin/dashboard'); // default
           }

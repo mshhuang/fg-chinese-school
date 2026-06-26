@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight, BuildingIcon } from "lucide-react";
+import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { cn } from "../lib/utils";

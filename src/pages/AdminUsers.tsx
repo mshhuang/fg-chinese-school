@@ -114,7 +114,23 @@ export default function AdminUsers() {
   async function fetchRoles() {
     setLoading(true);
     const { data, error } = await supabase.from('roles').select('*').order('role_id', { ascending: false });
-    if (data) setRoles(data);
+    if (data) {
+        const u = localStorage.getItem("user");
+        let isBuilder = false;
+        if (u) {
+            try {
+                const parsed = JSON.parse(u);
+                if (parsed.role === 'builder' || parsed.availableRoles?.includes('builder')) {
+                    isBuilder = true;
+                }
+            } catch(e) {}
+        }
+        if (!isBuilder) {
+            setRoles(data.filter((r: any) => r.role_name.toLowerCase() !== 'builder'));
+        } else {
+            setRoles(data);
+        }
+    }
     setLoading(false);
   }
 
