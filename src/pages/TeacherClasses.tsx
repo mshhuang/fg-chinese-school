@@ -136,9 +136,16 @@ export default function TeacherClasses() {
                           <Users className="w-4 h-4 shrink-0" />
                           <span className="font-label text-sm font-bold">{cls.enrollments?.[0]?.count || 0} Students Enrolled</span>
                        </div>
-                       <button onClick={() => navigate('/teacher/assignments')} className="text-primary font-label text-sm font-bold flex items-center gap-1 hover:underline">
-                         Assign Homework <ArrowRight className="w-4 h-4" />
-                       </button>
+                       <div className="flex items-center gap-4">
+                          {cls.primary_teacher_id === currentUserId && (
+                             <button onClick={() => {}} className="text-secondary font-label text-sm font-bold flex items-center gap-1 opacity-50 grayscale pointer-events-none cursor-not-allowed">
+                               Attendance
+                             </button>
+                          )}
+                          <button onClick={() => navigate('/teacher/assignments')} className="text-primary font-label text-sm font-bold flex items-center gap-1 hover:underline">
+                            Assign Homework <ArrowRight className="w-4 h-4" />
+                          </button>
+                       </div>
                     </div>
                 </div>
              ))}

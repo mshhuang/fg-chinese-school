@@ -5,6 +5,7 @@ import { Users, BookOpen, ClipboardCheck, Coins, UserCheck, UserPlus, Megaphone,
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { DashboardNotifications } from "../components/DashboardNotifications";
+import { formatTeacherName } from "../lib/utils";
 
 const data = [
   { name: 'Mon', students: 500 },
@@ -15,12 +16,27 @@ const data = [
 ];
 
 export default function PrincipalDashboard() {
-  const [stats, setStats] = useState({ totalStudents: 0, activeClasses: 0 });
+  const [stats, setStats] = useState<{ totalStudents: number; activeClasses: number; absencesToday: string | number }>({ totalStudents: 0, activeClasses: 0, absencesToday: "Pending" });
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const navigate = useNavigate();
 
+  const [greeting, setGreeting] = useState("Good morning");
+  const [user, setUser] = useState<any>(null);
+
   useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting("Good morning");
+    else if (hour < 18) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
+
+    const u = localStorage.getItem('user');
+    if (u) {
+      try {
+        setUser(JSON.parse(u));
+      } catch (e) {}
+    }
+
     async function loadData() {
       // Load Stats
       const { count: classesCount } = await supabase.from('classes').select('*', { count: 'exact', head: true });
@@ -33,7 +49,26 @@ export default function PrincipalDashboard() {
         studentCount = sCount || 0;
       }
       
-      setStats({ totalStudents: studentCount, activeClasses: classesCount || 0 });
+      // Load Absences Today
+      const today = new Date().toLocaleDateString('en-CA');
+      
+      const { data: attData } = await supabase.from('attendance')
+        .select('class_id, status, student_id')
+        .eq('attendance_date', today);
+        
+      const { data: allCls } = await supabase.from('classes').select('class_id');
+      
+      let absencesToday: string | number = "Pending";
+      if (attData && allCls) {
+         // Show the count of absences if any attendance was submitted today, otherwise Pending
+         if (attData.length > 0) {
+            absencesToday = attData.filter(a => a.status === 'Absent').length;
+         } else {
+            absencesToday = "Pending";
+         }
+      }
+      
+      setStats({ totalStudents: studentCount, activeClasses: classesCount || 0, absencesToday });
 
       // Load Announcements
       const { data: annData } = await supabase.from('announcements').select('*').order('announcement_id', { ascending: false }).limit(3);
@@ -54,11 +89,21 @@ export default function PrincipalDashboard() {
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 w-full">
       <DashboardNotifications />
+      {/* Header */}
+      <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+           <h2 className="font-display text-4xl text-on-surface font-bold">
+              {greeting}, {formatTeacherName(user?.first_name, user?.last_name, 'Admin')}
+           </h2>
+           <p className="font-body text-lg text-on-surface-variant mt-2">Here is what's happening at your school today.</p>
+        </div>
+      </section>
+
       {/* Summary Cards Bento */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
         <StatCard icon={Users} label="Total Students" value={stats.totalStudents} colorClass="text-primary" />
         <StatCard icon={BookOpen} label="Active Classes" value={stats.activeClasses} colorClass="text-primary" />
-        <StatCard icon={ClipboardCheck} label="Attendance Today" value="--" colorClass="text-tertiary" opacity="opacity-50 grayscale" title="Data coming soon" />
+        <StatCard icon={ClipboardCheck} label="Absences Today" value={stats.absencesToday} colorClass="text-error" opacity="opacity-50 grayscale" title="Data coming soon" />
         <StatCard icon={Coins} label="Tuition Paid" value="--" colorClass="text-tertiary" opacity="opacity-50 grayscale" title="Data coming soon" />
         <StatCard icon={UserCheck} label="Teacher Attendance" value="--" colorClass="text-tertiary" opacity="opacity-50 grayscale" title="Data coming soon" />
         <StatCard icon={UserPlus} label="New Registration" value="--" colorClass="text-secondary-container" bgClass="bg-surface-container-high" opacity="opacity-50 grayscale" title="Data coming soon" />
@@ -121,7 +166,9 @@ export default function PrincipalDashboard() {
                         <div className="flex justify-between items-start mb-2">
                            <h4 className="font-label font-bold text-on-surface">{ann.title}</h4>
                         </div>
-                        <p className="font-body text-sm text-on-surface-variant line-clamp-2">{ann.content}</p>
+                        <p className="font-body text-sm text-on-surface-variant line-clamp-2">
+                           {ann.content ? ann.content.replace(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*/is, '') : ""}
+                        </p>
                      </div>
                    ))
                  ) : (
@@ -161,13 +208,14 @@ export default function PrincipalDashboard() {
 }
 
 function StatCard({ icon: Icon, label, value, colorClass, bgClass = "bg-surface-container-lowest", opacity = "opacity-100", title }: any) {
+  const isPending = value === "Pending";
   return (
     <div className={`${bgClass} ${opacity} rounded-2xl p-6 border border-outline-variant/30 shadow-[0_4px_10px_rgba(212,175,55,0.04)] flex flex-col gap-2 relative overflow-hidden group`} title={title}>
       <div className={`absolute -right-4 -top-4 opacity-[0.08] group-hover:scale-110 transition-transform duration-500 ${colorClass}`}>
         <Icon className="w-24 h-24" />
       </div>
       <p className="font-label text-sm text-outline z-10">{label}</p>
-      <p className={`font-display text-4xl font-bold mt-2 z-10 ${colorClass}`}>{value}</p>
+      <p className={`font-display ${isPending ? 'text-2xl mt-4' : 'text-4xl mt-2'} font-bold z-10 ${colorClass}`}>{value}</p>
     </div>
   );
 }

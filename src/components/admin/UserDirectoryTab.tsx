@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-import { Users, Plus, Trash2, Mail, Phone, Globe, FileText, Pencil, Filter, Wand2 } from "lucide-react";
+import { Users, Plus, Trash2, Mail, Phone, Globe, FileText, Pencil, Filter, Wand2, Eye, EyeOff } from "lucide-react";
 
 export default function UserDirectoryTab() {
   const [users, setUsers] = useState<any[]>([]);
@@ -12,6 +12,12 @@ export default function UserDirectoryTab() {
   const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [filterRole, setFilterRole] = useState<string>("All");
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const [showFormPassword, setShowFormPassword] = useState(false);
+
+  const togglePasswordVisibility = (userId: string) => {
+    setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
 
   const [formData, setFormData] = useState({
     email: '', first_name: '', last_name: '', phone1: '', phone2: '',
@@ -59,12 +65,12 @@ export default function UserDirectoryTab() {
   }
 
   async function generateUsername() {
-    if (!formData.first_name || !formData.last_name) {
-      setErrorMsg("Please enter First Name and Last Name to generate a username.");
+    if (!formData.first_name) {
+      setErrorMsg("Please enter First Name to generate a username.");
       return;
     }
 
-    const baseName = (formData.first_name.charAt(0) + formData.last_name).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const baseName = (formData.first_name.charAt(0) + (formData.last_name || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
     let uniqueName = baseName;
     let counter = 1;
     let isUnique = false;
@@ -232,7 +238,7 @@ export default function UserDirectoryTab() {
                </div>
                <div className="flex flex-col gap-2">
                  <label className="font-label text-sm font-bold text-on-surface-variant">Last Name</label>
-                 <input required type="text" value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface" />
+                 <input type="text" value={formData.last_name} onChange={(e) => setFormData({...formData, last_name: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface" />
                </div>
                <div className="flex flex-col gap-2">
                  <label className="font-label text-sm font-bold text-on-surface-variant">Email</label>
@@ -291,7 +297,12 @@ export default function UserDirectoryTab() {
                </div>
                <div className="flex flex-col gap-2">
                  <label className="font-label text-sm font-bold text-on-surface-variant">Password</label>
-                 <input type="password" value={formData.password_hash} onChange={(e) => setFormData({...formData, password_hash: e.target.value})} placeholder="Leave blank to skip" className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface" />
+                 <div className="relative">
+                   <input type={showFormPassword ? "text" : "password"} value={formData.password_hash} onChange={(e) => setFormData({...formData, password_hash: e.target.value})} placeholder="Leave blank to skip" className="w-full px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface pr-12" />
+                   <button type="button" onClick={() => setShowFormPassword(!showFormPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none" title={showFormPassword ? "Hide Password" : "Show Password"}>
+                     {showFormPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                   </button>
+                 </div>
                </div>
                <div className="flex flex-col gap-2">
                  <label className="font-label text-sm font-bold text-on-surface-variant">Status</label>
@@ -356,14 +367,15 @@ export default function UserDirectoryTab() {
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Name</th>
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Contact</th>
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Details</th>
+                 <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Password</th>
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Roles</th>
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Status</th>
                  <th className="p-4 font-label text-xs uppercase tracking-wider font-bold text-right">Actions</th>
                </tr>
              </thead>
              <tbody className="divide-y divide-outline-variant/20">
-               {loading ? <tr><td colSpan={6} className="p-8 text-center text-on-surface-variant font-body">Loading...</td></tr> : 
-                filteredUsers.length === 0 ? <tr><td colSpan={6} className="p-8 text-center text-on-surface-variant font-body">No users found. Create one above!</td></tr> :
+               {loading ? <tr><td colSpan={7} className="p-8 text-center text-on-surface-variant font-body">Loading...</td></tr> : 
+                filteredUsers.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-on-surface-variant font-body">No users found. Create one above!</td></tr> :
                 filteredUsers.map(user => (
                  <tr key={user.user_id} className="hover:bg-surface-variant/30 transition-colors">
                    <td className="p-4">
@@ -375,6 +387,24 @@ export default function UserDirectoryTab() {
                      {user.grade && <div><span className="font-bold">Grade:</span> {user.grade}</div>}
                      {user.medical_condition && <div className="text-error" title={user.medical_condition}><span className="font-bold">Med:</span> {user.medical_condition.length > 20 ? user.medical_condition.substring(0, 20) + '...' : user.medical_condition}</div>}
                      {!user.school && !user.grade && !user.medical_condition && <span>-</span>}
+                   </td>
+                   <td className="p-4 font-mono text-xs text-on-surface">
+                     <div className="flex items-center gap-2">
+                       {user.password_hash ? (
+                         <>
+                           <span>{visiblePasswords[user.user_id] ? user.password_hash : '••••••••'}</span>
+                           <button 
+                             onClick={() => togglePasswordVisibility(user.user_id)}
+                             className="text-on-surface-variant hover:text-primary transition-colors focus:outline-none"
+                             title={visiblePasswords[user.user_id] ? "Hide Password" : "Show Password"}
+                           >
+                             {visiblePasswords[user.user_id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                           </button>
+                         </>
+                       ) : (
+                         <span className="text-on-surface-variant opacity-60">Not set</span>
+                       )}
+                     </div>
                    </td>
                    <td className="p-4">
                       <div className="flex flex-wrap gap-2">

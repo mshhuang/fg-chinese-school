@@ -26,9 +26,7 @@ export default function ForgotPassword() {
   return (
     <div className="flex w-full min-h-screen bg-surface items-center justify-center p-6" style={{ background: 'linear-gradient(135deg, var(--surface) 0%, var(--surface-container-low) 100%)' }}>
       <div className="w-full max-w-md bg-surface-container-lowest rounded-3xl p-8 sm:p-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border border-outline-variant/30 flex flex-col items-center">
-        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-          <Flower2 className="w-8 h-8 text-primary" />
-        </div>
+        <img src="/picture1.png" alt="IBPS NY Chinese School" className="w-auto h-28 object-contain mb-6" />
         
         <h1 className="font-display text-3xl text-on-surface font-bold text-center mb-2 tracking-tight">
           Forgot Password

@@ -3,8 +3,13 @@ import { Users, BookOpen, Clock, Building2, Save, FileText, Download, Upload, Sh
 import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
+import { DashboardNotifications } from "../components/DashboardNotifications";
+import { formatTeacherName } from "../lib/utils";
 
 export default function AdminDashboard() {
+  const [greeting, setGreeting] = useState("Good morning");
+  const [user, setUser] = useState<any>(null);
+
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalClasses: 0,
@@ -14,6 +19,18 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting("Good morning");
+    else if (hour < 18) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
+
+    const u = localStorage.getItem('user');
+    if (u) {
+      try {
+        setUser(JSON.parse(u));
+      } catch (e) {}
+    }
+
     async function loadStats() {
       const [users, classes, roles, sessions, logs] = await Promise.all([
         supabase.from('users').select('user_id', { count: 'exact', head: true }),
@@ -43,9 +60,12 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 w-full max-w-7xl mx-auto pb-32 md:pb-8">
+      <DashboardNotifications />
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">System Admin</h1>
+           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">
+              {greeting}, {formatTeacherName(user?.first_name, user?.last_name, 'Admin')}
+           </h1>
            <p className="font-body text-lg text-on-surface-variant mt-2">Manage infrastructure, user roles, and database integrity.</p>
         </div>
         <button className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label font-bold hover:bg-primary/90 transition-colors shadow-sm w-full md:w-auto justify-center">

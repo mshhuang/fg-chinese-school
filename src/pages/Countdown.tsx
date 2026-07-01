@@ -46,8 +46,8 @@ export default function Countdown() {
       </div>
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-3xl w-full">
-        <div className="w-20 h-20 bg-primary-container rounded-3xl flex items-center justify-center mb-8 rotate-12 shadow-lg">
-          <Flower2 className="w-10 h-10 text-primary -rotate-12" />
+        <div className="mb-8 shadow-lg bg-surface-container-low rounded-3xl p-4">
+          <img src="/picture1.png" alt="IBPS NY Chinese School" className="w-48 h-48 object-contain" />
         </div>
         
         <h1 className="font-display text-5xl md:text-7xl font-bold text-primary mb-6 tracking-tight">

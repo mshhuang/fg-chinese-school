@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ExternalLink, Save, FileText, LayoutDashboard, UserSquare2, RefreshCw } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { formatTeacherName } from "../lib/utils";
 
 export default function MyLessonPlans() {
   const [user, setUser] = useState<any>(null);
@@ -48,7 +49,10 @@ export default function MyLessonPlans() {
              if (userRoles && userRoles.length > 0) {
                 const teacherIds = userRoles.map(ur => ur.user_id);
                 const { data: usersData } = await supabase.from('users').select('user_id, first_name, last_name').in('user_id', teacherIds).order('first_name');
-                if (usersData) setTeachers(usersData);
+                if (usersData) {
+                   const filteredUsers = usersData.filter(u => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
+                   setTeachers(filteredUsers);
+                }
              }
           }
        }
@@ -161,7 +165,7 @@ export default function MyLessonPlans() {
              >
                 <option value="">-- Choose a Teacher --</option>
                 {teachers.map(t => (
-                   <option key={t.user_id} value={t.user_id}>{t.first_name} {t.last_name}</option>
+                   <option key={t.user_id} value={t.user_id}>{formatTeacherName(t.first_name, t.last_name)}</option>
                 ))}
              </select>
           </div>
@@ -195,21 +199,21 @@ export default function MyLessonPlans() {
                  </div>
                ) : (
                  <div className="flex-1 flex flex-col md:flex-row items-start md:items-center justify-between bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-3 gap-4">
-                   <div className="flex items-center gap-3 overflow-hidden w-full">
+                   <div className="flex items-center gap-3 min-w-0 flex-1">
                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                        <FileText className="w-4 h-4 text-blue-600" />
                      </div>
-                     <span className="font-body text-on-surface truncate text-sm md:text-base">{savedUrl || "No document linked yet."}</span>
+                     <span className="font-body text-on-surface truncate text-sm md:text-base">{savedUrl ? "Google Document" : "No document linked yet."}</span>
                    </div>
-                   <div className="flex gap-2 shrink-0 w-full md:w-auto">
+                   <div className="flex gap-2 shrink-0">
                      {!isAdmin && (
-                        <button onClick={() => setIsEditingUrl(true)} className="flex-1 md:flex-none px-4 py-2 rounded-lg border border-outline-variant hover:bg-surface-variant font-label text-sm font-bold transition-colors">
-                          Edit Link
+                        <button onClick={() => setIsEditingUrl(true)} className="px-4 py-2 rounded-lg border border-outline-variant hover:bg-surface-variant font-label text-sm font-bold transition-colors">
+                          Edit
                         </button>
                      )}
                      {savedUrl && (
-                        <a href={isAdmin ? getPreviewUrl(savedUrl) : savedUrl} target="_blank" rel="noopener noreferrer" className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 focus:ring-4 focus:ring-blue-300 text-white px-4 py-2 rounded-lg font-label text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">
-                          <ExternalLink className="w-4 h-4" /> Open Document
+                        <a href={isAdmin ? getPreviewUrl(savedUrl) : savedUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-600 focus:ring-4 focus:ring-blue-300 text-white px-4 py-2 rounded-lg font-label text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">
+                          <ExternalLink className="w-4 h-4" /> Open Doc
                         </a>
                      )}
                    </div>
@@ -237,7 +241,7 @@ export default function MyLessonPlans() {
                      )}
                    </div>
                    <span className="font-caption text-xs text-on-surface-variant">
-                     If it doesn't load securely, use the 'Open Document' button above.
+                     If it doesn't load securely, use the 'Open Doc' button above.
                    </span>
                  </div>
 
@@ -255,7 +259,7 @@ export default function MyLessonPlans() {
                      <FileText className="w-16 h-16 opacity-10 mx-auto mb-4" />
                      <h3 className="font-title text-xl text-on-surface font-bold mb-2">Google Docs Viewer</h3>
                      <p className="font-body text-on-surface-variant">
-                       If the document does not render in this frame due to Google's security settings, please use the Open Document button above to view or edit it securely in a new tab.
+                       If the document does not render in this frame due to Google's security settings, please use the Open Doc button above to view or edit it securely in a new tab.
                      </p>
                    </div>
                  </div>

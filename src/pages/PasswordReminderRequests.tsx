@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Unlock, Clock } from "lucide-react";
+import { Unlock, Clock, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 export default function PasswordReminderRequests() {
   const [passwordRequests, setPasswordRequests] = useState<any[]>([]);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -18,6 +19,27 @@ export default function PasswordReminderRequests() {
     }
     fetchData();
   }, []);
+
+  const handleDelete = async (logId: string) => {
+    if (!window.confirm("Are you sure you want to delete this password reminder request?")) return;
+    
+    setIsDeleting(logId);
+    try {
+      const { error } = await supabase
+        .from('system_logs')
+        .delete()
+        .eq('log_id', logId);
+      
+      if (error) throw error;
+      
+      setPasswordRequests(prev => prev.filter(req => req.log_id !== logId));
+    } catch (err) {
+      console.error("Error deleting request:", err);
+      alert("Failed to delete request");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   return (
     <div className="flex-1 p-6 md:p-8 overflow-y-auto">
@@ -51,6 +73,7 @@ export default function PasswordReminderRequests() {
                                <th className="pb-3 font-medium">Requested User Name</th>
                                <th className="pb-3 font-medium">IP Addr / Device</th>
                                <th className="pb-3 font-medium text-right">Status</th>
+                               <th className="pb-3 font-medium text-right">Actions</th>
                            </tr>
                        </thead>
                        <tbody className="divide-y divide-outline-variant/30">
@@ -69,6 +92,16 @@ export default function PasswordReminderRequests() {
                                        <span className="inline-flex items-center gap-1 text-tertiary font-label text-xs uppercase tracking-wider bg-tertiary-container/30 px-2 py-1 rounded-full">
                                           <Clock className="w-3 h-3" /> Pending Review
                                        </span>
+                                   </td>
+                                   <td className="py-3 text-sm text-right">
+                                       <button
+                                         onClick={() => handleDelete(req.log_id)}
+                                         disabled={isDeleting === req.log_id}
+                                         className="p-2 text-on-surface-variant hover:text-error hover:bg-error-container/20 rounded-lg transition-colors disabled:opacity-50"
+                                         title="Delete Request"
+                                       >
+                                         <Trash2 className="w-4 h-4" />
+                                       </button>
                                    </td>
                                </tr>
                            ))}

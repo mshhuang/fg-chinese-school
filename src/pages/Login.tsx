@@ -60,14 +60,14 @@ export default function Login() {
       title: "School Admin",
       icon: Building2,
       subtitle: "Access school-wide administration.",
-      path: "/admin/management"
+      path: "/admin/dashboard"
     },
     {
       id: "teacher",
       title: "Teacher",
       icon: BookOpen,
       subtitle: "Manage your classes and assignments.",
-      path: "/teacher/classes"
+      path: "/teacher/dashboard"
     },
     {
       id: "parent",
@@ -252,7 +252,7 @@ export default function Login() {
           } else if (primaryRole === 'admin') {
              navigate('/admin/dashboard');
           } else if (primaryRole === 'teacher') {
-             navigate('/teacher/classes');
+             navigate('/teacher/dashboard');
           } else if (primaryRole === 'parent') {
              navigate('/parent/dashboard');
           } else if (primaryRole === 'student') {
@@ -293,13 +293,14 @@ export default function Login() {
       {/* Left Axis: Login Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24 mx-auto">
         <div className="max-w-md w-full mx-auto">
-          <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-3">
-              <div className="p-2 border-2 border-primary rounded-full bg-surface-container-low text-primary shadow-sm">
-                  <Flower2 className="w-6 h-6" />
-              </div>
-              <h1 className="font-display font-bold text-2xl text-primary tracking-tight">佛光中文學校</h1>
-            </div>
+          <div className="mb-4">
+            <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-[172px] w-auto object-contain" />
+          </div>
+
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display text-4xl font-bold text-on-surface tracking-tight">
+              Welcome back
+            </h2>
             
             <div className={cn(
                "flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm transition-opacity",
@@ -314,12 +315,6 @@ export default function Login() {
             </div>
           </div>
 
-          <h2 className="font-display text-4xl font-bold text-on-surface mb-3 tracking-tight">
-            Welcome back
-          </h2>
-          <p className="font-body text-on-surface-variant mb-10 text-lg">
-            Sign in to access your dashboard, schedules, and communications.
-          </p>
 
           {loginError && (
              <div className="mb-6 p-4 rounded-xl bg-error-container/30 border border-error-container text-error flex gap-3 text-sm font-body">

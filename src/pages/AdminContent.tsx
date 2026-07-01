@@ -98,7 +98,7 @@ export default function AdminContent() {
                      </td>
                      <td className="p-4">
                         <p className="font-body text-sm text-on-surface-variant max-w-sm truncate">
-                           {row.content}
+                           {row.content?.replace(/<[^>]*>?/gm, '')}
                         </p>
                      </td>
                      <td className="p-4 text-right">

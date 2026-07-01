@@ -31,6 +31,7 @@ import StudentMessages from "./pages/StudentMessages";
 import StaffDashboard from "./pages/StaffDashboard";
 import VolunteerDashboard from "./pages/VolunteerDashboard";
 import StaffAttendance from "./pages/StaffAttendance";
+import VolunteerAttendance from "./pages/VolunteerAttendance";
 import StaffAvailability from "./pages/StaffAvailability";
 import StaffMessages from "./pages/StaffMessages";
 import AdminAcademic from "./pages/AdminAcademic";
@@ -97,6 +98,7 @@ export default function App() {
            <Route path="/teacher/dashboard" element={<TeacherDashboard />} />
            <Route path="/teacher/calendar" element={<TeacherCalendar />} />
            <Route path="/teacher/classes" element={<TeacherClasses />} />
+           <Route path="/teacher/attendance" element={<StaffAttendance />} />
            <Route path="/teacher/lessons" element={<MyLessonPlans />} />
            <Route path="/teacher/messages" element={<PrincipalMessages />} />
            <Route path="/teacher/announcements" element={<Announcements />} />
@@ -122,7 +124,7 @@ export default function App() {
            {/* Staff */}
            <Route path="/staff/dashboard" element={<StaffDashboard />} />
            <Route path="/staff/calendar" element={<StaffCalendar />} />
-           <Route path="/staff/attendance" element={<StaffAttendance />} />
+           <Route path="/staff/attendance" element={<VolunteerAttendance />} />
            <Route path="/staff/availability" element={<StaffAvailability />} />
            <Route path="/staff/messages" element={<StaffMessages />} />
            <Route path="/staff/announcements" element={<Announcements />} />
@@ -131,6 +133,8 @@ export default function App() {
            {/* Volunteer */}
            <Route path="/volunteer/dashboard" element={<VolunteerDashboard />} />
            <Route path="/volunteer/calendar" element={<VolunteerCalendar />} />
+           <Route path="/volunteer/attendance" element={<VolunteerAttendance />} />
+           <Route path="/volunteer/enter-attendance" element={<StaffAttendance />} />
            <Route path="/volunteer/availability" element={<StaffAvailability />} />
            <Route path="/volunteer/messages" element={<StaffMessages />} />
            <Route path="/volunteer/announcements" element={<Announcements />} />

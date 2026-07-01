@@ -8,8 +8,6 @@ export default function PrincipalNewsletters() {
   const [activeFilter, setActiveFilter] = useState("Pending Approval");
   const [newsletters, setNewsletters] = useState<any[]>([]);
   const [showPdfModal, setShowPdfModal] = useState<any>(null);
-  const [rejectModal, setRejectModal] = useState<any>(null);
-  const [rejectReason, setRejectReason] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +28,32 @@ export default function PrincipalNewsletters() {
       }
       
       if (data) {
+        const userJson = localStorage.getItem('user');
+        let currentUserId = null;
+        if (userJson) {
+           try {
+               currentUserId = JSON.parse(userJson).id;
+               if (currentUserId === 'demo') {
+                   currentUserId = 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068'; // fallback
+               }
+           } catch(e) {}
+        }
+        if (currentUserId) {
+             const readStateStr = localStorage.getItem(`news_read_${currentUserId}`);
+             const readState = readStateStr ? JSON.parse(readStateStr) : {};
+             let updated = false;
+             data.forEach(item => {
+                 if (item.status === 'Published' && !readState[item.newsletter_id]) {
+                     readState[item.newsletter_id] = true;
+                     updated = true;
+                 }
+             });
+             if (updated) {
+                 localStorage.setItem(`news_read_${currentUserId}`, JSON.stringify(readState));
+                 window.dispatchEvent(new Event('news_read_updated'));
+             }
+        }
+
         const parsed = data.map((item: any) => {
            try {
              return { id: item.newsletter_id, title: item.title, author: item.author_id, ...JSON.parse(item.content || "{}") };
@@ -47,6 +71,32 @@ export default function PrincipalNewsletters() {
     }
   };
 
+  const handleUpdateComment = async (id: string | number, comment: string) => {
+     const newsletter = newsletters.find(n => n.id === id);
+     if (!newsletter) return;
+     
+     // Optimistically update local state
+     setNewsletters(prev => prev.map(n => n.id === id ? { ...n, adminComment: comment } : n));
+
+     const updatedProps = { ...newsletter, adminComment: comment };
+     delete updatedProps.id;
+     delete updatedProps.title;
+
+     try {
+         // @ts-ignore
+         const { error } = await supabase.from('newsletters').update({
+             content: JSON.stringify(updatedProps)
+         }).eq('newsletter_id', id);
+         
+         if (error) {
+             if (error.code === '42501') console.warn("RLS blocks update.");
+             throw error;
+         }
+     } catch(e) {
+         console.error("Comment save failed", e);
+     }
+  };
+
   const STATUSES = ["All", "Pending Approval", "Published", "Rejected"];
 
   const filteredNewsletters = newsletters.filter(n => {
@@ -59,7 +109,7 @@ export default function PrincipalNewsletters() {
      const newsletter = newsletters.find(n => n.id === id);
      if (!newsletter) return;
      
-     const updatedProps = { ...newsletter, status: "Published", rejectionReason: null };
+     const updatedProps = { ...newsletter, status: "Published" };
      delete updatedProps.id;
      delete updatedProps.title;
 
@@ -80,12 +130,12 @@ export default function PrincipalNewsletters() {
      }
   };
 
-  const handleReject = async () => {
-     if (!rejectReason.trim()) return alert("Rejection reason is required.");
-     const newsletter = newsletters.find(n => n.id === rejectModal.id);
+  const handleReject = async (id: string | number) => {
+     const newsletter = newsletters.find(n => n.id === id);
      if (!newsletter) return;
+     if (!newsletter.adminComment?.trim()) return alert("Please provide a reason in the Admin Notes box below before rejecting.");
 
-     const updatedProps = { ...newsletter, status: "Rejected", rejectionReason: rejectReason };
+     const updatedProps = { ...newsletter, status: "Rejected" };
      delete updatedProps.id;
      delete updatedProps.title;
 
@@ -93,21 +143,17 @@ export default function PrincipalNewsletters() {
          // @ts-ignore
          const { error } = await supabase.from('newsletters').update({
              content: JSON.stringify(updatedProps)
-         }).eq('newsletter_id', rejectModal.id);
+         }).eq('newsletter_id', id);
          
          if (error) {
              if (error.code === '42501') alert("RLS blocks update. Please check table policies.");
              throw error;
          }
          
-         setRejectModal(null);
-         setRejectReason("");
          await loadNewsletters();
      } catch(e) {
          console.error("Reject failed", e);
          alert("Failed to reject newsletter");
-         setRejectModal(null);
-         setRejectReason("");
      }
   };
 
@@ -199,7 +245,7 @@ export default function PrincipalNewsletters() {
                            <button onClick={() => handleApprove(news.id)} className="w-8 h-8 rounded-full hover:bg-primary-container/50 hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="Approve">
                               <CheckCircle2 className="w-4 h-4" />
                            </button>
-                           <button onClick={() => setRejectModal(news)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Reject">
+                           <button onClick={() => handleReject(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Reject">
                               <XCircle className="w-4 h-4" />
                            </button>
                          </>
@@ -246,40 +292,6 @@ export default function PrincipalNewsletters() {
           )}
        </div>
 
-       {/* Reject Modal */}
-       {rejectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-xl flex flex-col">
-                <div className="flex items-center justify-between mb-6">
-                   <h2 className="text-xl font-display font-bold text-on-surface">Reject Newsletter</h2>
-                   <button onClick={() => setRejectModal(null)} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant">
-                      <X className="w-5 h-5" />
-                   </button>
-                </div>
-
-                <div className="mb-6">
-                   <label className="block text-sm font-label font-bold text-on-surface mb-2">Reason for Rejection</label>
-                   <textarea 
-                      autoFocus
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                      className="w-full bg-surface-container px-4 py-3 rounded-xl border border-outline-variant/30 focus:border-error outline-none transition-colors min-h-[120px] resize-y"
-                      placeholder="Please explain what needs to be changed..." 
-                   />
-                </div>
-
-                <div className="flex items-center gap-3">
-                   <button onClick={() => setRejectModal(null)} className="flex-1 bg-surface-container hover:bg-surface-variant text-on-surface font-bold py-3 px-6 rounded-full transition-colors text-sm">
-                      Cancel
-                   </button>
-                   <button onClick={handleReject} className="flex-1 bg-error hover:bg-error/90 text-white font-bold py-3 px-6 rounded-full transition-colors text-sm">
-                       Reject Newsletter
-                   </button>
-                </div>
-             </div>
-          </div>
-       )}
-
        {/* PDF Viewer Modal */}
        {showPdfModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -292,7 +304,7 @@ export default function PrincipalNewsletters() {
                            <button onClick={() => { handleApprove(showPdfModal.id); setShowPdfModal(null); }} className="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                               <CheckCircle2 className="w-4 h-4" /> Approve
                            </button>
-                           <button onClick={() => setRejectModal(showPdfModal)} className="bg-error/10 text-error hover:bg-error/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
+                           <button onClick={() => { handleReject(showPdfModal.id); setShowPdfModal(null); }} className="bg-error/10 text-error hover:bg-error/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                               <XCircle className="w-4 h-4" /> Reject
                            </button>
                          </>
@@ -315,8 +327,23 @@ export default function PrincipalNewsletters() {
                        </button>
                    </div>
                 </div>
-                <div className="flex-1 bg-surface-container-lowest p-2">
-                    <iframe src={showPdfModal.pdfData} className="w-full h-full rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                <div className="flex-1 bg-surface-container-lowest p-2 flex flex-col gap-2">
+                    <iframe src={showPdfModal.pdfData} className="flex-1 w-full rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                    <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/20">
+                       <label className="block text-xs font-label font-bold text-on-surface-variant mb-1">Admin Notes / Description</label>
+                       <textarea 
+                          value={newsletters.find(n => n.id === showPdfModal.id)?.adminComment || ""}
+                          onChange={(e) => {
+                              const val = e.target.value;
+                              setNewsletters(prev => prev.map(n => n.id === showPdfModal.id ? { ...n, adminComment: val } : n));
+                              setShowPdfModal(prev => prev ? { ...prev, adminComment: val } : null);
+                          }}
+                          onBlur={(e) => handleUpdateComment(showPdfModal.id, e.target.value)}
+                          placeholder="Add a comment, note, or rejection reason here..."
+                          className="w-full bg-surface-container px-3 py-2 rounded-lg border border-outline-variant/30 focus:border-primary outline-none transition-colors text-sm text-on-surface resize-y"
+                          rows={2}
+                       />
+                    </div>
                 </div>
              </div>
           </div>

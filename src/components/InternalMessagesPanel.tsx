@@ -246,6 +246,37 @@ export function InternalMessagesPanel() {
 
   const currentUserId = currentUser?.id || currentUser?.user_id;
 
+  const currentUserObj = allUsers.find(u => u.user_id === currentUserId);
+  const currentUserRoles = currentUserObj?.role_names || [];
+  const isStudent = currentUserRoles.includes('Student');
+  const isVolunteer = currentUserRoles.includes('Volunteer');
+  const isAdmin = currentUserRoles.includes('Admin');
+  const isBuilder = currentUserRoles.includes('Builder');
+
+  // Filter allowed users to chat with
+  let allowedUsers = allUsers.filter(u => u.user_id !== currentUserId);
+  
+  if (isStudent) {
+     allowedUsers = allowedUsers.filter(u => {
+       const roles = u.role_names || [];
+       return roles.includes('Teacher') || roles.includes('Admin');
+     });
+  }
+  
+  if (isVolunteer) {
+     allowedUsers = allowedUsers.filter(u => {
+       const roles = u.role_names || [];
+       return !roles.includes('Student') && !roles.includes('Volunteer');
+     });
+  }
+
+  if (!isAdmin && !isBuilder) {
+     allowedUsers = allowedUsers.filter(u => {
+       const roles = u.role_names || [];
+       return !roles.includes('Builder');
+     });
+  }
+
   // Derive conversations from messages
   const conversationsMap = new Map();
   
@@ -267,8 +298,8 @@ export function InternalMessagesPanel() {
     });
   }
 
-  // Also include all users so we can start new chats
-  const conversationsList = allUsers
+  // Also include all allowed users so we can start new chats
+  const conversationsList = allowedUsers
     .map(u => {
       const conv = conversationsMap.get(u.user_id);
       return {
@@ -553,7 +584,7 @@ export function InternalMessagesPanel() {
                     <option value="" disabled>Choose a user...</option>
                     {(() => {
                       const rolesList = new Set<string>();
-                      allUsers.forEach(u => {
+                      allowedUsers.forEach(u => {
                         (u.role_names || []).forEach((r: string) => rolesList.add(r));
                       });
                       const desiredOrder = ['Admin', 'Teacher', 'Student', 'Parent', 'Volunteer', 'Staff', 'Builder'];
@@ -568,7 +599,7 @@ export function InternalMessagesPanel() {
                       const finalRoles = [...sortedRoles, "Others"];
                       
                       return finalRoles.map(r => {
-                          const group = allUsers.filter(u => {
+                          const group = allowedUsers.filter(u => {
                             const userRoles = u.role_names || [];
                             if (r === "Others") return userRoles.length === 0;
                             return userRoles.includes(r);

@@ -15,8 +15,8 @@ const ROLE_CONFIGS: Record<string, any> = {
   teacher: { name: "Chen Jian", roleLabel: "Teacher", badge: "Faculty", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/teacher/dashboard" }, { icon: Calendar, label: "Calendar", href: "/teacher/calendar" }, { icon: School, label: "My Classes", href: "/teacher/classes" }, { icon: BookOpen, label: "My Lesson Plans", href: "/teacher/lessons" }, { icon: FileText, label: "Assignments", href: "/teacher/assignments" }, { icon: MessageSquare, label: "Messages", href: "/teacher/messages" }, { icon: Megaphone, label: "Announcements", href: "/teacher/announcements" }, { icon: Newspaper, label: "Newsletters", href: "/teacher/newsletters" }, { icon: User, label: "My Profile", href: "/profile" } ] },
   parent: { name: "Wei Lin", roleLabel: "Parent", badge: "Family", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/parent/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/parent/announcements" }, { icon: BookOpen, label: "Grades", href: "/parent/grades" }, { icon: Calendar, label: "Schedule", href: "/parent/schedule" }, { icon: MessageSquare, label: "Messages", href: "/parent/messages" }, { icon: User, label: "My Profile", href: "/profile" } ] },
   student: { name: "Mei Lin", roleLabel: "Student", badge: "Grade 4", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/student/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/student/announcements" }, { icon: Calendar, label: "Schedule and Calendar", href: "/student/schedule" }, { icon: BookOpen, label: "Assignments", href: "/student/assignments" }, { icon: MessageSquare, label: "Messages", href: "/student/messages" }, { icon: Users, label: "Clubs", href: "/student/clubs", disabled: true }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  staff: { name: "David", roleLabel: "Staff", badge: "Operations", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/staff/dashboard" }, { icon: Calendar, label: "Calendar", href: "/staff/calendar" }, { icon: Megaphone, label: "Announcements", href: "/staff/announcements" }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  volunteer: { name: "Sarah", roleLabel: "Volunteer", badge: "Support", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/volunteer/dashboard" }, { icon: Calendar, label: "Calendar", href: "/volunteer/calendar" }, { icon: Megaphone, label: "Announcements", href: "/volunteer/announcements" }, { icon: User, label: "My Profile", href: "/profile" } ] },
+  staff: { name: "David", roleLabel: "Staff", badge: "Operations", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/staff/dashboard" }, { icon: Calendar, label: "Calendar", href: "/staff/calendar" }, { icon: Megaphone, label: "Announcements", href: "/staff/announcements" }, { icon: FileText, label: "Attendance", href: "/staff/attendance", disabled: true }, { icon: MessageSquare, label: "Messages", href: "/staff/messages" }, { icon: User, label: "My Profile", href: "/profile" } ] },
+  volunteer: { name: "Sarah", roleLabel: "Volunteer", badge: "Support", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/volunteer/dashboard" }, { icon: Calendar, label: "Calendar", href: "/volunteer/calendar" }, { icon: Megaphone, label: "Announcements", href: "/volunteer/announcements" }, { icon: FileText, label: "Attendance", href: "/volunteer/attendance", disabled: true }, { icon: MessageSquare, label: "Messages", href: "/volunteer/messages" }, { icon: User, label: "My Profile", href: "/profile" } ] },
   builder: { name: "Vickie", roleLabel: "Builder", badge: "System", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/builder/dashboard" }, { icon: Calendar, label: "Calendar", href: "/builder/calendar" }, { icon: Database, label: "Database", href: "/builder/database" }, { icon: Megaphone, label: "Announcements", href: "/builder/announcements" }, { icon: MessageSquare, label: "Messages", href: "/builder/messages" }, { icon: Users, label: "User Management", href: "/builder/users" }, { icon: Clock, label: "Sessions", href: "/builder/sessions" }, { icon: ShieldAlert, label: "Password Reminders", href: "/builder/password-reminders" } ] }
 };
 
@@ -31,6 +31,8 @@ export default function MainLayout() {
   const [passcodeVal, setPasscodeVal] = useState("");
   const [passcodeError, setPasscodeError] = useState("");
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
+  const [unreadNewslettersCount, setUnreadNewslettersCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const proceedWithRoleSwitch = (key: string) => {
@@ -84,9 +86,11 @@ export default function MainLayout() {
     handler();
     window.addEventListener("storage", handler);
     window.addEventListener("ann_read_updated", handler);
+    window.addEventListener("news_read_updated", handler);
     return () => {
         window.removeEventListener("storage", handler);
         window.removeEventListener("ann_read_updated", handler);
+        window.removeEventListener("news_read_updated", handler);
     }
   }, [navigate]);
 
@@ -134,12 +138,53 @@ export default function MainLayout() {
     if (!currentUserId) return;
 
     const fetchUnread = async () => {
+       // Messages
        const { count } = await supabase
          .from("internal_messages")
          .select("*", { count: "exact", head: true })
          .eq("recipient_id", currentUserId)
+         .neq("sender_id", currentUserId)
          .is("read_at", null);
        setUnreadMessagesCount(count || 0);
+
+       // Announcements
+       const { data: annData } = await supabase
+         .from('announcements')
+         .select('announcement_id');
+
+       if (annData) {
+         const stored = localStorage.getItem(`ann_read_${currentUserId}`);
+         const readState = stored ? JSON.parse(stored) : {};
+         let annUnread = 0;
+         annData.forEach((ann: any) => {
+           if (!readState[ann.announcement_id]) {
+             annUnread++;
+           }
+         });
+         setUnreadAnnouncementsCount(annUnread);
+       }
+
+       // Newsletters
+       if (['admin', 'builder', 'teacher'].includes(userRole || '')) {
+           const { data: newsData } = await supabase
+             .from('newsletters')
+             .select('newsletter_id')
+             .eq('status', 'Published');
+
+           if (newsData) {
+             const stored = localStorage.getItem(`news_read_${currentUserId}`);
+             const readState = stored ? JSON.parse(stored) : {};
+             let newsUnread = 0;
+             newsData.forEach((news: any) => {
+               if (!readState[news.newsletter_id]) {
+                 newsUnread++;
+               }
+             });
+             setUnreadNewslettersCount(newsUnread);
+           }
+       } else {
+           setUnreadNewslettersCount(0);
+       }
     };
 
     fetchUnread();
@@ -160,17 +205,11 @@ export default function MainLayout() {
     <div className="flex h-screen w-full bg-surface overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-20 h-full">
-         <div className="p-6 flex items-center gap-3 border-b border-outline-variant/20">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-               <Building2 className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-               <h1 className="font-display text-xl font-bold text-on-surface">佛光中文學校</h1>
-               <span className="text-xs font-label text-on-surface-variant font-medium">App</span>
-            </div>
+         <div className="px-6 pt-6 pb-2 flex items-center justify-center border-b border-outline-variant/20">
+            <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-16 w-auto object-contain" />
          </div>
          
-         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+         <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 space-y-1">
             {currentRole.nav.map((item: any, idx: number) => {
                 if (item.disabled) {
                     return (
@@ -192,6 +231,18 @@ export default function MainLayout() {
                        <span className="flex w-2.5 h-2.5 relative shrink-0">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                           <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-primary"></span>
+                       </span>
+                    )}
+                    {item.label === 'Announcements' && unreadAnnouncementsCount > 0 && (
+                       <span className="flex w-2.5 h-2.5 relative shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-secondary"></span>
+                       </span>
+                    )}
+                    {item.label === 'Newsletters' && unreadNewslettersCount > 0 && (
+                       <span className="flex w-2.5 h-2.5 relative shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-tertiary"></span>
                        </span>
                     )}
                 </NavLink>
@@ -246,6 +297,7 @@ export default function MainLayout() {
                            }
                        } catch(e) {}
                    }
+                   try { await supabase.auth.signOut(); } catch(e) {}
                    localStorage.removeItem("user");
                    navigate("/");
                }} className="flex items-center w-full gap-3 px-4 py-3 rounded-full text-error hover:bg-error-container/20 transition-all font-label font-bold">
@@ -260,14 +312,11 @@ export default function MainLayout() {
       {isMobileMenuOpen && (
          <div className="md:hidden fixed inset-0 z-50 bg-scrim/50 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)}>
             <div className="absolute inset-y-0 left-0 w-3/4 max-w-sm bg-surface-container-lowest shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-               <div className="p-6 flex items-center justify-between border-b border-outline-variant/20">
-                  <div className="flex items-center gap-3">
-                     <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center"><Building2 className="w-5 h-5 text-primary"/></div>
-                     <span className="font-bold text-lg">佛光中文學校</span>
-                  </div>
+               <div className="px-6 pt-6 pb-2 flex items-center justify-between border-b border-outline-variant/20">
+                  <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-16 w-auto object-contain" />
                   <button onClick={() => setIsMobileMenuOpen(false)}><X className="w-6 h-6 text-on-surface-variant" /></button>
                </div>
-               <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+               <div className="flex-1 overflow-y-auto px-4 pt-2 pb-4 space-y-1">
                   {currentRole.nav.map((item: any, idx: number) => {
                       if (item.disabled) {
                           return (
@@ -291,6 +340,18 @@ export default function MainLayout() {
                                 <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-primary"></span>
                              </span>
                           )}
+                          {item.label === 'Announcements' && unreadAnnouncementsCount > 0 && (
+                             <span className="flex w-2.5 h-2.5 relative shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                                <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-secondary"></span>
+                             </span>
+                          )}
+                          {item.label === 'Newsletters' && unreadNewslettersCount > 0 && (
+                             <span className="flex w-2.5 h-2.5 relative shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+                                <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-tertiary"></span>
+                             </span>
+                          )}
                       </NavLink>
                       );
                   })}
@@ -312,6 +373,27 @@ export default function MainLayout() {
                             </button>
                          ))}
                    </div>
+                   
+                   <div className="mt-4 pt-4 border-t border-outline-variant/20">
+                     <button onClick={async () => {
+                         const u = localStorage.getItem("user");
+                         if (u) {
+                             try {
+                                 const parsed = JSON.parse(u);
+                                 if (parsed.sessionToken) {
+                                     // @ts-ignore
+                                     await supabase.from("user_sessions").update({ logout_time: new Date().toISOString() }).eq("session_token", parsed.sessionToken);
+                                 }
+                             } catch(e) {}
+                         }
+                         try { await supabase.auth.signOut(); } catch(e) {}
+                         localStorage.removeItem("user");
+                         navigate("/");
+                     }} className="flex items-center w-full gap-3 px-3 py-3 rounded-xl text-error hover:bg-error-container/20 transition-all font-label font-bold">
+                       <LogOut className="w-5 h-5" />
+                       Sign Out
+                     </button>
+                   </div>
                </div>
             </div>
          </div>
@@ -321,10 +403,7 @@ export default function MainLayout() {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-surface">
          {/* Mobile Header */}
          <header className="md:hidden flex items-center justify-between p-4 bg-surface-container-lowest border-b border-outline-variant/30">
-            <div className="flex items-center gap-3">
-               <div className="w-8 h-8 bg-primary/10 rounded flex items-center justify-center"><Building2 className="w-5 h-5 text-primary"/></div>
-               <span className="font-bold">佛光中文學校</span>
-            </div>
+            <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-14 w-auto object-contain" />
             <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 rounded-xl bg-surface-variant text-on-surface-variant group">
                <Menu className="w-6 h-6 group-hover:scale-110 transition-transform" />
             </button>

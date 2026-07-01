@@ -64,12 +64,12 @@ const AdminNewUser = () => {
   };
 
   const generateUsername = async () => {
-    if (!formData.first_name || !formData.last_name) {
-      setErrorMsg("Please enter First Name and Last Name to generate a username.");
+    if (!formData.first_name) {
+      setErrorMsg("Please enter First Name to generate a username.");
       return;
     }
 
-    const baseName = (formData.first_name.charAt(0) + formData.last_name).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const baseName = (formData.first_name.charAt(0) + (formData.last_name || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
     let uniqueName = baseName;
     let counter = 1;
     let isUnique = false;
@@ -228,8 +228,8 @@ const AdminNewUser = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Last Name *</label>
-              <input required type="text" name="last_name" value={formData.last_name || ''} onChange={handleChange} className="w-full px-3 py-2 border rounded-md" />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Last Name</label>
+              <input type="text" name="last_name" value={formData.last_name || ''} onChange={handleChange} className="w-full px-3 py-2 border rounded-md" />
             </div>
 
             <div>
@@ -286,8 +286,8 @@ const AdminNewUser = () => {
             <h3 className="font-medium text-slate-900 border-b pb-2">Contact Info</h3>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Primary Phone *</label>
-              <input required type="tel" name="phone1" value={formData.phone1 || ''} onChange={handleChange} className="w-full px-3 py-2 border rounded-md" placeholder="(212) 123-4567" />
+              <label className="block text-sm font-medium text-slate-700 mb-1">Primary Phone</label>
+              <input type="tel" name="phone1" value={formData.phone1 || ''} onChange={handleChange} className="w-full px-3 py-2 border rounded-md" placeholder="(212) 123-4567" />
             </div>
 
             <div>

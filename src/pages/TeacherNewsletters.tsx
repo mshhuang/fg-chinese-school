@@ -55,6 +55,22 @@ export default function TeacherNewsletters() {
       }
       
       if (data) {
+        if (authorId) {
+             const readStateStr = localStorage.getItem(`news_read_${authorId}`);
+             const readState = readStateStr ? JSON.parse(readStateStr) : {};
+             let updated = false;
+             data.forEach(item => {
+                 if (item.status === 'Published' && !readState[item.newsletter_id]) {
+                     readState[item.newsletter_id] = true;
+                     updated = true;
+                 }
+             });
+             if (updated) {
+                 localStorage.setItem(`news_read_${authorId}`, JSON.stringify(readState));
+                 window.dispatchEvent(new Event('news_read_updated'));
+             }
+        }
+
         const parsed = data.map((item: any) => {
            try {
              return { id: item.newsletter_id, title: item.title, author: item.author_id, ...JSON.parse(item.content || "{}") };
@@ -149,7 +165,7 @@ export default function TeacherNewsletters() {
         author: authorName, 
         pdfData: finalPdfData,
         pdfName,
-        rejectionReason: null
+        adminComment: null
      };
 
      try {
@@ -196,7 +212,7 @@ export default function TeacherNewsletters() {
      const newsletter = newsletters.find(n => n.id === id);
      if (!newsletter) return;
      
-     const updatedProps = { ...newsletter, status: "Pending Approval", rejectionReason: null };
+     const updatedProps = { ...newsletter, status: "Pending Approval", adminComment: null };
      delete updatedProps.id;
      delete updatedProps.title;
      
@@ -308,10 +324,21 @@ export default function TeacherNewsletters() {
                      </div>
                  )}
 
-                 {news.status === "Rejected" && news.rejectionReason && (
-                     <div className="mt-2 mb-4 p-3 bg-error-container/20 border border-error/30 rounded-xl">
-                        <p className="text-xs font-bold text-error uppercase mb-1">Rejection Reason:</p>
-                        <p className="text-sm text-on-surface-variant">{news.rejectionReason}</p>
+                 {news.adminComment && (
+                     <div className={cn(
+                        "mt-2 mb-4 p-3 border rounded-xl",
+                        news.status === "Rejected" ? "bg-error-container/20 border-error/30" : "bg-surface-container-low border-outline-variant/30"
+                     )}>
+                        <p className={cn(
+                           "text-xs font-bold uppercase mb-1",
+                           news.status === "Rejected" ? "text-error" : "text-on-surface-variant"
+                        )}>
+                           {news.status === "Rejected" ? "Rejection Reason / Notes:" : "Admin Notes / Description:"}
+                        </p>
+                        <p className={cn(
+                           "text-sm",
+                           news.status === "Rejected" ? "text-on-surface-variant" : "text-on-surface"
+                        )}>{news.adminComment}</p>
                      </div>
                  )}
 

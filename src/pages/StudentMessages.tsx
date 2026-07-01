@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Edit, MoreVertical, Paperclip, Send, User, ChevronLeft, MessageSquare } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ComposeMessageModal } from "../components/ComposeMessageModal";
@@ -37,6 +37,19 @@ const MESSAGES = [
 export default function StudentMessages() {
   const [chatType, setChatType] = useState<"internal" | "external">("internal");
   const [showCompose, setShowCompose] = useState(false);
+  const [userRole, setUserRole] = useState<string>("");
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        setUserRole(u.role || "");
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, []);
 
   return (
     <div className="w-full max-w-[1600px] mx-auto flex flex-col lg:h-screen lg:overflow-hidden bg-background">
@@ -44,31 +57,33 @@ export default function StudentMessages() {
          <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Messages</h1>
          
          {/* Internal / External Toggle */}
-         <div className="flex bg-surface-container-low p-1 rounded-full border border-outline-variant/20 w-full md:w-64">
-           <button 
-             onClick={() => setChatType("internal")}
-             className={cn(
-               "flex-1 py-2 text-sm font-label rounded-full transition-all",
-               chatType === "internal" 
-                ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
-                : "text-on-surface-variant hover:text-on-surface"
-             )}
-           >
-             Internal Chat
-           </button>
-           <button 
-             disabled
-             className={cn(
-               "flex-1 py-2 text-sm font-label rounded-full transition-all opacity-50 cursor-not-allowed",
-               chatType === "external" 
-                ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
-                : "text-on-surface-variant hover:text-on-surface"
-             )}
-             title="Gmail feature not available for this role"
-           >
-             External (Gmail)
-           </button>
-         </div>
+         {userRole === 'builder' && (
+           <div className="flex bg-surface-container-low p-1 rounded-full border border-outline-variant/20 w-full md:w-64">
+             <button 
+               onClick={() => setChatType("internal")}
+               className={cn(
+                 "flex-1 py-2 text-sm font-label rounded-full transition-all",
+                 chatType === "internal" 
+                  ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
+                  : "text-on-surface-variant hover:text-on-surface"
+               )}
+             >
+               Internal Chat
+             </button>
+             <button 
+               disabled
+               className={cn(
+                 "flex-1 py-2 text-sm font-label rounded-full transition-all opacity-50 cursor-not-allowed",
+                 chatType === "external" 
+                  ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
+                  : "text-on-surface-variant hover:text-on-surface"
+               )}
+               title="Gmail feature not available for this role"
+             >
+               External (Gmail)
+             </button>
+           </div>
+         )}
        </header>
 
        <div className="flex-1 w-full px-6 md:px-8 pb-32 md:pb-8 flex flex-col lg:flex-row gap-6 min-h-0">

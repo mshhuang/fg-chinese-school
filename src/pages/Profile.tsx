@@ -16,6 +16,17 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{type: "success" | "error", text: string} | null>(null);
 
+  const isBuilder = React.useMemo(() => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        return u.role === 'builder';
+      }
+    } catch(e) {}
+    return false;
+  }, []);
+
   useEffect(() => {
     async function fetchProfile() {
       const userStr = localStorage.getItem('user');
@@ -287,7 +298,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="bg-surface-container-lowest p-8 rounded-3xl border border-outline-variant/40 shadow-sm relative overflow-hidden transition-colors">
+      <div className={cn("bg-surface-container-lowest p-8 rounded-3xl border border-outline-variant/40 shadow-sm relative overflow-hidden transition-colors", !isBuilder && "opacity-50 grayscale pointer-events-none")}>
         <h2 className="font-title text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
            <KeyRound className="w-5 h-5 text-primary" /> Account Security
         </h2>

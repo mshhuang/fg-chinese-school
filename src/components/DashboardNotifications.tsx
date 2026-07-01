@@ -30,12 +30,12 @@ export function DashboardNotifications() {
     const fetchNotifications = async () => {
       // 1. Messages
       const { count: msgCount } = await supabase
-        .from('messages')
+        .from('internal_messages')
         .select('*', { count: 'exact', head: true })
         .eq('recipient_id', userId)
         .is('read_at', null);
 
-      if (msgCount) setUnreadMessages(msgCount);
+      setUnreadMessages(msgCount || 0);
 
       // 2. Announcements
       const { data: annData } = await supabase
@@ -54,27 +54,47 @@ export function DashboardNotifications() {
         setUnreadAnnouncements(annUnread);
       }
 
-      // 3. Newsletters
-      const { data: newsData } = await supabase
-        .from('newsletters')
-        .select('*')
-        .eq('status', 'Published');
+      // 3. Newsletters (Only for roles that process them)
+      if (['admin', 'builder', 'teacher'].includes(userRole)) {
+          const { data: newsData } = await supabase
+            .from('newsletters')
+            .select('*')
+            .eq('status', 'Published');
 
-      if (newsData) {
-        const stored = localStorage.getItem(`news_read_${userId}`);
-        const readState = stored ? JSON.parse(stored) : {};
-        let newsUnread = 0;
-        newsData.forEach(news => {
-          if (!readState[news.newsletter_id]) {
-            newsUnread++;
+          if (newsData) {
+            const stored = localStorage.getItem(`news_read_${userId}`);
+            const readState = stored ? JSON.parse(stored) : {};
+            let newsUnread = 0;
+            newsData.forEach(news => {
+              if (!readState[news.newsletter_id]) {
+                newsUnread++;
+              }
+            });
+            setUnreadNewsletters(newsUnread);
           }
-        });
-        setUnreadNewsletters(newsUnread);
+      } else {
+          setUnreadNewsletters(0);
       }
     };
 
     fetchNotifications();
-  }, [userId]);
+
+    const channel = supabase
+      .channel('public:internal_messages_dash_' + userId)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'internal_messages', filter: `recipient_id=eq.${userId}` }, () => {
+         fetchNotifications();
+      })
+      .subscribe();
+
+    window.addEventListener("ann_read_updated", fetchNotifications);
+    window.addEventListener("news_read_updated", fetchNotifications);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("ann_read_updated", fetchNotifications);
+      window.removeEventListener("news_read_updated", fetchNotifications);
+    };
+  }, [userId, userRole]);
 
   const handleDismiss = (type: string) => {
     setDismissed(prev => [...prev, type]);
@@ -122,6 +142,8 @@ export function DashboardNotifications() {
     if (userRole === 'teacher') return '/teacher';
     if (userRole === 'student') return '/student';
     if (userRole === 'parent') return '/parent';
+    if (userRole === 'staff') return '/staff';
+    if (userRole === 'volunteer') return '/volunteer';
     return '';
   };
 

@@ -24,6 +24,27 @@ export default function TeacherAssignmentBoard() {
     type: 'Writing'
   });
   
+  const [attachments, setAttachments] = useState<{name: string, url: string}[]>([]);
+  
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+       alert("File is too large. Max 2MB allowed.");
+       return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+       const dataUrl = event.target?.result as string;
+       setAttachments(prev => [...prev, { name: file.name, url: dataUrl }]);
+    };
+    reader.readAsDataURL(file);
+  };
+  
+  const removeAttachment = (index: number) => {
+    setAttachments(attachments.filter((_, i) => i !== index));
+  };
+  
   // Array of student user_ids to assign to. Empty means no one. We can add a "Select All" button.
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   
@@ -119,13 +140,18 @@ export default function TeacherAssignmentBoard() {
     
     setLoading(true);
     try {
+      let finalDescription = formData.description;
+      if (attachments.length > 0) {
+        finalDescription += '\n\n---ATTACHMENTS---\n' + JSON.stringify(attachments);
+      }
+      
       let assignId = editingId;
       if (editingId) {
         const { error: updateError } = await supabase
           .from('assignments')
           .update({
             title: formData.title,
-            description: formData.description,
+            description: finalDescription,
             due_date: formData.due_date || null,
             type: formData.type
           })
@@ -141,7 +167,7 @@ export default function TeacherAssignmentBoard() {
             class_id: selectedClassId,
             teacher_id: user.id,
             title: formData.title,
-            description: formData.description,
+            description: finalDescription,
             due_date: formData.due_date || null,
             type: formData.type
           })
@@ -164,6 +190,7 @@ export default function TeacherAssignmentBoard() {
         
         setShowAdd(false);
         setFormData({ title: '', description: '', due_date: '', type: 'Writing' });
+        setAttachments([]);
         setSelectedStudents([]);
         fetchAssignments(selectedClassId);
       }
@@ -218,7 +245,7 @@ export default function TeacherAssignmentBoard() {
         
         {selectedClassId && (
           <button 
-            onClick={() => { setShowAdd(!showAdd); setEditingId(null); setFormData({title: '', description: '', due_date: '', type: 'Writing'}); setSelectedStudents([]); }} 
+            onClick={() => { setShowAdd(!showAdd); setEditingId(null); setFormData({title: '', description: '', due_date: '', type: 'Writing'}); setAttachments([]); setSelectedStudents([]); }} 
             className="ml-auto bg-primary text-on-primary px-6 py-2.5 rounded-full font-label font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors"
           >
             {showAdd ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
@@ -249,6 +276,28 @@ export default function TeacherAssignmentBoard() {
             <div className="flex flex-col gap-2 md:col-span-2">
               <label className="font-label text-sm font-bold text-on-surface-variant">Description (Optional)</label>
               <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface min-h-[100px]" placeholder="Detailed instructions..." />
+            </div>
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label className="font-label text-sm font-bold text-on-surface-variant">Attachments</label>
+              <div className="flex flex-col gap-3 p-4 bg-surface rounded-xl border border-outline-variant/30">
+                 {attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                       {attachments.map((att, i) => (
+                          <div key={i} className="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/30 text-sm font-body">
+                             <FileText className="w-4 h-4 text-primary" />
+                             <span className="truncate max-w-[150px]" title={att.name}>{att.name}</span>
+                             <button type="button" onClick={() => removeAttachment(i)} className="text-on-surface-variant hover:text-error ml-1"><X className="w-4 h-4" /></button>
+                          </div>
+                       ))}
+                    </div>
+                 )}
+                 <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-outline-variant/50 hover:border-primary/50 bg-surface-container-lowest hover:bg-surface-container-low transition-colors py-6 rounded-xl cursor-pointer">
+                    <Plus className="w-5 h-5 text-primary" />
+                    <span className="font-label font-bold text-primary">Add File Attachment</span>
+                    <input type="file" className="hidden" onChange={handleFileUpload} />
+                 </label>
+                 <p className="text-xs text-on-surface-variant font-body text-center">Max size 2MB</p>
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <label className="font-label text-sm font-bold text-on-surface-variant">Due Date</label>
@@ -289,7 +338,7 @@ export default function TeacherAssignmentBoard() {
              <button type="submit" disabled={loading} className="bg-primary text-on-primary px-8 py-3 rounded-full font-label font-bold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
                {loading ? 'Saving...' : 'Save Assignment'}
              </button>
-             <button type="button" onClick={() => { setShowAdd(false); setEditingId(null); setFormData({title: '', description: '', due_date: '', type: 'Writing'}); setSelectedStudents([]); }} className="border border-outline-variant px-8 py-3 rounded-full font-label font-bold text-on-surface-variant hover:bg-surface-variant transition-colors">
+             <button type="button" onClick={() => { setShowAdd(false); setEditingId(null); setFormData({title: '', description: '', due_date: '', type: 'Writing'}); setAttachments([]); setSelectedStudents([]); }} className="border border-outline-variant px-8 py-3 rounded-full font-label font-bold text-on-surface-variant hover:bg-surface-variant transition-colors">
                Cancel
              </button>
           </div>
@@ -348,17 +397,48 @@ export default function TeacherAssignmentBoard() {
                         })()}
                         <h3 className="font-title font-bold text-on-surface">{a.title}</h3>
                       </div>
-                      <p className="font-body text-sm text-on-surface-variant line-clamp-2">{a.description}</p>
+                      {(() => {
+                          let displayDesc = a.description || '';
+                          let atts = [];
+                          if (displayDesc.includes('\n\n---ATTACHMENTS---\n')) {
+                             const parts = displayDesc.split('\n\n---ATTACHMENTS---\n');
+                             displayDesc = parts[0];
+                             try { atts = JSON.parse(parts[1]); } catch(e){}
+                          }
+                          return (
+                            <>
+                              <p className="font-body text-sm text-on-surface-variant line-clamp-2">{displayDesc}</p>
+                              {atts.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                   {atts.map((att: any, i: number) => (
+                                      <a key={i} href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-1.5 bg-surface px-2 py-1 rounded border border-outline-variant/30 text-xs font-label hover:bg-surface-variant transition-colors text-primary">
+                                        <FileText className="w-3.5 h-3.5" />
+                                        <span className="truncate max-w-[120px]" title={att.name}>{att.name}</span>
+                                      </a>
+                                   ))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => {
+                        let editDesc = a.description || '';
+                        let editAtts = [];
+                        if (editDesc.includes('\n\n---ATTACHMENTS---\n')) {
+                           const parts = editDesc.split('\n\n---ATTACHMENTS---\n');
+                           editDesc = parts[0];
+                           try { editAtts = JSON.parse(parts[1]); } catch(e){}
+                        }
                         setEditingId(a.assignment_id);
                         setFormData({
                           title: a.title,
-                          description: a.description || '',
+                          description: editDesc,
                           due_date: a.due_date ? new Date(a.due_date).toISOString().slice(0,16) : '',
                           type: a.type
                         });
+                        setAttachments(editAtts);
                         setSelectedStudents((a.assignment_students || []).map((as: any) => as.student_id));
                         setShowAdd(true);
                         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -392,20 +472,43 @@ export default function TeacherAssignmentBoard() {
                            const student = students.find(s => s.user_id === as.student_id);
                            const isSubmitted = as.status === 'submitted' || as.status === 'completed';
                            return (
-                              <div key={as.assignment_student_id} className="flex items-center justify-between bg-surface-container py-2 px-3 rounded-lg border border-outline-variant/20">
-                                 <span className="font-body text-sm text-on-surface">{student ? `${student.first_name} ${student.last_name}` : 'Unknown Student'}</span>
-                                 <div className="flex items-center gap-2">
-                                    <span className={`font-label font-bold text-xs px-2 py-0.5 rounded-full ${isSubmitted ? 'bg-primary-container text-on-primary-container' : 'bg-surface-variant text-on-surface-variant'}`}>
-                                       {as.status === 'completed' ? 'Completed' : as.status === 'submitted' ? 'Submitted' : 'Pending'}
-                                    </span>
-                                    <button 
-                                      onClick={() => handleUpdateStudentStatus(as.assignment_student_id, as.status)}
-                                      className="p-1.5 hover:bg-surface-variant text-on-surface-variant rounded-full transition-colors"
-                                      title={as.status === 'pending' ? 'Mark as Completed' : 'Mark as Pending'}
-                                    >
-                                      {as.status === 'pending' ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <XCircle className="w-4 h-4 text-error" />}
-                                    </button>
+                              <div key={as.assignment_student_id} className="flex flex-col bg-surface-container py-2 px-3 rounded-lg border border-outline-variant/20 gap-2">
+                                 <div className="flex items-center justify-between">
+                                    <span className="font-body text-sm text-on-surface">{student ? `${student.first_name} ${student.last_name}` : 'Unknown Student'}</span>
+                                    <div className="flex items-center gap-2">
+                                       <span className={`font-label font-bold text-xs px-2 py-0.5 rounded-full ${isSubmitted ? 'bg-primary-container text-on-primary-container' : 'bg-surface-variant text-on-surface-variant'}`}>
+                                          {as.status === 'completed' ? 'Completed' : as.status === 'submitted' ? 'Submitted' : 'Pending'}
+                                       </span>
+                                       <button 
+                                         onClick={() => handleUpdateStudentStatus(as.assignment_student_id, as.status)}
+                                         className="p-1.5 hover:bg-surface-variant text-on-surface-variant rounded-full transition-colors"
+                                         title={as.status === 'pending' ? 'Mark as Completed' : 'Mark as Pending'}
+                                       >
+                                         {as.status === 'pending' ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <XCircle className="w-4 h-4 text-error" />}
+                                       </button>
+                                    </div>
                                  </div>
+                                 {(() => {
+                                     let subAtts = [];
+                                     if (as.feedback && as.feedback.includes('\n\n---SUBMISSION_ATTACHMENTS---\n')) {
+                                         try {
+                                             subAtts = JSON.parse(as.feedback.split('\n\n---SUBMISSION_ATTACHMENTS---\n')[1]);
+                                         } catch (e) {}
+                                     }
+                                     if (subAtts.length > 0) {
+                                         return (
+                                             <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/20">
+                                                 {subAtts.map((att: any, i: number) => (
+                                                     <a key={i} href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-surface px-2 py-1 rounded border border-outline-variant/30 text-[10px] font-label hover:bg-surface-variant transition-colors text-primary">
+                                                         <FileText className="w-3 h-3" />
+                                                         <span className="truncate max-w-[120px]" title={att.name}>{att.name}</span>
+                                                     </a>
+                                                 ))}
+                                             </div>
+                                         );
+                                     }
+                                     return null;
+                                 })()}
                               </div>
                            );
                         })}

@@ -4,6 +4,22 @@ import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 import { BuilderIconCustom, AdminIconCustom, StaffIconCustom, VolunteerIconCustom, TeacherIconCustom, StudentIconCustom } from "../components/icons";
 import { logSystemActivity } from "../lib/logger";
+import ReactQuill, { Quill } from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+import MagicUrl from 'quill-magic-url';
+
+Quill.register('modules/magicUrl', MagicUrl);
+
+const modules = {
+  toolbar: [
+    [{ 'header': [1, 2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+    [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
+    ['link', 'image', 'video'],
+    ['clean']
+  ],
+  magicUrl: true
+};
 
 export default function Announcements() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -41,6 +57,9 @@ export default function Announcements() {
   
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editReplyContentStr, setEditReplyContentStr] = useState("");
+  
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | number | null>(null);
+  const [confirmCommentDeleteId, setConfirmCommentDeleteId] = useState<string | number | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -261,10 +280,11 @@ export default function Announcements() {
     setIsReplying(prev => ({...prev, [announcementId]: false}));
   };
 
-  const handleDeleteAnnouncement = async (annId: string) => {
-      if (!confirm("Are you sure you want to delete this announcement? This will also delete all class comments to it.")) return;
+  const handleDeleteAnnouncement = async (annId: string, confirmed: boolean = false) => {
+      if (!confirmed) return;
       await supabase.from('announcement_replies').delete().eq('announcement_id', annId);
       await supabase.from('announcements').delete().eq('announcement_id', annId);
+      setConfirmDeleteId(null);
       
       logSystemActivity(
          "Announcements",
@@ -293,9 +313,10 @@ export default function Announcements() {
       fetchData();
   };
 
-  const handleDeleteReply = async (replyId: string) => {
-      if (!confirm("Are you sure you want to delete this class comment?")) return;
+  const handleDeleteReply = async (replyId: string, confirmed: boolean = false) => {
+      if (!confirmed) return;
       await supabase.from('announcement_replies').delete().eq('reply_id', replyId);
+      setConfirmCommentDeleteId(null);
       fetchData();
   };
 
@@ -440,16 +461,25 @@ export default function Announcements() {
                                                 setEditAnnTitleStr(ann.title); 
                                                 setEditAnnContentStr(displayContent);
                                             }}
-                                            className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-full transition-colors"
+                                            className="px-3 py-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-full transition-colors flex items-center gap-1.5"
                                          >
                                              <Edit2 className="w-4 h-4" />
+                                             <span className="text-xs font-bold">Edit</span>
                                          </button>
-                                         <button 
-                                            onClick={() => handleDeleteAnnouncement(ann.announcement_id)}
-                                            className="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors"
-                                         >
-                                             <Trash2 className="w-4 h-4" />
-                                         </button>
+                                         {confirmDeleteId === ann.announcement_id ? (
+                                             <div className="flex items-center gap-1">
+                                                 <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-bold text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
+                                                 <button onClick={() => handleDeleteAnnouncement(ann.announcement_id, true)} className="text-xs font-bold text-error bg-error/10 hover:bg-error/20 px-3 py-1 rounded-full">Delete</button>
+                                             </div>
+                                         ) : (
+                                             <button 
+                                                onClick={() => setConfirmDeleteId(ann.announcement_id)}
+                                                className="px-3 py-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors flex items-center gap-1.5"
+                                             >
+                                                 <Trash2 className="w-4 h-4" />
+                                                 <span className="text-xs font-bold">Delete</span>
+                                             </button>
+                                         )}
                                      </div>
                                  )}
                              </div>
@@ -460,10 +490,15 @@ export default function Announcements() {
                                          className="w-full px-4 py-2 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary font-bold text-lg outline-none"
                                          value={editAnnTitleStr} onChange={(e) => setEditAnnTitleStr(e.target.value)}
                                      />
-                                     <textarea 
-                                         className="w-full px-4 py-2 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary font-body text-base min-h-[100px] outline-none"
-                                         value={editAnnContentStr} onChange={(e) => setEditAnnContentStr(e.target.value)}
-                                     />
+                                     <div className="bg-surface rounded-xl border border-outline-variant/50 overflow-hidden">
+                                       <ReactQuill 
+                                         theme="snow"
+                                         value={editAnnContentStr}
+                                         onChange={setEditAnnContentStr}
+                                         modules={modules}
+                                         className="bg-surface text-base h-64 pb-10"
+                                       />
+                                     </div>
                                      <div className="flex gap-2 justify-end mt-2">
                                          <button onClick={() => setEditingAnnId(null)} className="px-4 py-2 rounded-full font-label text-sm hover:bg-surface-variant">Cancel</button>
                                          <button onClick={() => handleEditAnnouncementSub(ann.announcement_id, authorRole)} className="bg-primary text-on-primary px-5 py-2 rounded-full font-label font-bold text-sm">Save</button>
@@ -472,7 +507,9 @@ export default function Announcements() {
                              ) : (
                                  <>
                                      {ann.title && <h4 className="font-display text-2xl font-bold text-on-surface mb-3">{ann.title}</h4>}
-                                     <p className="font-body text-lg text-on-surface-variant mb-2 whitespace-pre-wrap leading-relaxed">{displayContent}</p>
+                                     <div className="ql-snow">
+                                         <div className="ql-editor font-body text-lg text-on-surface-variant mb-2 leading-relaxed prose prose-sm sm:prose-base max-w-none [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-2xl [&_iframe]:my-4 [&_img]:rounded-2xl [&_img]:my-4 [&_img]:max-h-[600px] [&_img]:w-auto px-0 py-0" dangerouslySetInnerHTML={{ __html: displayContent }} />
+                                     </div>
                                  </>
                              )}
                          </div>
@@ -502,71 +539,80 @@ export default function Announcements() {
                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                    <button 
                                                                        onClick={() => {
-                                                                           setEditingReplyId(r.reply_id); 
+                                                                           setEditingReplyId(r.reply_id);
                                                                            setEditReplyContentStr(r.content);
                                                                        }}
-                                                                       className="p-1.5 text-on-surface-variant hover:text-primary rounded-full transition-colors"
+                                                                       className="px-2 py-1 text-on-surface-variant hover:text-primary rounded-full transition-colors flex items-center gap-1"
                                                                    >
                                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                                       <span className="text-[10px] font-bold">Edit</span>
                                                                    </button>
-                                                                   <button 
-                                                                       onClick={() => handleDeleteReply(r.reply_id)}
-                                                                       className="p-1.5 text-on-surface-variant hover:text-error rounded-full transition-colors"
-                                                                   >
-                                                                       <Trash2 className="w-3.5 h-3.5" />
-                                                                   </button>
+                                                                   {confirmCommentDeleteId === r.reply_id ? (
+                                                                       <div className="flex items-center gap-1">
+                                                                           <button onClick={() => setConfirmCommentDeleteId(null)} className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface px-1">Cancel</button>
+                                                                           <button onClick={() => handleDeleteReply(r.reply_id, true)} className="text-[10px] font-bold text-error bg-error/10 hover:bg-error/20 px-2 py-1 rounded-full">Delete</button>
+                                                                       </div>
+                                                                   ) : (
+                                                                       <button 
+                                                                           onClick={() => setConfirmCommentDeleteId(r.reply_id)}
+                                                                           className="px-2 py-1 text-on-surface-variant hover:text-error rounded-full transition-colors flex items-center gap-1"
+                                                                       >
+                                                                           <Trash2 className="w-3.5 h-3.5" />
+                                                                           <span className="text-[10px] font-bold">Delete</span>
+                                                                       </button>
+                                                                   )}
                                                                </div>
                                                            )}
                                                        </div>
                                                        {editingReplyId === r.reply_id ? (
                                                             <div className="flex flex-col gap-2 mt-1">
-                                                                <textarea 
-                                                                    className="w-full px-3 py-2 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary font-body text-sm min-h-[60px] outline-none"
+                                                                                                                                <textarea 
+                                                                    className="w-full px-3 py-2 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary font-body text-sm min-h-[80px] outline-none"
                                                                     value={editReplyContentStr} onChange={(e) => setEditReplyContentStr(e.target.value)}
-                                                                />
-                                                                <div className="flex gap-2 justify-end">
-                                                                    <button onClick={() => setEditingReplyId(null)} className="px-3 py-1.5 rounded-full font-label text-xs hover:bg-surface-variant">Cancel</button>
-                                                                    <button onClick={() => handleEditReplySub(r.reply_id)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label font-bold text-xs">Save</button>
-                                                                </div>
-                                                            </div>
-                                                       ) : (
-                                                           <p className="text-on-surface-variant leading-snug">{r.content}</p>
-                                                       )}
-                                                   </div>
-                                               </div>
-                                           ))}
-                                       </div>
-                                   </div>
-                               )}
+                                                                 />
+                                                                 <div className="flex gap-2 justify-end">
+                                                                     <button onClick={() => setEditingReplyId(null)} className="px-3 py-1.5 rounded-full font-label text-[10px] uppercase tracking-wider font-bold hover:bg-surface-variant">Cancel</button>
+                                                                     <button onClick={() => handleEditReplySub(r.reply_id)} className="bg-primary text-on-primary px-4 py-1.5 rounded-full font-label text-[10px] uppercase tracking-wider font-bold">Save</button>
+                                                                 </div>
+                                                             </div>
+                                                        ) : (
+                                                            <p className="text-on-surface-variant leading-snug">{r.content}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
-                               {user?.id && (
-                                   <div className="flex gap-3 items-center mt-1">
-                                        <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                                           {getRoleIcon(user?.role || "student", "w-5 h-5")}
-                                       </div>
-                                       <div className="flex-1 relative">
-                                           <input 
-                                               type="text" 
-                                               className="w-full pl-5 pr-12 py-3 bg-surface rounded-full border border-outline-variant/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-sm transition-all shadow-sm"
-                                               placeholder="Add class comment..."
-                                               value={replyBody[ann.announcement_id] || ""}
-                                               onChange={(e) => setReplyBody(p => ({...p, [ann.announcement_id]: e.target.value}))}
-                                               onKeyDown={(e) => {
-                                                   if (e.key === 'Enter') handleReplySubmit(ann.announcement_id);
-                                               }}
-                                           />
-                                           <button 
-                                               onClick={() => handleReplySubmit(ann.announcement_id)}
-                                               disabled={isReplying[ann.announcement_id] || !replyBody[ann.announcement_id]?.trim()}
-                                               className="absolute right-1.5 top-1.5 p-2 rounded-full text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
-                                           >
-                                               {isReplying[ann.announcement_id] ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4" />}
-                                           </button>
-                                       </div>
-                                   </div>
-                               )}
-                         </div>
-                     </div>
+                                {user?.id && user?.role !== 'volunteer' && (
+                                    <div className="flex gap-3 items-center mt-1">
+                                         <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                                            {getRoleIcon(user?.role || "student", "w-5 h-5")}
+                                        </div>
+                                        <div className="flex-1 relative">
+                                            <input 
+                                                type="text" 
+                                                className="w-full pl-5 pr-12 py-3 bg-surface rounded-full border border-outline-variant/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-sm transition-all shadow-sm"
+                                                placeholder="Add class comment..."
+                                                value={replyBody[ann.announcement_id] || ""}
+                                                onChange={(e) => setReplyBody(p => ({...p, [ann.announcement_id]: e.target.value}))}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleReplySubmit(ann.announcement_id);
+                                                }}
+                                            />
+                                            <button 
+                                                onClick={() => handleReplySubmit(ann.announcement_id)}
+                                                disabled={isReplying[ann.announcement_id] || !replyBody[ann.announcement_id]?.trim()}
+                                                className="absolute right-1.5 top-1.5 p-2 rounded-full text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                                            >
+                                                {isReplying[ann.announcement_id] ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                          </div>
+                      </div>
                   )
               })}
 
@@ -745,13 +791,15 @@ export default function Announcements() {
                        </div>
                        <div className="flex-1 flex flex-col">
                            <label className="block font-label text-sm uppercase tracking-wider font-bold text-on-surface-variant mb-2">Message</label>
-                           <textarea 
-                               required
-                               value={composeContent} 
-                               onChange={(e) => setComposeContent(e.target.value)}
-                               className="w-full h-40 px-4 py-3 bg-surface border border-outline-variant/50 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base resize-none"
-                               placeholder="What do you want to announce?"
-                           />
+                           <div className="bg-surface rounded-xl border border-outline-variant/50 overflow-hidden">
+                               <ReactQuill 
+                                 theme="snow"
+                                 value={composeContent} 
+                                 onChange={setComposeContent}
+                                 modules={modules}
+                                 className="h-[300px] pb-10"
+                               />
+                           </div>
                        </div>
                        <div className="flex justify-end pt-4 border-t border-outline-variant/20 shrink-0">
                            <button 

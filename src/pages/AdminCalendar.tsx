@@ -11,6 +11,7 @@ export default function AdminCalendar() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -93,10 +94,13 @@ export default function AdminCalendar() {
     setShowAddModal(true);
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteSchoolEvent(id);
-    loadEvents();
-    setRefreshKey(prev => prev + 1);
+  const handleDelete = async (id: string, confirmed: boolean = false) => {
+    if (confirmed) {
+      await deleteSchoolEvent(id);
+      setConfirmDeleteId(null);
+      loadEvents();
+      setRefreshKey(prev => prev + 1);
+    }
   };
 
   const typeColors: Record<string, string> = {
@@ -159,12 +163,19 @@ export default function AdminCalendar() {
                   >
                     <Edit className="w-5 h-5" />
                   </button>
-                  <button 
-                    onClick={() => handleDelete(event.id)}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                  {confirmDeleteId === event.id ? (
+                    <div className="flex items-center gap-1">
+                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-bold text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
+                        <button onClick={() => handleDelete(event.id, true)} className="text-xs font-bold text-error bg-error/10 hover:bg-error/20 px-3 py-1 rounded-full">Delete</button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => setConfirmDeleteId(event.id)}
+                      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-error/10 text-on-surface-variant hover:text-error transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
               </div>
               

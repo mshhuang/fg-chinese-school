@@ -22,7 +22,7 @@ export default function PrincipalMessages() {
     }
   }, []);
 
-  const canUseGmail = userRole === "admin" || userRole === "builder" || userRole === "teacher";
+  const canUseGmail = userRole === "builder";
 
   return (
     <div className="w-full max-w-[1600px] mx-auto flex flex-col lg:h-screen lg:overflow-hidden bg-background">
@@ -30,33 +30,35 @@ export default function PrincipalMessages() {
          <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Messages</h1>
          
          {/* Internal / External Toggle */}
-         <div className="flex bg-surface-container-low p-1 rounded-full border border-outline-variant/20 w-full md:w-64">
-           <button 
-             onClick={() => setChatType("internal")}
-             className={cn(
-               "flex-1 py-2 text-sm font-label rounded-full transition-all",
-               chatType === "internal" 
-                ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
-                : "text-on-surface-variant hover:text-on-surface"
-             )}
-           >
-             Internal Chat
-           </button>
-           <button 
-             onClick={() => canUseGmail && setChatType("external")}
-             disabled={!canUseGmail}
-             className={cn(
-               "flex-1 py-2 text-sm font-label rounded-full transition-all",
-               !canUseGmail && "opacity-50 cursor-not-allowed",
-               chatType === "external" 
-                ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
-                : "text-on-surface-variant hover:text-on-surface"
-             )}
-             title={canUseGmail ? "Switch to Gmail" : "Gmail feature not available for this role"}
-           >
-             External (Gmail)
-           </button>
-         </div>
+         {userRole === 'builder' && (
+           <div className="flex bg-surface-container-low p-1 rounded-full border border-outline-variant/20 w-full md:w-64">
+             <button 
+               onClick={() => setChatType("internal")}
+               className={cn(
+                 "flex-1 py-2 text-sm font-label rounded-full transition-all",
+                 chatType === "internal" 
+                  ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
+                  : "text-on-surface-variant hover:text-on-surface"
+               )}
+             >
+               Internal Chat
+             </button>
+             <button 
+               onClick={() => canUseGmail && setChatType("external")}
+               disabled={!canUseGmail}
+               className={cn(
+                 "flex-1 py-2 text-sm font-label rounded-full transition-all",
+                 !canUseGmail && "opacity-50 cursor-not-allowed",
+                 chatType === "external" 
+                  ? "bg-surface shadow text-primary font-bold border border-outline-variant/20" 
+                  : "text-on-surface-variant hover:text-on-surface"
+               )}
+               title={canUseGmail ? "Switch to Gmail" : "Gmail feature not available for this role"}
+             >
+               External (Gmail)
+             </button>
+           </div>
+         )}
        </header>
 
        <div className="flex-1 w-full px-6 md:px-8 pb-32 md:pb-8 flex flex-col lg:flex-row gap-6 min-h-0">

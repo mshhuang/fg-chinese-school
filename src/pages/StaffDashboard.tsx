@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Calendar, CheckCircle2, Clock, MapPin, Megaphone, CheckSquare, Users, Building, ClipboardEdit, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { DashboardNotifications } from "../components/DashboardNotifications";
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
@@ -65,6 +66,7 @@ export default function StaffDashboard() {
 
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 max-w-7xl mx-auto w-full">
+      <DashboardNotifications />
       {/* Announcement Headline */}
       {announcements.length > 0 && !loading && (
         <div 
@@ -103,8 +105,8 @@ export default function StaffDashboard() {
                Operations
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <button onClick={() => navigate('/staff/attendance')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
-                  <div className="bg-secondary/10 p-3 rounded-xl text-secondary group-hover:bg-secondary group-hover:text-on-primary transition-colors">
+               <button onClick={() => {}} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 transition-all text-left opacity-50 grayscale pointer-events-none cursor-not-allowed">
+                  <div className="bg-secondary/10 p-3 rounded-xl text-secondary">
                      <ClipboardEdit className="w-6 h-6" />
                   </div>
                   <div>
