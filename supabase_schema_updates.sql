@@ -34,5 +34,9 @@ ALTER TABLE assignment_students ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Enable all for assignment_students" ON assignment_students;
 CREATE POLICY "Enable all for assignment_students" ON assignment_students FOR ALL USING (true) WITH CHECK (true);
 
+ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all for attendance" ON attendance;
+CREATE POLICY "Enable all for attendance" ON attendance FOR ALL USING (true) WITH CHECK (true);
+
 -- Allow duplicate emails by removing unique constraint on email if it exists
 -- ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;

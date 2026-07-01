@@ -1,8 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 const supabase = createClient(process.env.VITE_SUPABASE_URL || '', process.env.VITE_SUPABASE_ANON_KEY || '');
 async function test() {
-  const { data, error } = await supabase.from('attendance').select('class_id,student_id,attendance_date,status,marked_by').limit(1);
+  const { data, error } = await supabase.from('attendance').select('*').limit(1);
   console.log("Error:", error);
-  console.log("Data:", data);
 }
 test();
