@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2 } from "lucide-react";
-import { cn } from "../lib/utils";
+import { Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2, Paperclip } from "lucide-react";
+import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 import { BuilderIconCustom, AdminIconCustom, StaffIconCustom, VolunteerIconCustom, TeacherIconCustom, StudentIconCustom } from "../components/icons";
 import { logSystemActivity } from "../lib/logger";
@@ -36,12 +36,29 @@ export default function Announcements() {
   const [showCompose, setShowCompose] = useState(false);
   const [composeTitle, setComposeTitle] = useState("");
   const [composeContent, setComposeContent] = useState("");
+  const [composeAttachments, setComposeAttachments] = useState<{name: string, url: string}[]>([]);
   const [audienceMode, setAudienceMode] = useState("all"); // 'all', 'roles', 'classes', 'users'
   const [targetRoleIds, setTargetRoleIds] = useState<number[]>([]);
   const [targetClassIds, setTargetClassIds] = useState<string[]>([]);
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPostingRole, setSelectedPostingRole] = useState<string>("");
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+       alert("File is too large. Max 2MB allowed.");
+       return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+       const dataUrl = event.target?.result as string;
+       setComposeAttachments(prev => [...prev, { name: file.name, url: dataUrl }]);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   // Read State
   const [readState, setReadState] = useState<Record<string, { read_at: number, replies: number }>>({});
@@ -142,7 +159,7 @@ export default function Announcements() {
       const formattedUsers = usersRes.data.map(u => ({
         ...u,
         role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
-      }));
+      })).filter((u: any) => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
       setAvailableUsers(formattedUsers);
     }
 
@@ -210,7 +227,10 @@ export default function Announcements() {
        return;
     }
 
-    const encodedContent = selectedPostingRole ? `$$_role:${selectedPostingRole}_$$${composeContent}` : composeContent;
+    let encodedContent = selectedPostingRole ? `$$_role:${selectedPostingRole}_$$${composeContent}` : composeContent;
+    if (composeAttachments.length > 0) {
+        encodedContent += `\n\n---ATTACHMENTS---\n${JSON.stringify(composeAttachments)}`;
+    }
 
     const payload = {
        title: composeTitle,
@@ -234,6 +254,7 @@ export default function Announcements() {
        setShowCompose(false);
        setComposeTitle("");
        setComposeContent("");
+       setComposeAttachments([]);
        setAudienceMode("all");
        setTargetRoleIds([]);
        setTargetClassIds([]);
@@ -413,7 +434,8 @@ export default function Announcements() {
        ) : (
            <div className="max-w-4xl flex flex-col gap-6">
               {filteredAnnouncements.map(ann => {
-                  const authorName = ann.users ? `${ann.users.first_name} ${ann.users.last_name}` : "System / Unknown";
+                  const isTeacher = ann.users?.user_roles?.some((ur: any) => ur.roles?.role_name === 'Teacher');
+                  const authorName = ann.users ? (isTeacher ? formatTeacherName(ann.users.first_name, ann.users.last_name) : `${ann.users.first_name} ${ann.users.last_name}`) : "System / Unknown";
                   const audienceInfo = extractAudienceStr(ann);
                   const replies = ann.announcement_replies || [];
                   
@@ -425,6 +447,15 @@ export default function Announcements() {
                   if (roleMatch) {
                       authorRole = roleMatch[1].trim() || authorRole;
                       displayContent = roleMatch[2];
+                  }
+
+                  let attachments: any[] = [];
+                  if (displayContent.includes('\n\n---ATTACHMENTS---\n')) {
+                      const parts = displayContent.split('\n\n---ATTACHMENTS---\n');
+                      displayContent = parts[0];
+                      try {
+                          attachments = JSON.parse(parts[1]);
+                      } catch(e){}
                   }
 
                   const isNew = !readState[ann.announcement_id];
@@ -510,6 +541,15 @@ export default function Announcements() {
                                      <div className="ql-snow">
                                          <div className="ql-editor font-body text-lg text-on-surface-variant mb-2 leading-relaxed prose prose-sm sm:prose-base max-w-none [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-2xl [&_iframe]:my-4 [&_img]:rounded-2xl [&_img]:my-4 [&_img]:max-h-[600px] [&_img]:w-auto px-0 py-0" dangerouslySetInnerHTML={{ __html: displayContent }} />
                                      </div>
+                                     {attachments.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-4">
+                                            {attachments.map((att: any, i: number) => (
+                                                <a key={i} href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-surface-variant/30 px-3 py-2 rounded-lg border border-outline-variant/30 text-sm font-label hover:bg-surface-variant transition-colors text-primary">
+                                                    <span className="truncate max-w-[200px]">{att.name}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                     )}
                                  </>
                              )}
                          </div>
@@ -529,7 +569,10 @@ export default function Announcements() {
                                                        <div className="flex justify-between items-start">
                                                            <div>
                                                                <p className="font-bold text-lg text-on-surface mb-0.5 flex items-center gap-2">
-                                                                   {r.users?.first_name} {r.users?.last_name}
+                                                                   {(() => {
+                                                                      const isReplyTeacher = r.users?.user_roles?.some((ur: any) => ur.roles?.role_name === 'Teacher');
+                                                                      return r.users ? (isReplyTeacher ? formatTeacherName(r.users.first_name, r.users.last_name) : `${r.users.first_name} ${r.users.last_name}`) : "Unknown";
+                                                                   })()}
                                                                    <span className="font-normal text-xs text-on-surface-variant group-hover:text-on-surface-variant/70 transition-colors">
                                                                        {new Date(r.created_at).toLocaleDateString()}
                                                                    </span>
@@ -756,18 +799,21 @@ export default function Announcements() {
                                                         {roleLabel}
                                                     </div>
                                                     <div className="flex flex-col gap-2 pl-2">
-                                                        {group.map(u => (
-                                                             <label key={u.user_id} className="flex items-center gap-2 cursor-pointer text-on-surface border-b border-outline-variant/10 pb-2 last:border-0 last:pb-0">
-                                                                <input 
-                                                                   type="checkbox" 
-                                                                   className="rounded border-outline-variant/50 text-primary focus:ring-primary"
-                                                                   checked={targetUserIds.includes(u.user_id)}
-                                                                   onChange={() => toggleMultiSelect(setTargetUserIds, u.user_id)}
-                                                                />
-                                                                <span className="font-bold">{u.first_name} {u.last_name}</span> 
-                                                                <span className="text-xs text-on-surface-variant">({u.email})</span>
-                                                            </label>
-                                                        ))}
+                                                        {group.map(u => {
+                                                             const isTeacher = u.role_names?.includes('Teacher');
+                                                             const displayName = isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';
+                                                             return (
+                                                                 <label key={u.user_id} className="flex items-center gap-2 cursor-pointer text-on-surface border-b border-outline-variant/10 pb-2 last:border-0 last:pb-0">
+                                                                    <input 
+                                                                       type="checkbox" 
+                                                                       className="rounded border-outline-variant/50 text-primary focus:ring-primary"
+                                                                       checked={targetUserIds.includes(u.user_id)}
+                                                                       onChange={() => toggleMultiSelect(setTargetUserIds, u.user_id)}
+                                                                    />
+                                                                    <span className="font-bold">{displayName}</span> 
+                                                                </label>
+                                                             );
+                                                        })}
                                                     </div>
                                                 </div>
                                              );
@@ -799,6 +845,27 @@ export default function Announcements() {
                                  modules={modules}
                                  className="h-[300px] pb-10"
                                />
+                           </div>
+                           
+                           <div className="mt-4">
+                               <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-surface-variant/30 hover:bg-surface-variant/50 border border-outline-variant/30 rounded-full text-sm font-label font-bold text-on-surface-variant transition-colors">
+                                   <Paperclip className="w-4 h-4" />
+                                   Attach File (Max 2MB)
+                                   <input type="file" className="hidden" onChange={handleFileUpload} />
+                               </label>
+                               
+                               {composeAttachments.length > 0 && (
+                                   <div className="flex flex-wrap gap-2 mt-3">
+                                       {composeAttachments.map((att, i) => (
+                                           <div key={i} className="flex items-center gap-2 bg-surface px-3 py-1.5 rounded-lg border border-outline-variant/30 text-xs font-label">
+                                               <span className="truncate max-w-[150px]">{att.name}</span>
+                                               <button type="button" onClick={() => setComposeAttachments(prev => prev.filter((_, idx) => idx !== i))} className="text-error hover:text-error/80">
+                                                   <X className="w-3 h-3" />
+                                               </button>
+                                           </div>
+                                       ))}
+                                   </div>
+                               )}
                            </div>
                        </div>
                        <div className="flex justify-end pt-4 border-t border-outline-variant/20 shrink-0">

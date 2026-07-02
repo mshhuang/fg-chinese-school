@@ -142,7 +142,7 @@ export default function TeacherClasses() {
                                Attendance
                              </button>
                           )}
-                          <button onClick={() => navigate('/teacher/assignments')} className="text-primary font-label text-sm font-bold flex items-center gap-1 hover:underline">
+                          <button onClick={() => navigate('/teacher/assignments?classId=' + cls.class_id)} className="text-primary font-label text-sm font-bold flex items-center gap-1 hover:underline">
                             Assign Homework <ArrowRight className="w-4 h-4" />
                           </button>
                        </div>

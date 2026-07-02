@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Edit, MoreVertical, Paperclip, Send, User as UserIcon, ChevronLeft, ChevronDown, Loader2, Trash2, Edit2, RefreshCw, X, ImageIcon } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
 export function InternalMessagesPanel() {
@@ -97,7 +97,7 @@ export function InternalMessagesPanel() {
           const mappedUsers = usersRes.data.map((u: any) => ({
             ...u,
             role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
-          }));
+          })).filter((u: any) => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
           setAllUsers(mappedUsers);
         }
         if (messagesRes.data) setMessages(messagesRes.data);
@@ -302,9 +302,11 @@ export function InternalMessagesPanel() {
   const conversationsList = allowedUsers
     .map(u => {
       const conv = conversationsMap.get(u.user_id);
+      const isTeacher = u.role_names?.includes('Teacher');
+      const displayName = isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';
       return {
         id: u.user_id,
-        name: `${u.first_name} ${u.last_name}`,
+        name: displayName,
         first_name: u.first_name || '',
         last_name: u.last_name || '',
         role: "User",
@@ -612,11 +614,15 @@ export function InternalMessagesPanel() {
                           
                           return (
                             <optgroup key={r} label={r === "Others" ? "Unassigned" : (r === "Admin" ? "School Admin" : (r === "Teacher" ? "Teachers" : (r === "Student" ? "Students" : (r === "Parent" ? "Parents" : r))))}>
-                                {group.map(u => (
-                                  <option key={u.user_id} value={u.user_id}>
-                                      {u.first_name} {u.last_name}
-                                  </option>
-                                ))}
+                                {group.map(u => {
+                                  const isTeacher = u.role_names?.includes('Teacher');
+                                  const displayName = isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';
+                                  return (
+                                    <option key={u.user_id} value={u.user_id}>
+                                        {displayName}
+                                    </option>
+                                  );
+                                })}
                             </optgroup>
                           );
                       });

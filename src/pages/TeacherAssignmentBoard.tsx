@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { BookOpen, Plus, Save, X, Edit, Trash2, Calendar, FileText, CheckCircle2, Circle, Users, XCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function TeacherAssignmentBoard() {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialClassId = searchParams.get('classId') || '';
+
   const [user, setUser] = useState<any>(null);
   const [classes, setClasses] = useState<any[]>([]);
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [selectedClassId, setSelectedClassId] = useState<string>(initialClassId);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   
-  const [showAdd, setShowAdd] = useState(false);
+  const [showAdd, setShowAdd] = useState(initialClassId !== '');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
@@ -56,6 +61,15 @@ export default function TeacherAssignmentBoard() {
       fetchClasses();
     }
   }, []);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const cId = searchParams.get('classId');
+    if (cId) {
+      setSelectedClassId(cId);
+      setShowAdd(true);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (selectedClassId && user) {
@@ -431,11 +445,25 @@ export default function TeacherAssignmentBoard() {
                            editDesc = parts[0];
                            try { editAtts = JSON.parse(parts[1]); } catch(e){}
                         }
+                        
+                        let formattedDueDate = '';
+                        if (a.due_date) {
+                          try {
+                            const d = new Date(a.due_date);
+                            const yyyy = d.getFullYear();
+                            const mm = String(d.getMonth() + 1).padStart(2, '0');
+                            const dd = String(d.getDate()).padStart(2, '0');
+                            const hh = String(d.getHours()).padStart(2, '0');
+                            const min = String(d.getMinutes()).padStart(2, '0');
+                            formattedDueDate = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+                          } catch (e) {}
+                        }
+
                         setEditingId(a.assignment_id);
                         setFormData({
                           title: a.title,
                           description: editDesc,
-                          due_date: a.due_date ? new Date(a.due_date).toISOString().slice(0,16) : '',
+                          due_date: formattedDueDate,
                           type: a.type
                         });
                         setAttachments(editAtts);
@@ -451,17 +479,17 @@ export default function TeacherAssignmentBoard() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4 mt-2 text-sm">
-                    <div className="flex items-center gap-1.5 text-on-surface-variant font-label">
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-outline-variant/20">
+                    <div className="flex items-center gap-1.5 text-on-surface-variant text-sm font-label">
                       <Calendar className="w-4 h-4" />
                       {a.due_date ? new Date(a.due_date).toLocaleString() : 'No due date'}
                     </div>
                     <button 
                       onClick={() => setExpandedAssignId(expandedAssignId === a.assignment_id ? null : a.assignment_id)}
-                      className="flex items-center gap-1.5 text-primary hover:underline font-label cursor-pointer"
+                      className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-full font-label font-bold transition-colors cursor-pointer"
                     >
                       <Users className="w-4 h-4" />
-                      {a.assignment_students?.length || 0} assigned
+                      View Submissions ({a.assignment_students?.length || 0})
                     </button>
                   </div>
                   
@@ -476,7 +504,7 @@ export default function TeacherAssignmentBoard() {
                                  <div className="flex items-center justify-between">
                                     <span className="font-body text-sm text-on-surface">{student ? `${student.first_name} ${student.last_name}` : 'Unknown Student'}</span>
                                     <div className="flex items-center gap-2">
-                                       <span className={`font-label font-bold text-xs px-2 py-0.5 rounded-full ${isSubmitted ? 'bg-primary-container text-on-primary-container' : 'bg-surface-variant text-on-surface-variant'}`}>
+                                       <span className={`font-label font-bold text-xs px-2 py-0.5 rounded-full ${as.status === 'completed' ? 'bg-primary-container text-on-primary-container' : as.status === 'submitted' ? 'bg-tertiary-container text-on-tertiary-container' : 'bg-surface-variant text-on-surface-variant'}`}>
                                           {as.status === 'completed' ? 'Completed' : as.status === 'submitted' ? 'Submitted' : 'Pending'}
                                        </span>
                                        <button 
@@ -490,20 +518,36 @@ export default function TeacherAssignmentBoard() {
                                  </div>
                                  {(() => {
                                      let subAtts = [];
-                                     if (as.feedback && as.feedback.includes('\n\n---SUBMISSION_ATTACHMENTS---\n')) {
-                                         try {
-                                             subAtts = JSON.parse(as.feedback.split('\n\n---SUBMISSION_ATTACHMENTS---\n')[1]);
-                                         } catch (e) {}
+                                     let rawText = '';
+                                     if (as.feedback) {
+                                         if (as.feedback.includes('\n\n---SUBMISSION_ATTACHMENTS---\n')) {
+                                             try {
+                                                 const parts = as.feedback.split('\n\n---SUBMISSION_ATTACHMENTS---\n');
+                                                 rawText = parts[0];
+                                                 subAtts = JSON.parse(parts[1]);
+                                             } catch (e) {}
+                                         } else {
+                                             rawText = as.feedback;
+                                         }
                                      }
-                                     if (subAtts.length > 0) {
+                                     
+                                     if (subAtts.length > 0 || rawText) {
                                          return (
-                                             <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/20">
-                                                 {subAtts.map((att: any, i: number) => (
-                                                     <a key={i} href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-surface px-2 py-1 rounded border border-outline-variant/30 text-[10px] font-label hover:bg-surface-variant transition-colors text-primary">
-                                                         <FileText className="w-3 h-3" />
-                                                         <span className="truncate max-w-[120px]" title={att.name}>{att.name}</span>
-                                                     </a>
-                                                 ))}
+                                             <div className="flex flex-col gap-2 pt-3 mt-1 border-t border-outline-variant/20">
+                                                 <span className="font-label text-xs font-bold text-on-surface-variant uppercase tracking-wider">Student Submission</span>
+                                                 {rawText && (
+                                                     <p className="font-body text-sm text-on-surface whitespace-pre-wrap bg-surface p-2 rounded border border-outline-variant/30">{rawText}</p>
+                                                 )}
+                                                 {subAtts.length > 0 && (
+                                                     <div className="flex flex-wrap gap-2">
+                                                         {subAtts.map((att: any, i: number) => (
+                                                             <a key={i} href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-primary-container/30 px-3 py-1.5 rounded-lg border border-primary/20 text-xs font-label hover:bg-primary-container/50 transition-colors text-primary shadow-sm">
+                                                                 <FileText className="w-4 h-4" />
+                                                                 <span className="truncate max-w-[200px]" title={att.name}>{att.name}</span>
+                                                             </a>
+                                                         ))}
+                                                     </div>
+                                                 )}
                                              </div>
                                          );
                                      }

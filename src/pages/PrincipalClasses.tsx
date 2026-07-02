@@ -7,6 +7,9 @@ export default function PrincipalClasses() {
   const [activeProgram, setActiveProgram] = useState("All Programs");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeClassId, setActiveClassId] = useState<string | null>(null);
+  const [showAddClass, setShowAddClass] = useState(false);
+  const [newClassName, setNewClassName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [programs, setPrograms] = useState<any[]>([]);
   const [classesData, setClassesData] = useState<any[]>([]);
@@ -72,6 +75,28 @@ export default function PrincipalClasses() {
     } finally {
       setUploadingClassId(null);
     }
+  };
+
+  const handleAddClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClassName.trim()) return;
+    setIsSubmitting(true);
+    
+    // @ts-ignore
+    const { data, error } = await supabase.from('classes').insert([{ class_name: newClassName.trim() }]).select('*').single();
+    if (error) {
+       alert("Error adding class: " + error.message);
+       setIsSubmitting(false);
+       return;
+    }
+    
+    if (data) {
+       setClassesData([...classesData, data]);
+       setActiveClassId(data.class_id);
+       setShowAddClass(false);
+       setNewClassName("");
+    }
+    setIsSubmitting(false);
   };
 
   useEffect(() => {
@@ -144,7 +169,7 @@ export default function PrincipalClasses() {
            <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Class Management</h1>
            <p className="font-body text-lg text-on-surface-variant mt-2">Manage programs, classes, and assign teachers.</p>
          </div>
-         <button className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label font-bold hover:bg-primary/90 transition-colors shadow-md w-full md:w-auto justify-center">
+         <button onClick={() => setShowAddClass(true)} className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label font-bold hover:bg-primary/90 transition-colors shadow-md w-full md:w-auto justify-center">
             <Plus className="w-5 h-5" /> Add New Class
          </button>
        </header>
@@ -323,6 +348,41 @@ export default function PrincipalClasses() {
              <button className="absolute top-6 right-6 text-white bg-black/50 p-2 rounded-full hover:bg-black/80 transition-colors cursor-pointer" onClick={() => setEnlargedImage(null)}>
                <X className="w-6 h-6" />
              </button>
+         </div>
+       )}
+
+       {showAddClass && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+             <div className="bg-surface rounded-3xl p-6 md:p-8 w-full max-w-md shadow-xl flex flex-col relative border border-outline-variant/30">
+                 <button onClick={() => setShowAddClass(false)} className="absolute top-4 right-4 p-2 bg-surface-variant/50 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors">
+                     <X className="w-5 h-5" />
+                 </button>
+                 <h2 className="font-display text-2xl font-bold text-on-surface mb-2">Add New Class</h2>
+                 <p className="font-body text-sm text-on-surface-variant mb-6">Create a new class for a program.</p>
+                 
+                 <form onSubmit={handleAddClass} className="flex flex-col gap-4">
+                     <div className="flex flex-col gap-2">
+                         <label className="font-label text-sm font-bold text-on-surface-variant">Class Name</label>
+                         <input
+                           type="text"
+                           value={newClassName}
+                           onChange={(e) => setNewClassName(e.target.value)}
+                           className="bg-surface-container-low px-4 py-3 border border-outline-variant/50 rounded-xl font-body focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-full"
+                           placeholder="e.g. 1st Grade Math"
+                           autoFocus
+                           required
+                         />
+                     </div>
+                     <div className="flex justify-end gap-3 mt-4">
+                         <button type="button" onClick={() => setShowAddClass(false)} className="px-6 py-2.5 font-label font-bold text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors">
+                            Cancel
+                         </button>
+                         <button type="submit" disabled={isSubmitting || !newClassName.trim()} className="px-6 py-2.5 bg-primary text-on-primary font-label font-bold rounded-full hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50">
+                            {isSubmitting ? 'Adding...' : 'Add Class'}
+                         </button>
+                     </div>
+                 </form>
+             </div>
          </div>
        )}
     </div>

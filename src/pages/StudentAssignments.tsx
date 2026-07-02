@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BookOpen, Clock, CheckCircle2, ChevronRight, AlertCircle, FileText, Upload, X } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
 export default function StudentAssignments() {
@@ -8,6 +8,7 @@ export default function StudentAssignments() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [attachmentsByTask, setAttachmentsByTask] = useState<Record<number, {name: string, url: string}[]>>({});
+  const [textByTask, setTextByTask] = useState<Record<number, string>>({});
 
   const handleFileUpload = (assignmentStudentId: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,7 +52,8 @@ export default function StudentAssignments() {
           feedback,
           assignments (
              title, type, due_date, description,
-             classes ( class_name )
+             classes ( class_name ),
+             users ( first_name, last_name )
           )
         `)
         .eq('student_id', user.id);
@@ -88,17 +90,28 @@ export default function StudentAssignments() {
 
   const handleSubmitAssignment = async (assignmentStudentId: number) => {
     const atts = attachmentsByTask[assignmentStudentId] || [];
-    let feedback = '';
+    let feedback = textByTask[assignmentStudentId] || '';
     if (atts.length > 0) {
-       feedback = '\n\n---SUBMISSION_ATTACHMENTS---\n' + JSON.stringify(atts);
+       feedback += '\n\n---SUBMISSION_ATTACHMENTS---\n' + JSON.stringify(atts);
     }
     
-    await supabase.from('assignment_students').update({ status: 'submitted', feedback }).eq('assignment_student_id', assignmentStudentId);
+    const { error } = await supabase.from('assignment_students').update({ status: 'submitted', feedback }).eq('assignment_student_id', assignmentStudentId);
+    if (error) {
+       console.error("Error submitting assignment:", error);
+       alert("Error submitting assignment: " + error.message);
+       return;
+    }
+
     setAssignments(assignments.map(a => 
       a.assignment_student_id === assignmentStudentId ? { ...a, status: 'submitted', feedback } : a
     ));
     
     setAttachmentsByTask(prev => {
+      const newObj = { ...prev };
+      delete newObj[assignmentStudentId];
+      return newObj;
+    });
+    setTextByTask(prev => {
       const newObj = { ...prev };
       delete newObj[assignmentStudentId];
       return newObj;
@@ -157,11 +170,13 @@ export default function StudentAssignments() {
                   <div className="flex justify-between items-start mb-4">
                      <span className={cn(
                        "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label flex items-center gap-1.5",
-                       isSubmitted ? "bg-primary-container/20 text-primary border border-primary/20" :
+                       displayStatus === 'completed' ? "bg-primary-container/20 text-primary border border-primary/20" :
+                       displayStatus === 'submitted' ? "bg-tertiary-container/20 text-tertiary border border-tertiary/20" :
                        isLate ? "bg-error-container/20 text-error border border-error/20" :
-                       "bg-tertiary-container/20 text-tertiary border border-tertiary/20"
+                       "bg-surface-variant/50 text-on-surface-variant border border-outline-variant/50"
                      )}>
-                        {isSubmitted ? <CheckCircle2 className="w-3.5 h-3.5" /> : 
+                        {displayStatus === 'completed' ? <CheckCircle2 className="w-3.5 h-3.5" /> : 
+                         displayStatus === 'submitted' ? <CheckCircle2 className="w-3.5 h-3.5" /> :
                          isLate ? <AlertCircle className="w-3.5 h-3.5" /> :
                          <Clock className="w-3.5 h-3.5" />}
                         {displayStatus}
@@ -174,6 +189,14 @@ export default function StudentAssignments() {
                   <h3 className="font-title text-xl font-bold text-on-surface mb-2">{assignData?.title}</h3>
                   <p className="font-label text-sm text-on-surface-variant mb-4 flex items-center gap-2">
                     <BookOpen className="w-4 h-4" /> {assignData?.classes?.class_name || 'General'}
+                    {assignData?.users && (
+                       <>
+                         <span className="text-outline-variant">•</span>
+                         <span className="font-body text-xs">
+                           Assigned by {formatTeacherName(assignData.users.first_name, assignData.users.last_name)}
+                         </span>
+                       </>
+                    )}
                   </p>
                   
                   {(() => {
@@ -231,6 +254,15 @@ export default function StudentAssignments() {
                      
                      {!isSubmitted && (
                          <div className="flex flex-col gap-3">
+                             <div className="flex flex-col gap-2">
+                                 <label className="font-label text-xs font-bold text-on-surface-variant">Your Report / Answers</label>
+                                 <textarea
+                                     value={textByTask[a.assignment_student_id] || ''}
+                                     onChange={(e) => setTextByTask(prev => ({ ...prev, [a.assignment_student_id]: e.target.value }))}
+                                     placeholder="Type your response here..."
+                                     className="w-full px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface min-h-[100px] resize-y"
+                                 />
+                             </div>
                              <div className="flex flex-col gap-2">
                                  <label className="font-label text-xs font-bold text-on-surface-variant">Attach Work (Optional)</label>
                                  {(attachmentsByTask[a.assignment_student_id] || []).length > 0 && (
