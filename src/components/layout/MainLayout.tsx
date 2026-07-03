@@ -33,6 +33,7 @@ export default function MainLayout() {
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
   const [unreadNewslettersCount, setUnreadNewslettersCount] = useState(0);
+  const [unreadAssignmentsCount, setUnreadAssignmentsCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const proceedWithRoleSwitch = (key: string) => {
@@ -185,6 +186,45 @@ export default function MainLayout() {
        } else {
            setUnreadNewslettersCount(0);
        }
+
+       // Assignments
+       if (userRole === 'student') {
+           const { data: assignData } = await supabase
+             .from('assignment_students')
+             .select('assignment_student_id, status')
+             .eq('student_id', currentUserId)
+             .eq('status', 'pending');
+             
+           if (assignData) {
+             const stored = localStorage.getItem(`assign_read_${currentUserId}`);
+             const readState = stored ? JSON.parse(stored) : {};
+             let assignUnread = 0;
+             assignData.forEach((a: any) => {
+               if (!readState[a.assignment_student_id]) {
+                 assignUnread++;
+               }
+             });
+             setUnreadAssignmentsCount(assignUnread);
+           } else {
+             setUnreadAssignmentsCount(0);
+           }
+       } else if (userRole === 'teacher') {
+           const { data: teacherAssignData } = await supabase
+             .from('assignments')
+             .select('assignment_id, teacher_id, assignment_students!inner(status)')
+             .eq('teacher_id', currentUserId)
+             .eq('assignment_students.status', 'submitted');
+             
+           let teacherUnread = 0;
+           if (teacherAssignData) {
+              teacherAssignData.forEach((a: any) => {
+                 teacherUnread += (a.assignment_students || []).length;
+              });
+           }
+           setUnreadAssignmentsCount(teacherUnread);
+       } else {
+           setUnreadAssignmentsCount(0);
+       }
     };
 
     fetchUnread();
@@ -192,6 +232,9 @@ export default function MainLayout() {
     const channel = supabase
       .channel('public:internal_messages_layout_' + currentUserId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'internal_messages', filter: `recipient_id=eq.${currentUserId}` }, () => {
+         fetchUnread();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'assignment_students' }, () => {
          fetchUnread();
       })
       .subscribe();
@@ -202,7 +245,7 @@ export default function MainLayout() {
   }, [userInfo]);
 
   return (
-    <div className="flex h-screen w-full bg-surface overflow-hidden">
+    <div className="flex h-screen w-full bg-surface overflow-hidden print:h-auto print:overflow-visible print:block">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-72 bg-surface-container-lowest border-r border-outline-variant/30 z-20 h-full">
          <div className="px-6 pt-6 pb-2 flex items-center justify-center border-b border-outline-variant/20">
@@ -243,6 +286,12 @@ export default function MainLayout() {
                        <span className="flex w-2.5 h-2.5 relative shrink-0">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
                           <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-tertiary"></span>
+                       </span>
+                    )}
+                    {item.label === 'Assignments' && unreadAssignmentsCount > 0 && (
+                       <span className="flex w-2.5 h-2.5 relative shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+                          <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-error"></span>
                        </span>
                     )}
                 </NavLink>
@@ -352,6 +401,12 @@ export default function MainLayout() {
                                 <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-tertiary"></span>
                              </span>
                           )}
+                          {item.label === 'Assignments' && unreadAssignmentsCount > 0 && (
+                             <span className="flex w-2.5 h-2.5 relative shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+                                <span className="relative inline-flex rounded-full w-2.5 h-2.5 bg-error"></span>
+                             </span>
+                          )}
                       </NavLink>
                       );
                   })}
@@ -400,7 +455,7 @@ export default function MainLayout() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-surface">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-surface print:overflow-visible print:block print:h-auto print:block">
          {/* Mobile Header */}
          <header className="md:hidden flex items-center justify-between p-4 bg-surface-container-lowest border-b border-outline-variant/30">
             <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-14 w-auto object-contain" />
@@ -408,7 +463,7 @@ export default function MainLayout() {
                <Menu className="w-6 h-6 group-hover:scale-110 transition-transform" />
             </button>
          </header>
-         <div className="flex-1 overflow-auto">
+         <div className="flex-1 overflow-auto print:overflow-visible print:h-auto print:block">
             <Outlet />
          </div>
 

@@ -60,6 +60,21 @@ export default function StudentAssignments() {
         
       if (data) {
         setAssignments(data);
+        
+        // Mark as read
+        const stored = localStorage.getItem(`assign_read_${user.id}`);
+        const readState = stored ? JSON.parse(stored) : {};
+        let updated = false;
+        data.forEach((a: any) => {
+           if (!readState[a.assignment_student_id]) {
+             readState[a.assignment_student_id] = true;
+             updated = true;
+           }
+        });
+        if (updated) {
+           localStorage.setItem(`assign_read_${user.id}`, JSON.stringify(readState));
+           window.dispatchEvent(new Event('storage'));
+        }
       }
       setLoading(false);
     };

@@ -284,7 +284,7 @@ function GmailComposeModal({ onClose, onSent }: { onClose: () => void; onSent: (
     
     Object.keys(rolesMap).forEach(role => {
       let filtered = rolesMap[role];
-      filtered.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
+      filtered.sort((a, b) => (a.first_name || '').localeCompare(b.first_name || ''));
       
       if (filtered.length > 0) {
         validRolesMap[role] = filtered;

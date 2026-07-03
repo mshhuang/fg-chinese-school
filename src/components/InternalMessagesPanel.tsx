@@ -273,7 +273,8 @@ export function InternalMessagesPanel() {
   if (!isAdmin && !isBuilder) {
      allowedUsers = allowedUsers.filter(u => {
        const roles = u.role_names || [];
-       return !roles.includes('Builder');
+       if (roles.includes('Builder') && roles.length === 1) return false;
+       return true;
      });
   }
 
@@ -585,32 +586,45 @@ export function InternalMessagesPanel() {
                   >
                     <option value="" disabled>Choose a user...</option>
                     {(() => {
-                      const rolesList = new Set<string>();
-                      allowedUsers.forEach(u => {
-                        (u.role_names || []).forEach((r: string) => rolesList.add(r));
-                      });
                       const desiredOrder = ['Admin', 'Teacher', 'Student', 'Parent', 'Volunteer', 'Staff', 'Builder'];
-                      const sortedRoles = Array.from(rolesList).sort((a, b) => {
-                        const idxA = desiredOrder.indexOf(a);
-                        const idxB = desiredOrder.indexOf(b);
-                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                        if (idxA !== -1) return -1;
-                        if (idxB !== -1) return 1;
-                        return a.localeCompare(b);
-                      });
-                      const finalRoles = [...sortedRoles, "Others"];
                       
-                      return finalRoles.map(r => {
-                          const group = allowedUsers.filter(u => {
-                            const userRoles = u.role_names || [];
-                            if (r === "Others") return userRoles.length === 0;
-                            return userRoles.includes(r);
-                          });
+                      const getPrimaryRole = (roles: string[]) => {
+                          if (!roles || roles.length === 0) return 'Others';
+                          let bestIdx = 999;
+                          let bestRole = 'Others';
+                          for (const r of roles) {
+                              const idx = desiredOrder.indexOf(r);
+                              if (idx !== -1 && idx < bestIdx) {
+                                  bestIdx = idx;
+                                  bestRole = r;
+                              }
+                          }
+                          if (bestIdx === 999) return roles[0];
+                          return bestRole;
+                      };
+
+                      const groupedUsers: Record<string, typeof allowedUsers> = {};
+                      allowedUsers.forEach(u => {
+                          const primary = getPrimaryRole(u.role_names || []);
+                          if (!groupedUsers[primary]) groupedUsers[primary] = [];
+                          groupedUsers[primary].push(u);
+                      });
+
+                      const sortedRoles = Object.keys(groupedUsers).sort((a, b) => {
+                          const idxA = desiredOrder.indexOf(a);
+                          const idxB = desiredOrder.indexOf(b);
+                          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                          if (idxA !== -1) return -1;
+                          if (idxB !== -1) return 1;
+                          return a.localeCompare(b);
+                      });
+
+                      return sortedRoles.map(r => {
+                          const group = groupedUsers[r];
+                          if (!group || group.length === 0) return null;
                           
-                          if (group.length === 0) return null;
-                          
-                          // Sort group by last name alphabetically
-                          group.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
+                          // Sort group by first name alphabetically
+                          group.sort((a, b) => (a.first_name || '').localeCompare(b.first_name || ''));
                           
                           return (
                             <optgroup key={r} label={r === "Others" ? "Unassigned" : (r === "Admin" ? "School Admin" : (r === "Teacher" ? "Teachers" : (r === "Student" ? "Students" : (r === "Parent" ? "Parents" : r))))}>

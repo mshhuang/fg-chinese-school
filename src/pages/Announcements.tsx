@@ -765,31 +765,44 @@ export default function Announcements() {
                                {audienceMode === 'users' && (
                                    <div className="flex flex-col">
                                        {(() => {
-                                         const rolesList = new Set<string>();
-                                         availableUsers.forEach(u => {
-                                           (u.role_names || []).forEach((r: string) => rolesList.add(r));
-                                         });
                                          const desiredOrder = ['Admin', 'Teacher', 'Student', 'Parent', 'Volunteer', 'Staff', 'Builder'];
-                                         const sortedRoles = Array.from(rolesList).sort((a, b) => {
-                                           const idxA = desiredOrder.indexOf(a);
-                                           const idxB = desiredOrder.indexOf(b);
-                                           if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                                           if (idxA !== -1) return -1;
-                                           if (idxB !== -1) return 1;
-                                           return a.localeCompare(b);
+
+                                         const getPrimaryRole = (roles: string[]) => {
+                                             if (!roles || roles.length === 0) return 'Others';
+                                             let bestIdx = 999;
+                                             let bestRole = 'Others';
+                                             for (const r of roles) {
+                                                 const idx = desiredOrder.indexOf(r);
+                                                 if (idx !== -1 && idx < bestIdx) {
+                                                     bestIdx = idx;
+                                                     bestRole = r;
+                                                 }
+                                             }
+                                             if (bestIdx === 999) return roles[0];
+                                             return bestRole;
+                                         };
+
+                                         const groupedUsers: Record<string, typeof availableUsers> = {};
+                                         availableUsers.forEach(u => {
+                                             const primary = getPrimaryRole(u.role_names || []);
+                                             if (!groupedUsers[primary]) groupedUsers[primary] = [];
+                                             groupedUsers[primary].push(u);
                                          });
-                                         const finalRoles = [...sortedRoles, "Others"];
+
+                                         const sortedRoles = Object.keys(groupedUsers).sort((a, b) => {
+                                             const idxA = desiredOrder.indexOf(a);
+                                             const idxB = desiredOrder.indexOf(b);
+                                             if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                                             if (idxA !== -1) return -1;
+                                             if (idxB !== -1) return 1;
+                                             return a.localeCompare(b);
+                                         });
                                          
-                                         return finalRoles.map(r => {
-                                             const group = availableUsers.filter(u => {
-                                               const userRoles = u.role_names || [];
-                                               if (r === "Others") return userRoles.length === 0;
-                                               return userRoles.includes(r);
-                                             });
+                                         return sortedRoles.map(r => {
+                                             const group = groupedUsers[r];
+                                             if (!group || group.length === 0) return null;
                                              
-                                             if (group.length === 0) return null;
-                                             
-                                             group.sort((a, b) => (a.last_name || '').localeCompare(b.last_name || ''));
+                                             group.sort((a, b) => (a.first_name || '').localeCompare(b.first_name || ''));
                                              
                                              const roleLabel = r === "Others" ? "Unassigned" : (r === "Admin" ? "School Admin" : (r === "Teacher" ? "Teachers" : (r === "Student" ? "Students" : (r === "Parent" ? "Parents" : r))));
 

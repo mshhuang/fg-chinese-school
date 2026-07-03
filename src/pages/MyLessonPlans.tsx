@@ -14,6 +14,9 @@ export default function MyLessonPlans() {
   const [lessonPlanId, setLessonPlanId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [adminComments, setAdminComments] = useState("");
+  const [isSavingComment, setIsSavingComment] = useState(false);
+  const [iframeLoading, setIframeLoading] = useState(true);
 
   useEffect(() => {
      const userStr = localStorage.getItem('user');
@@ -72,12 +75,22 @@ export default function MyLessonPlans() {
          .limit(1).maybeSingle();
 
        if (data) {
+          setIframeLoading(true);
           setSavedUrl(data.content_rich_text || "");
           setTempUrl(data.content_rich_text || "");
+          let parsedComments = data.file_url || "";
+          try {
+             const j = JSON.parse(parsedComments);
+             if (Array.isArray(j)) {
+                parsedComments = j.map(c => c.text || "").join("\n\n");
+             }
+          } catch(e) {}
+          setAdminComments(parsedComments);
           setLessonPlanId(data.lesson_plan_id);
        } else {
           setSavedUrl("");
           setTempUrl("");
+          setAdminComments("");
           setLessonPlanId(null);
        }
      } catch (err) {
@@ -119,6 +132,7 @@ export default function MyLessonPlans() {
           if (data) setLessonPlanId(data.lesson_plan_id);
        }
 
+       setIframeLoading(true);
        setSavedUrl(tempUrl);
        setIsEditingUrl(false);
      } catch (err) {
@@ -134,10 +148,34 @@ export default function MyLessonPlans() {
      if (!url) return "";
      try {
          if (url.includes('docs.google.com') && url.includes('/edit')) {
+             if (url.includes('/presentation/')) {
+                 return url.replace(/\/edit.*$/, '/embed');
+             }
              return url.replace(/\/edit.*$/, '/preview');
          }
      } catch(e) {}
      return url;
+  };
+
+  const handleSaveComment = async () => {
+     if (!lessonPlanId) return;
+     setIsSavingComment(true);
+     try {
+        const { error } = await supabase
+          .from('lesson_plans')
+          .update({ file_url: adminComments })
+          .eq('lesson_plan_id', lessonPlanId);
+        if (error) {
+           console.error(error);
+           alert("Error saving comments: " + error.message);
+        } else {
+           alert("Comments saved successfully.");
+        }
+     } catch (err) {
+        console.error(err);
+     } finally {
+        setIsSavingComment(false);
+     }
   };
 
 
@@ -148,7 +186,7 @@ export default function MyLessonPlans() {
          <div>
            <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{isAdmin ? 'Teacher Lesson Plans' : 'My Lesson Plans'}</h1>
            <p className="font-body text-lg text-on-surface-variant mt-2">
-             {isAdmin ? 'View lesson plans submitted by teachers.' : 'Manage and collaborate on your curriculum via Google Docs.'}
+             {isAdmin ? 'View lesson plans submitted by teachers.' : 'Manage and collaborate on your curriculum via Google Docs or Slides.'}
            </p>
          </div>
        </header>
@@ -176,10 +214,10 @@ export default function MyLessonPlans() {
          <>
            <div className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col gap-4 shrink-0 shadow-sm">
              <div className="font-title text-lg text-on-surface font-bold flex items-center gap-2">
-               <FileText className="w-5 h-5 text-primary" /> Google Document Link
+               <FileText className="w-5 h-5 text-primary" /> Google Doc or Slide Link
              </div>
              <p className="font-body text-sm text-on-surface-variant">
-               {isAdmin ? 'View the Google Doc link provided by the selected teacher.' : 'Share a Google Doc link for administrators to view your curriculum.'}
+               {isAdmin ? 'View the Google Doc/Slide link provided by the selected teacher.' : 'Share a Google Doc or Slide link for administrators to view your curriculum.'}
              </p>
 
              <div className="flex items-center gap-4 mt-2">
@@ -190,7 +228,7 @@ export default function MyLessonPlans() {
                      value={tempUrl} 
                      onChange={(e) => setTempUrl(e.target.value)} 
                      className="flex-1 bg-surface border border-outline-variant/50 rounded-xl px-4 py-2 font-body text-on-surface outline-none focus:border-primary shadow-sm"
-                     placeholder="Paste Google Doc sharing link here..."
+                     placeholder="Paste Google Doc or Slide sharing link here..."
                      autoFocus
                    />
                    <button onClick={handleSave} disabled={loading} className="bg-primary text-on-primary px-6 py-2 rounded-xl font-label font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50">
@@ -203,7 +241,7 @@ export default function MyLessonPlans() {
                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                        <FileText className="w-4 h-4 text-blue-600" />
                      </div>
-                     <span className="font-body text-on-surface truncate text-sm md:text-base">{savedUrl ? "Google Document" : "No document linked yet."}</span>
+                     <span className="font-body text-on-surface truncate text-sm md:text-base">{savedUrl ? "Google File" : "No file linked yet."}</span>
                    </div>
                    <div className="flex gap-2 shrink-0">
                      {!isAdmin && (
@@ -213,7 +251,7 @@ export default function MyLessonPlans() {
                      )}
                      {savedUrl && (
                         <a href={isAdmin ? getPreviewUrl(savedUrl) : savedUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-blue-600 focus:ring-4 focus:ring-blue-300 text-white px-4 py-2 rounded-lg font-label text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">
-                          <ExternalLink className="w-4 h-4" /> Open Doc
+                          <ExternalLink className="w-4 h-4" /> Open File
                         </a>
                      )}
                    </div>
@@ -228,11 +266,11 @@ export default function MyLessonPlans() {
                  <div className="p-4 bg-surface-container-lowest border-b border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
                    <div className="flex items-center gap-2">
                      <span className="font-label text-sm text-on-surface font-bold flex items-center gap-2">
-                       <LayoutDashboard className="w-4 h-4" /> Document Preview
+                       <LayoutDashboard className="w-4 h-4" /> Document/Slide Preview
                      </span>
                      {isAdmin && (
                        <button 
-                          onClick={() => setRefreshKey(prev => prev + 1)}
+                          onClick={() => { setIframeLoading(true); setRefreshKey(prev => prev + 1); }}
                           className="flex items-center gap-1 px-2 py-1 bg-surface-variant hover:bg-outline-variant/30 text-on-surface-variant rounded-md text-xs font-medium transition-colors"
                           title="Refresh Preview"
                        >
@@ -241,29 +279,65 @@ export default function MyLessonPlans() {
                      )}
                    </div>
                    <span className="font-caption text-xs text-on-surface-variant">
-                     If it doesn't load securely, use the 'Open Doc' button above.
+                     If it doesn't load securely, use the 'Open File' button above.
                    </span>
                  </div>
 
+                 {iframeLoading && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface/80 backdrop-blur-sm">
+                        <div className="flex flex-col items-center gap-3">
+                           <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYzRzajhqcHVlZnFyaDBkNXQwaW1tcHVqcTh3bjhpZWZlNjBocGNhbyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/11Qx1E3Pnvt2Bq/giphy.gif" alt="Hourglass Loading" className="w-16 h-16 rounded-full object-cover shadow-sm mix-blend-multiply" />
+                           <span className="font-label font-bold text-primary animate-pulse">Loading Document...</span>
+                        </div>
+                    </div>
+                 )}
                  <iframe 
                     key={refreshKey}
-                    src={isAdmin ? getPreviewUrl(savedUrl) : savedUrl} 
+                    src={isAdmin ? getPreviewUrl(savedUrl) : getPreviewUrl(savedUrl)} 
                     title="Lesson Plans Document"
-                    className="w-full flex-1 border-none bg-surface"
+                    className="w-full flex-1 border-none bg-surface z-0 relative"
                     sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                    onLoad={() => setIframeLoading(false)}
                  />
                  
                  {/* Overlay to inform users if doc isn't showing */}
-                 <div className="absolute inset-x-0 bottom-0 top-[60px] pointer-events-none flex items-center justify-center z-[-1] bg-surface-container-lowest">
+                 <div className="absolute inset-x-0 bottom-0 top-[60px] pointer-events-none flex items-center justify-center z-[-2] bg-surface-container-lowest">
                    <div className="text-center p-8 max-w-md">
                      <FileText className="w-16 h-16 opacity-10 mx-auto mb-4" />
-                     <h3 className="font-title text-xl text-on-surface font-bold mb-2">Google Docs Viewer</h3>
+                     <h3 className="font-title text-xl text-on-surface font-bold mb-2">Google File Viewer</h3>
                      <p className="font-body text-on-surface-variant">
-                       If the document does not render in this frame due to Google's security settings, please use the Open Doc button above to view or edit it securely in a new tab.
+                       If the file does not render in this frame due to Google's security settings, please use the Open File button above to view or edit it securely in a new tab.
                      </p>
                    </div>
                  </div>
               </div>
+           )}
+
+           {/* Admin Comments */}
+           {savedUrl && (
+             <div className="bg-surface-container rounded-3xl border border-outline-variant/30 p-6 flex flex-col gap-4 shrink-0 shadow-sm mt-4">
+               <div className="font-title text-lg text-on-surface font-bold">
+                 {isAdmin ? "Leave a Comment for Teacher" : "Admin Comments"}
+               </div>
+               <textarea 
+                 value={adminComments}
+                 onChange={(e) => setAdminComments(e.target.value)}
+                 readOnly={!isAdmin}
+                 placeholder={isAdmin ? "Enter feedback or comments here..." : "No comments from admin yet."}
+                 className="w-full h-32 p-4 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface resize-none"
+               />
+               {isAdmin && (
+                 <div className="flex justify-end">
+                   <button 
+                     onClick={handleSaveComment} 
+                     disabled={isSavingComment || !lessonPlanId} 
+                     className="bg-primary text-on-primary px-6 py-2 rounded-xl font-label font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                   >
+                     {isSavingComment ? "Saving..." : "Save Comments"}
+                   </button>
+                 </div>
+               )}
+             </div>
            )}
          </>
        ) : (
@@ -276,4 +350,3 @@ export default function MyLessonPlans() {
     </div>
   );
 }
-

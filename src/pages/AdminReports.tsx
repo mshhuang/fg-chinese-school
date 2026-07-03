@@ -47,7 +47,7 @@ export default function AdminReports() {
            
            if (teacherRole) {
              const teacherIds = userRolesData.filter((ur: any) => ur.role_id === teacherRole.role_id).map((ur: any) => ur.user_id);
-             setTeachers(usersData.filter((u: any) => teacherIds.includes(u.user_id)));
+             setTeachers(usersData.filter((u: any) => teacherIds.includes(u.user_id)).sort((a, b) => (a.first_name || '').localeCompare(b.first_name || '')));
            }
            
            if (studentRole) {
@@ -130,7 +130,7 @@ export default function AdminReports() {
   };
 
   return (
-    <div className="p-6 md:p-8 flex flex-col gap-6 w-full max-w-7xl mx-auto h-full overflow-hidden print:overflow-visible print:h-auto print:p-0">
+    <div className="p-6 md:p-8 flex flex-col gap-6 w-full max-w-7xl mx-auto h-full overflow-hidden print:overflow-visible print:h-auto print:p-0 print:block">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0 print:hidden">
         <div>
            <h1 className="font-display text-3xl text-primary font-bold tracking-tight">System Reports</h1>
@@ -198,13 +198,13 @@ export default function AdminReports() {
         </button>
       </div>
 
-      <div id="report-content-area" className="flex-1 overflow-auto bg-surface-container-lowest rounded-3xl border border-outline-variant/30 shadow-sm print:border-none print:shadow-none print:bg-white print:overflow-visible">
+      <div id="report-content-area" className="flex-1 overflow-auto bg-surface-container-lowest rounded-3xl border border-outline-variant/30 shadow-sm print:border-none print:shadow-none print:bg-white print:overflow-visible print:block print:h-auto">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : (
-          <div className="p-6 print:p-0">
+          <div className="p-6 print:p-0 print:block">
             {activeTab === 'teachers' && (
               <div>
                 <p className="text-on-surface-variant mb-6 print:hidden">A comprehensive list of all teachers currently active in the system, including contact details.</p>
@@ -212,7 +212,7 @@ export default function AdminReports() {
                    <h2 className="font-display text-2xl font-bold">Teachers Report</h2>
                    <span className="font-mono text-sm">{new Date().toLocaleDateString()}</span>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto print:overflow-visible">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-outline-variant/50">
@@ -225,7 +225,7 @@ export default function AdminReports() {
                       {teachers.map((teacher, idx) => {
                         const teacherClasses = classes.filter(c => String(c.primary_teacher_id) === String(teacher.user_id)).map(c => c.name || c.class_name);
                         return (
-                        <tr key={teacher.user_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent">
+                        <tr key={teacher.user_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid">
                           <td className="py-3 px-4 font-body text-on-surface font-medium">{formatTeacherName(teacher.first_name, teacher.last_name)}</td>
                           <td className="py-3 px-4 font-body text-on-surface-variant">{teacher.email || 'N/A'}</td>
                           <td className="py-3 px-4 font-body text-sm text-on-surface-variant">
@@ -251,7 +251,7 @@ export default function AdminReports() {
                    <h2 className="font-display text-2xl font-bold">Students Report</h2>
                    <span className="font-mono text-sm">{new Date().toLocaleDateString()}</span>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto print:overflow-visible">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-outline-variant/50">
@@ -272,7 +272,7 @@ export default function AdminReports() {
                         const studentPrograms = programs.filter(p => studentProgramIds.some(id => String(id) === String(p.program_id))).map(p => p.program_name);
 
                         return (
-                        <tr key={student.user_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent">
+                        <tr key={student.user_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid">
                           <td className="py-3 px-4 font-body text-on-surface font-medium">{student.first_name} {student.last_name}</td>
                           <td className="py-3 px-4 font-body text-on-surface-variant">{student.email || 'N/A'}</td>
                           <td className="py-3 px-4 font-body text-sm text-on-surface-variant">
@@ -301,7 +301,7 @@ export default function AdminReports() {
                    <h2 className="font-display text-2xl font-bold">Classes Report</h2>
                    <span className="font-mono text-sm">{new Date().toLocaleDateString()}</span>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto print:overflow-visible">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-outline-variant/50">
@@ -312,7 +312,7 @@ export default function AdminReports() {
                     </thead>
                     <tbody>
                       {classes.map((cls, idx) => (
-                        <tr key={cls.class_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent">
+                        <tr key={cls.class_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid">
                           <td className="py-3 px-4 font-body text-on-surface font-medium">{cls.class_name || cls.name || 'Unnamed Class'}</td>
                           <td className="py-3 px-4 font-body text-on-surface-variant">{cls.room || 'N/A'}</td>
                           <td className="py-3 px-4 font-body text-on-surface-variant">
@@ -378,7 +378,7 @@ export default function AdminReports() {
                                 <span>{cls ? (cls.class_name || cls.name) : 'Unassigned Class'}</span>
                                 <span className="text-sm font-normal text-on-surface-variant">Teacher: {teacherName}</span>
                               </h4>
-                              <div className="overflow-x-auto">
+                              <div className="overflow-x-auto print:overflow-visible">
                                 <table className="w-full text-left border-collapse">
                                   <thead>
                                     <tr className="border-b border-outline-variant/50">
@@ -390,7 +390,7 @@ export default function AdminReports() {
                                     {classEnrollments.map((enr, idx) => {
                                       const student = students.find(s => String(s.user_id) === String(enr.student_id));
                                       return (
-                                        <tr key={enr.enrollment_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent">
+                                        <tr key={enr.enrollment_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid">
                                           <td className="py-2 px-4 font-body text-on-surface font-medium">{student ? `${student.first_name} ${student.last_name}` : 'Unknown'}</td>
                                           <td className="py-2 px-4 font-body text-on-surface-variant">{student ? student.email : '-'}</td>
                                         </tr>
@@ -448,7 +448,7 @@ export default function AdminReports() {
                 {attendanceLoading ? (
                    <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>
                 ) : (
-                   <div className="overflow-x-auto">
+                   <div className="overflow-x-auto print:overflow-visible">
                      <table className="w-full text-left border-collapse">
                        <thead>
                          <tr className="border-b border-outline-variant/50">
@@ -465,7 +465,7 @@ export default function AdminReports() {
                            .map(att => {
                              const teacher = teachers.find(t => t.user_id === att.classes?.primary_teacher_id);
                              return (
-                               <tr key={att.attendance_id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20">
+                               <tr key={att.attendance_id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
                                  <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
                                     {att.users ? `${att.users.first_name} ${att.users.last_name}` : 'Unknown Student'}
                                  </td>
@@ -524,8 +524,8 @@ export default function AdminReports() {
                          {cls.class_name || cls.name || 'Unnamed Class'}
                        </h3>
                        
-                       <div className="overflow-x-auto ml-4">
-                         <table className="w-full text-left border-collapse border border-outline-variant/30 shadow-sm rounded-lg overflow-hidden">
+                       <div className="overflow-x-auto print:overflow-visible ml-4">
+                         <table className="w-full text-left border-collapse border border-outline-variant/30 shadow-sm rounded-lg overflow-hidden print:overflow-visible">
                            <thead className="bg-surface-container-low">
                              <tr className="border-b border-outline-variant/50">
                                <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Role</th>
@@ -536,7 +536,7 @@ export default function AdminReports() {
                            </thead>
                            <tbody>
                              {teacher && (
-                               <tr className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent bg-primary/5">
+                               <tr className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid bg-primary/5">
                                  <td className="py-2 px-4 font-label text-sm text-primary font-bold">Teacher</td>
                                  <td className="py-2 px-4 font-body text-sm text-on-surface font-medium">{formatTeacherName(teacher.first_name, teacher.last_name)}</td>
                                  <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{teacher.user_name || '-'}</td>
@@ -548,7 +548,7 @@ export default function AdminReports() {
                                const student = students.find(s => String(s.user_id) === String(enr.student_id));
                                if (!student) return null;
                                return (
-                                 <tr key={enr.enrollment_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent">
+                                 <tr key={enr.enrollment_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid">
                                    <td className="py-2 px-4 font-label text-sm text-on-surface-variant">Student</td>
                                    <td className="py-2 px-4 font-body text-sm text-on-surface">{student.first_name} {student.last_name}</td>
                                    <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{student.user_name || '-'}</td>
@@ -584,8 +584,8 @@ export default function AdminReports() {
                            Support Staff & Volunteers
                          </h3>
                          
-                         <div className="overflow-x-auto ml-4">
-                           <table className="w-full text-left border-collapse border border-outline-variant/30 shadow-sm rounded-lg overflow-hidden">
+                         <div className="overflow-x-auto print:overflow-visible ml-4">
+                           <table className="w-full text-left border-collapse border border-outline-variant/30 shadow-sm rounded-lg overflow-hidden print:overflow-visible">
                              <thead className="bg-surface-container-low">
                                <tr className="border-b border-outline-variant/50">
                                  <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Role</th>
@@ -596,7 +596,7 @@ export default function AdminReports() {
                              </thead>
                              <tbody>
                                {otherTeachers.map(teacher => (
-                                 <tr key={teacher.user_id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent bg-primary/5">
+                                 <tr key={teacher.user_id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid bg-primary/5">
                                    <td className="py-2 px-4 font-label text-sm text-primary font-bold">Teacher (Unassigned)</td>
                                    <td className="py-2 px-4 font-body text-sm text-on-surface font-medium">{formatTeacherName(teacher.first_name, teacher.last_name)}</td>
                                    <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{teacher.user_name || '-'}</td>
@@ -605,7 +605,7 @@ export default function AdminReports() {
                                ))}
                                
                                {volunteers.map(volunteer => (
-                                 <tr key={volunteer.user_id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent bg-amber-500/5">
+                                 <tr key={volunteer.user_id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid bg-amber-500/5">
                                    <td className="py-2 px-4 font-label text-sm text-amber-600 font-bold">Volunteer</td>
                                    <td className="py-2 px-4 font-body text-sm text-on-surface font-medium">{volunteer.first_name} {volunteer.last_name}</td>
                                    <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{volunteer.user_name || '-'}</td>
