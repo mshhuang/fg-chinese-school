@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 export function InternalMessagesPanel() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [parentChildRelations, setParentChildRelations] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -88,10 +89,14 @@ export function InternalMessagesPanel() {
           if (localStr) setCurrentUser(JSON.parse(localStr));
         }
 
-        const [usersRes, messagesRes] = await Promise.all([
+        const [usersRes, messagesRes, familiesRes] = await Promise.all([
           supabase.from("users").select("user_id, first_name, last_name, user_roles(roles(role_name))"),
-          supabase.from("internal_messages").select("*").order("sent_at", { ascending: true })
+          supabase.from("internal_messages").select("*").order("sent_at", { ascending: true }),
+          supabase.from("parent_child").select("*")
         ]);
+        if (familiesRes.data) {
+           setParentChildRelations(familiesRes.data);
+        }
         
         if (usersRes.data) {
           const mappedUsers = usersRes.data.map((u: any) => ({
@@ -248,25 +253,50 @@ export function InternalMessagesPanel() {
 
   const currentUserObj = allUsers.find(u => u.user_id === currentUserId);
   const currentUserRoles = currentUserObj?.role_names || [];
-  const isStudent = currentUserRoles.includes('Student');
-  const isVolunteer = currentUserRoles.includes('Volunteer');
   const isAdmin = currentUserRoles.includes('Admin');
   const isBuilder = currentUserRoles.includes('Builder');
+  const isTeacherRole = currentUserRoles.includes('Teacher');
+  const isStaffRole = currentUserRoles.includes('Staff');
+  const isParentRole = currentUserRoles.includes('Parent');
+  
+  // Determine if user has privileged roles
+  const isPrivileged = isAdmin || isBuilder || isTeacherRole || isStaffRole;
 
   // Filter allowed users to chat with
   let allowedUsers = allUsers.filter(u => u.user_id !== currentUserId);
   
-  if (isStudent) {
+  if (!isPrivileged) {
+     const isStudent = currentUserRoles.includes('Student');
+     const isParent = currentUserRoles.includes('Parent');
+     const isVol = currentUserRoles.includes('Volunteer');
+
      allowedUsers = allowedUsers.filter(u => {
        const roles = u.role_names || [];
-       return roles.includes('Teacher') || roles.includes('Admin');
-     });
-  }
-  
-  if (isVolunteer) {
-     allowedUsers = allowedUsers.filter(u => {
-       const roles = u.role_names || [];
-       return !roles.includes('Student') && !roles.includes('Volunteer');
+       
+       // Allow communication with privileged roles
+       if (roles.includes('Teacher') || roles.includes('Admin') || roles.includes('Staff')) {
+           return true;
+       }
+
+       // Parent logic: can talk to their own children
+       if (isParent) {
+           const isChild = parentChildRelations.some(pc => pc.parent_id === currentUserId && pc.child_id === u.user_id);
+           if (isChild) return true;
+       }
+
+       // Student logic: can talk to their own parents
+       if (isStudent) {
+           const isMyParent = parentChildRelations.some(pc => pc.child_id === currentUserId && pc.parent_id === u.user_id);
+           if (isMyParent) return true;
+       }
+
+       // If they don't meet the above and are not privileged, they cannot talk to this user.
+       // This explicitly prevents:
+       // - Parents from talking to other parents, students, volunteers
+       // - Students from talking to other students, parents (except their own), volunteers
+       // - Volunteers from talking to parents, students, volunteers
+       // - Users with no roles from talking to non-privileged users
+       return false;
      });
   }
 
@@ -623,11 +653,34 @@ export function InternalMessagesPanel() {
                           const group = groupedUsers[r];
                           if (!group || group.length === 0) return null;
                           
-                          // Sort group by first name alphabetically
-                          group.sort((a, b) => (a.first_name || '').localeCompare(b.first_name || ''));
+                          // Sort group with Mr. first, then Ms./Mrs., then alphabetically by display name
+                          const getDisplay = (u) => {
+                             const isTeacher = u.role_names?.includes('Teacher');
+                             return isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';
+                          };
+                          
+                          group.sort((a, b) => {
+                             const nameA = getDisplay(a);
+                             const nameB = getDisplay(b);
+                             
+                             const isMrA = nameA.startsWith('Mr.');
+                             const isMrB = nameB.startsWith('Mr.');
+                             const isMsA = nameA.startsWith('Ms.') || nameA.startsWith('Mrs.');
+                             const isMsB = nameB.startsWith('Ms.') || nameB.startsWith('Mrs.');
+                             
+                             if (isMrA && !isMrB) return -1;
+                             if (!isMrA && isMrB) return 1;
+                             
+                             if (!isMrA && !isMrB) {
+                                if (isMsA && !isMsB) return -1;
+                                if (!isMsA && isMsB) return 1;
+                             }
+                             
+                             return nameA.localeCompare(nameB);
+                          });
                           
                           return (
-                            <optgroup key={r} label={r === "Others" ? "Unassigned" : (r === "Admin" ? "School Admin" : (r === "Teacher" ? "Teachers" : (r === "Student" ? "Students" : (r === "Parent" ? "Parents" : r))))}>
+                            <optgroup key={r} label={(r === "Others" ? "Unassigned" : (r === "Admin" ? "School Admins" : (r === "Teacher" ? "Teachers" : (r === "Student" ? "Students" : (r === "Parent" ? "Parents" : (r === "Staff" ? "Staff" : r + "s")))))) + ` (${group.length})`}>
                                 {group.map(u => {
                                   const isTeacher = u.role_names?.includes('Teacher');
                                   const displayName = isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';

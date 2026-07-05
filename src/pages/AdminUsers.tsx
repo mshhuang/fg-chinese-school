@@ -558,19 +558,33 @@ export default function AdminUsers() {
       {activeTab === 'users' && !showAdd && (
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-2">
           <div className="flex gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto">
-              {["All", ...roles.map(r => r.role_name), "Unassigned"].map(rName => (
+              {["All", ...roles.map(r => r.role_name), "Unassigned"].map(rName => {
+                  const count = users.filter(user => {
+                     const userRoleMappings = userRoles.filter(ur => ur.user_id === user.user_id);
+                     if (rName === "All") return true;
+                     if (rName === "Unassigned") return userRoleMappings.length === 0;
+                     return userRoleMappings.some(ur => {
+                       const r = roles.find(role => role.role_id === ur.role_id);
+                       return r && r.role_name === rName;
+                     });
+                  }).length;
+                  return (
                  <button
                     key={rName}
                     onClick={() => setFilterRole(rName)}
-                    className={`px-4 py-2 rounded-full font-label text-sm font-bold whitespace-nowrap transition-colors ${
+                    className={`px-4 py-2 rounded-full font-label text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
                       filterRole === rName 
                         ? 'bg-primary text-on-primary' 
                         : 'bg-surface-container-low text-on-surface hover:bg-surface-variant'
                     }`}
                  >
                     {rName}
+                    <span className={`text-xs py-0.5 px-2 rounded-full ${filterRole === rName ? 'bg-on-primary/20 text-on-primary' : 'bg-outline-variant/30 text-on-surface-variant'}`}>
+                       {count}
+                    </span>
                  </button>
-              ))}
+                  );
+              })}
           </div>
           <div className="relative w-full md:w-72 flex-shrink-0">
              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
@@ -722,6 +736,11 @@ export default function AdminUsers() {
         </div>
       )}
 
+      {activeTab === 'users' && !showAdd && (
+         <div className="font-label text-sm text-on-surface-variant font-bold px-1 -mt-2 mb-2">
+            Showing {filteredUsers.length} {filterRole === 'All' ? 'total users' : filterRole.toLowerCase() + (filteredUsers.length === 1 ? '' : 's')}
+         </div>
+      )}
       {activeTab === 'users' && (
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl overflow-hidden shadow-sm">
            <div className="overflow-x-auto overflow-y-auto max-h-[600px] p-0">

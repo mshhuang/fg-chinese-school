@@ -13,7 +13,7 @@ export default function TeacherNewsletters() {
 
   // Form state
   const [title, setTitle] = useState("");
-  const [audience, setAudience] = useState("Grade 4 Parents");
+  const [audience, setAudience] = useState("");
   const [content, setContent] = useState("");
   const [pdfFile, setPdfFile] = useState<string | null>(null);
   const [pdfFileObj, setPdfFileObj] = useState<File | null>(null);
@@ -389,7 +389,7 @@ export default function TeacherNewsletters() {
                             value={audience}
                             onChange={(e) => setAudience(e.target.value)}
                             className="w-full bg-surface-container px-4 py-3 rounded-xl border border-outline-variant/30 focus:border-primary outline-none transition-colors"
-                            placeholder="e.g. Grade 4 Parents"
+                            placeholder="e.g. All Parents"
                          />
                     </div>
                     <div>

@@ -279,7 +279,7 @@ export default function MyLessonPlans() {
                      )}
                    </div>
                    <span className="font-caption text-xs text-on-surface-variant">
-                     If it doesn't load securely, use the 'Open File' button above.
+                     Wait for content to be loaded...
                    </span>
                  </div>
 
@@ -306,7 +306,7 @@ export default function MyLessonPlans() {
                      <FileText className="w-16 h-16 opacity-10 mx-auto mb-4" />
                      <h3 className="font-title text-xl text-on-surface font-bold mb-2">Google File Viewer</h3>
                      <p className="font-body text-on-surface-variant">
-                       If the file does not render in this frame due to Google's security settings, please use the Open File button above to view or edit it securely in a new tab.
+                       Wait for content to be loaded... If it doesn't appear, please use the Open File button above.
                      </p>
                    </div>
                  </div>

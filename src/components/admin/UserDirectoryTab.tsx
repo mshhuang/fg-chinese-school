@@ -211,23 +211,42 @@ export default function UserDirectoryTab() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-          {["All", ...roles.map(r => r.role_name), "Unassigned"].map(rName => (
+          {["All", ...roles.map(r => r.role_name), "Unassigned"].map(rName => {
+              const count = users.filter(user => {
+                 const userRoleMappings = userRoles.filter(ur => ur.user_id === user.user_id);
+                 if (rName === "All") return true;
+                 if (rName === "Unassigned") return userRoleMappings.length === 0;
+                 return userRoleMappings.some(ur => {
+                   const r = roles.find(role => role.role_id === ur.role_id);
+                   return r && r.role_name === rName;
+                 });
+              }).length;
+              return (
              <button
                 key={rName}
                 onClick={() => setFilterRole(rName)}
-                className={`px-4 py-2 rounded-full font-label text-sm font-bold whitespace-nowrap transition-colors ${
+                className={`px-4 py-2 rounded-full font-label text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
                   filterRole === rName 
                     ? 'bg-primary text-on-primary' 
                     : 'bg-surface-container-low text-on-surface hover:bg-surface-variant'
                 }`}
              >
                 {rName}
+                <span className={`text-xs py-0.5 px-2 rounded-full ${filterRole === rName ? 'bg-on-primary/20 text-on-primary' : 'bg-outline-variant/30 text-on-surface-variant'}`}>
+                   {count}
+                </span>
              </button>
-          ))}
+              );
+          })}
       </div>
 
       {errorMsg && <div className="bg-orange-100 text-orange-800 border border-orange-200 px-4 py-3 rounded-lg font-body text-sm font-medium">{errorMsg}</div>}
 
+      {!showAdd && (
+         <div className="font-label text-sm text-on-surface-variant font-bold px-1 -mt-2 mb-2">
+            Showing {filteredUsers.length} {filterRole === 'All' ? 'total users' : filterRole.toLowerCase() + (filteredUsers.length === 1 ? '' : 's')}
+         </div>
+      )}
       {showAdd && (
          <div className="bg-surface-container-low p-6 md:p-8 rounded-3xl border border-outline-variant/40 shadow-sm relative overflow-hidden">
             <h3 className="font-title text-xl font-bold text-on-surface mb-6">{editingUserId ? 'Edit User' : 'Create New User'}</h3>

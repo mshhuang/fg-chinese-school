@@ -99,3 +99,29 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+
+
+/* Fix Quill Tooltip overflowing */
+.ql-snow .ql-tooltip {
+  left: 10px !important;
+  transform: none !important;
+  max-width: calc(100vw - 40px) !important;
+  box-sizing: border-box !important;
+  white-space: normal !important;
+  z-index: 9999 !important;
+  word-break: break-word !important;
+}
+.ql-snow .ql-tooltip input[type="text"] {
+  max-width: 100%;
+  width: auto;
+  min-width: 150px;
+}
+@media (max-width: 768px) {
+    .ql-snow .ql-tooltip {
+        left: 5px !important;
+        right: 5px !important;
+        width: auto !important;
+        max-width: none !important;
+    }
+}
