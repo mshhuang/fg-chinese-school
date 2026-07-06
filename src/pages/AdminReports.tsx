@@ -147,7 +147,7 @@ export default function AdminReports() {
         </div>
       </header>
 
-      <div className="flex bg-surface-container-low p-1 rounded-2xl w-fit shrink-0 print:hidden">
+      <div className="flex flex-wrap bg-surface-container-low p-1 rounded-2xl w-full sm:w-fit shrink-0 print:hidden gap-1">
         <button
           onClick={() => setActiveTab('teachers')}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
@@ -207,14 +207,16 @@ export default function AdminReports() {
           <div className="p-6 print:p-0 print:block">
             {activeTab === 'teachers' && (
               <div>
-                <p className="text-on-surface-variant mb-6 print:hidden">A comprehensive list of all teachers currently active in the system, including contact details.</p>
-                <div className="hidden print:flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-                   <h2 className="font-display text-2xl font-bold">Teachers Report</h2>
-                   <span className="font-mono text-sm">{new Date().toLocaleDateString()}</span>
+                <div className="flex flex-col gap-2 mb-6">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
+                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Teachers Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                   </div>
+                   <p className="text-on-surface-variant print:hidden">A comprehensive list of all teachers currently active in the system, including contact details.</p>
                 </div>
-                <div className="overflow-x-auto print:overflow-visible">
+                <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
-                    <thead>
+                    <thead className="bg-surface-container-low">
                       <tr className="border-b border-outline-variant/50">
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Name</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Email</th>
@@ -246,14 +248,16 @@ export default function AdminReports() {
 
             {activeTab === 'students' && (
               <div>
-                <p className="text-on-surface-variant mb-6 print:hidden">A complete directory of all enrolled students, detailing grade levels and contact information.</p>
-                <div className="hidden print:flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-                   <h2 className="font-display text-2xl font-bold">Students Report</h2>
-                   <span className="font-mono text-sm">{new Date().toLocaleDateString()}</span>
+                <div className="flex flex-col gap-2 mb-6">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
+                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Students Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                   </div>
+                   <p className="text-on-surface-variant print:hidden">A complete directory of all enrolled students, detailing grade levels and contact information.</p>
                 </div>
-                <div className="overflow-x-auto print:overflow-visible">
+                <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
-                    <thead>
+                    <thead className="bg-surface-container-low">
                       <tr className="border-b border-outline-variant/50">
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Name</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Email</th>
@@ -296,14 +300,16 @@ export default function AdminReports() {
 
             {activeTab === 'classes' && (
               <div>
-                <p className="text-on-surface-variant mb-6 print:hidden">An overview of all active classes, showing assigned teachers, locations, and schedules.</p>
-                <div className="hidden print:flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-                   <h2 className="font-display text-2xl font-bold">Classes Report</h2>
-                   <span className="font-mono text-sm">{new Date().toLocaleDateString()}</span>
+                <div className="flex flex-col gap-2 mb-6">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
+                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Classes Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                   </div>
+                   <p className="text-on-surface-variant print:hidden">An overview of all active classes, showing assigned teachers, locations, and schedules.</p>
                 </div>
-                <div className="overflow-x-auto print:overflow-visible">
+                <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
-                    <thead>
+                    <thead className="bg-surface-container-low">
                       <tr className="border-b border-outline-variant/50">
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Class Name</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Room</th>
@@ -337,10 +343,12 @@ export default function AdminReports() {
 
             {activeTab === 'enrollments' && (
               <div>
-                <p className="text-on-surface-variant mb-6 print:hidden">A detailed breakdown of student enrollments grouped by class, including unassigned students.</p>
-                <div className="hidden print:flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-                   <h2 className="font-display text-2xl font-bold">Enrollments Report</h2>
-                   <span className="font-mono text-sm">{new Date().toLocaleDateString()}</span>
+                <div className="flex flex-col gap-2 mb-6">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
+                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Enrollments Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                   </div>
+                   <p className="text-on-surface-variant print:hidden">A detailed breakdown of student enrollments grouped by class, including unassigned students.</p>
                 </div>
                 
                 {programs.map(program => {
@@ -378,9 +386,9 @@ export default function AdminReports() {
                                 <span>{cls ? (cls.class_name || cls.name) : 'Unassigned Class'}</span>
                                 <span className="text-sm font-normal text-on-surface-variant">Teacher: {teacherName}</span>
                               </h4>
-                              <div className="overflow-x-auto print:overflow-visible">
+                              <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                                 <table className="w-full text-left border-collapse">
-                                  <thead>
+                                  <thead className="bg-surface-container-low">
                                     <tr className="border-b border-outline-variant/50">
                                       <th className="py-2 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Student Name</th>
                                       <th className="py-2 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Student Email</th>
@@ -414,10 +422,12 @@ export default function AdminReports() {
 
             {activeTab === 'attendance' && (
               <div>
-                <p className="text-on-surface-variant mb-6 print:hidden">A report tracking student attendance (present/absent) and reasons for absence, filterable by date and teacher.</p>
-                <div className="hidden print:flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-                   <h2 className="font-display text-2xl font-bold">Attendance Report</h2>
-                   <span className="font-mono text-sm">{attendanceDate}</span>
+                <div className="flex flex-col gap-2 mb-6">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
+                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Attendance Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{attendanceDate}</span>
+                   </div>
+                   <p className="text-on-surface-variant print:hidden">A report tracking student attendance (present/absent) and reasons for absence, filterable by date and teacher.</p>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-4 mb-6 print:hidden">
@@ -448,9 +458,9 @@ export default function AdminReports() {
                 {attendanceLoading ? (
                    <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>
                 ) : (
-                   <div className="overflow-x-auto print:overflow-visible">
+                   <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                      <table className="w-full text-left border-collapse">
-                       <thead>
+                       <thead className="bg-surface-container-low">
                          <tr className="border-b border-outline-variant/50">
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Student</th>
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Class</th>
@@ -503,10 +513,12 @@ export default function AdminReports() {
 
             {activeTab === 'credentials' && (
               <div>
-                <p className="text-on-surface-variant mb-6 print:hidden">A secure report listing usernames and passwords for all users, grouped by their assigned classes.</p>
-                <div className="hidden print:flex justify-between items-end border-b-2 border-black pb-2 mb-6">
-                   <h2 className="font-display text-2xl font-bold">User Credentials Report</h2>
-                   <span className="font-mono text-sm">{new Date().toLocaleDateString()}</span>
+                <div className="flex flex-col gap-2 mb-6">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
+                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">User Credentials Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                   </div>
+                   <p className="text-on-surface-variant print:hidden">A secure report listing usernames and passwords for all users, grouped by their assigned classes.</p>
                 </div>
                 
                 {classes.map(cls => {
