@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Copy as Sun, FileText, Clock, MessageSquare, AlertTriangle, Users, CheckCircle2, Coins, BookOpen, Megaphone, Calendar } from "lucide-react";
 import { cn } from "../lib/utils";
+import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 
 export default function ParentPortal() {
   const [activeChild, setActiveChild] = useState<string>("mei");
   const [children, setChildren] = useState<any[]>([]);
+  const [announcement, setAnnouncement] = useState<any>(null);
 
   useEffect(() => {
     async function fetchChildren() {
@@ -33,6 +35,11 @@ export default function ParentPortal() {
             setChildren(mappedChildren);
             setActiveChild(mappedChildren[0].user_id);
          }
+      }
+      
+      const anns = await fetchVisibleAnnouncements(u, localStorage.getItem('current_role') || u.role || 'parent', 1);
+      if (anns && anns.length > 0) {
+         setAnnouncement(anns[0]);
       }
     }
     fetchChildren();
@@ -86,6 +93,7 @@ export default function ParentPortal() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         
         {/* School Announcements */}
+        {announcement && (
         <div className="md:col-span-12 bg-primary-container/10 rounded-3xl border border-primary-container/30 p-8 shadow-sm flex items-center gap-6">
            <div className="w-16 h-16 bg-surface-container-lowest rounded-full flex items-center justify-center shrink-0 border-2 border-primary-container z-10 shadow-sm">
               <Megaphone className="w-8 h-8 text-primary opacity-80" />
@@ -93,16 +101,26 @@ export default function ParentPortal() {
            
            <div className="flex-1">
               <div className="flex items-center gap-3 mb-1">
-                 <h3 className="font-label text-base text-on-surface font-bold">Spring Festival Gala Rehearsals</h3>
+                 <h3 className="font-label text-base text-on-surface font-bold">{announcement.title}</h3>
                  <span className="font-caption text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-sm uppercase tracking-wide font-bold">New</span>
               </div>
-              <p className="font-body text-on-surface-variant text-sm">Rehearsals begin next week. All students in the singing program must attend exactly on time.</p>
+              <p className="font-body text-on-surface-variant text-sm line-clamp-2">
+                 {announcement.content ? (() => {
+                    try {
+                       const contentStr = atob(announcement.content).replace(/<[^>]+>/g, '');
+                       return contentStr.replace(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*/is, '');
+                    } catch (e) {
+                       return announcement.content.replace(/<[^>]+>/g, '').replace(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*/is, '');
+                    }
+                 })() : ''}
+              </p>
            </div>
            
-           <button className="font-label text-sm text-primary font-bold hover:underline shrink-0 px-4">
+           <a href="/parent/announcements" className="font-label text-sm text-primary font-bold hover:underline shrink-0 px-4">
               Read More
-           </button>
+           </a>
         </div>
+        )}
 
         {/* Daily Snapshot */}
         <div className="md:col-span-8 bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] relative overflow-hidden">

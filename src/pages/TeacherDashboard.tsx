@@ -1,5 +1,6 @@
 import { Clock, CheckCircle2, Bookmark, Flame, Calendar, PlusCircle, ArrowRight, BookOpen, Megaphone, ClipboardEdit, FileText } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
+import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -72,15 +73,10 @@ export default function TeacherDashboard() {
     }
   };
 
-  const fetchLatestAnnouncement = async () => {
-    const { data } = await supabase
-       .from('announcements')
-       .select('*')
-       .order('created_at', { ascending: false })
-       .limit(1);
-    
-    if (data && data.length > 0) {
-       setLatestAnnouncement(data[0]);
+      const fetchLatestAnnouncement = async () => {
+    const anns = await fetchVisibleAnnouncements(localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : user, localStorage.getItem('current_role') || 'teacher', 1);
+    if (anns && anns.length > 0) {
+       setLatestAnnouncement(anns[0]);
     } else {
        setLatestAnnouncement(null);
     }

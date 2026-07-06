@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, CheckCircle2, Clock, MapPin, Megaphone, CheckSquare, Users, Building, ClipboardEdit, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { DashboardNotifications } from "../components/DashboardNotifications";
 
@@ -30,17 +31,8 @@ export default function VolunteerDashboard() {
 
       // Fetch announcements. For simplicity, fetching all active ones where audience includes their role or is 'all'
       // Or just fetch latest 5 announcements for now
-      const { data, error } = await supabase
-        .from('announcements')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (error) {
-         console.warn("Could not fetch announcements:", error);
-      } else {
-         setAnnouncements(data || []);
-      }
+      const data = await fetchVisibleAnnouncements(localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : null, localStorage.getItem('current_role') || 'volunteer', 5);
+      setAnnouncements(data || []);
     } catch (err) {
       console.error(err);
     } finally {

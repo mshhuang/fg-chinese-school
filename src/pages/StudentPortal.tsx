@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BookOpen, Check, Volume2, Star, Edit3, Lock, ChevronRight, Megaphone, Users, Circle } from "lucide-react";
 import { cn } from "../lib/utils";
+import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { DashboardNotifications } from "../components/DashboardNotifications";
 
@@ -57,13 +58,8 @@ export default function StudentPortal() {
             }
 
             // Fetch latest announcement
-            const { data: annData } = await supabase
-              .from('announcements')
-              .select('*')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
-            if (annData) setAnnouncement(annData);
+            const anns = await fetchVisibleAnnouncements(localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : user, localStorage.getItem('current_role') || 'student', 1);
+            if (anns && anns.length > 0) setAnnouncement(anns[0]);
 
             // Fetch assignments
             const { data: assignData } = await supabase

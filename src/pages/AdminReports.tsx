@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Printer, Download, Users, School, BookOpen, ClipboardList, KeyRound, CheckSquare } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatTeacherName } from "../lib/utils";
+import { ReportPrintHeader } from "../components/admin/ReportPrintHeader";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -47,7 +48,7 @@ export default function AdminReports() {
            
            if (teacherRole) {
              const teacherIds = userRolesData.filter((ur: any) => ur.role_id === teacherRole.role_id).map((ur: any) => ur.user_id);
-             setTeachers(usersData.filter((u: any) => teacherIds.includes(u.user_id)).sort((a, b) => (a.first_name || '').localeCompare(b.first_name || '')));
+             setTeachers(usersData.filter((u: any) => teacherIds.includes(u.user_id) && !(u.first_name === 'Youlin' && u.last_name === 'Venerable')).sort((a, b) => (a.first_name || '').localeCompare(b.first_name || '')));
            }
            
            if (studentRole) {
@@ -207,12 +208,13 @@ export default function AdminReports() {
           <div className="p-6 print:p-0 print:block">
             {activeTab === 'teachers' && (
               <div>
-                <div className="flex flex-col gap-2 mb-6">
-                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
-                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Teachers Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                <ReportPrintHeader title="Teachers Report" />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Teachers Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
                    </div>
-                   <p className="text-on-surface-variant print:hidden">A comprehensive list of all teachers currently active in the system, including contact details.</p>
+                   <p className="text-on-surface-variant">A comprehensive list of all teachers currently active in the system, including contact details.</p>
                 </div>
                 <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
@@ -248,12 +250,13 @@ export default function AdminReports() {
 
             {activeTab === 'students' && (
               <div>
-                <div className="flex flex-col gap-2 mb-6">
-                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
-                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Students Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                <ReportPrintHeader title="Students Report" />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Students Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
                    </div>
-                   <p className="text-on-surface-variant print:hidden">A complete directory of all enrolled students, detailing grade levels and contact information.</p>
+                   <p className="text-on-surface-variant">A complete directory of all enrolled students, detailing grade levels and contact information.</p>
                 </div>
                 <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
@@ -300,12 +303,13 @@ export default function AdminReports() {
 
             {activeTab === 'classes' && (
               <div>
-                <div className="flex flex-col gap-2 mb-6">
-                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
-                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Classes Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                <ReportPrintHeader title="Classes Report" />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Classes Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
                    </div>
-                   <p className="text-on-surface-variant print:hidden">An overview of all active classes, showing assigned teachers, locations, and schedules.</p>
+                   <p className="text-on-surface-variant">An overview of all active classes, showing assigned teachers, locations, and schedules.</p>
                 </div>
                 <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
@@ -343,12 +347,13 @@ export default function AdminReports() {
 
             {activeTab === 'enrollments' && (
               <div>
-                <div className="flex flex-col gap-2 mb-6">
-                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
-                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Enrollments Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                <ReportPrintHeader title="Enrollments Report" />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Enrollments Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
                    </div>
-                   <p className="text-on-surface-variant print:hidden">A detailed breakdown of student enrollments grouped by class, including unassigned students.</p>
+                   <p className="text-on-surface-variant">A detailed breakdown of student enrollments grouped by class, including unassigned students.</p>
                 </div>
                 
                 {programs.map(program => {
@@ -422,12 +427,13 @@ export default function AdminReports() {
 
             {activeTab === 'attendance' && (
               <div>
-                <div className="flex flex-col gap-2 mb-6">
-                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
-                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">Attendance Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{attendanceDate}</span>
+                <ReportPrintHeader title={`Attendance Report - ${attendanceDate}`} />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Attendance Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{attendanceDate}</span>
                    </div>
-                   <p className="text-on-surface-variant print:hidden">A report tracking student attendance (present/absent) and reasons for absence, filterable by date and teacher.</p>
+                   <p className="text-on-surface-variant">A report tracking student attendance (present/absent) and reasons for absence, filterable by date and teacher.</p>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row gap-4 mb-6 print:hidden">
@@ -449,7 +455,7 @@ export default function AdminReports() {
                      >
                         <option value="all">All Teachers</option>
                         {teachers.map(t => (
-                           <option key={t.user_id} value={t.user_id}>{t.first_name} {t.last_name}</option>
+                           <option key={t.user_id} value={t.user_id}>{formatTeacherName(t.first_name, t.last_name)}</option>
                         ))}
                      </select>
                    </div>
@@ -513,12 +519,13 @@ export default function AdminReports() {
 
             {activeTab === 'credentials' && (
               <div>
-                <div className="flex flex-col gap-2 mb-6">
-                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4 print:border-black print:border-b-2 print:pb-2">
-                       <h2 className="font-display text-2xl font-bold text-on-surface print:text-black">User Credentials Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant print:text-black">{new Date().toLocaleDateString()}</span>
+                <ReportPrintHeader title="User Credentials Report" />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">User Credentials Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
                    </div>
-                   <p className="text-on-surface-variant print:hidden">A secure report listing usernames and passwords for all users, grouped by their assigned classes.</p>
+                   <p className="text-on-surface-variant">A secure report listing usernames and passwords for all users, grouped by their assigned classes.</p>
                 </div>
                 
                 {classes.map(cls => {

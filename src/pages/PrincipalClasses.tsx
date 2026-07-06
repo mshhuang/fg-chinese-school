@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Search, Filter, Users, Calendar as CalendarIcon, Clock, BookOpen, MoreHorizontal, Plus, Loader2, ImagePlus, X } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
 export default function PrincipalClasses() {
@@ -119,7 +119,7 @@ export default function PrincipalClasses() {
             const userIds = (urData as any[]).map(ur => ur.user_id);
             const { data: tData } = await supabase.from('users').select('user_id, first_name, last_name').in('user_id', userIds);
             if (tData) {
-              setTeachers(tData);
+              setTeachers(tData.filter((t: any) => !(t.first_name === "Youlin" && t.last_name === "Venerable")));
             }
          }
        }
@@ -301,7 +301,7 @@ export default function PrincipalClasses() {
                          >
                             <option value="unassigned">Unassigned</option>
                             {teachers.map(t => (
-                               <option key={t.user_id} value={t.user_id}>{t.first_name} {t.last_name}</option>
+                               <option key={t.user_id} value={t.user_id}>{formatTeacherName(t.first_name, t.last_name)}</option>
                             ))}
                          </select>
                       </div>

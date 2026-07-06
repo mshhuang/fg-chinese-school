@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useState, useRef, useEffect } from "react";
+import { fetchVisibleAnnouncements } from "../../lib/announcementUtils";
 import { supabase } from "../../lib/supabase";
 import { logSystemActivity } from "../../lib/logger";
 import { logSystemEvent } from "../../lib/logSystemEvent";
@@ -149,9 +150,7 @@ export default function MainLayout() {
        setUnreadMessagesCount(count || 0);
 
        // Announcements
-       const { data: annData } = await supabase
-         .from('announcements')
-         .select('announcement_id');
+       const annData = await fetchVisibleAnnouncements(userInfo, localStorage.getItem('current_role') || userRole || '');
 
        if (annData) {
          const stored = localStorage.getItem(`ann_read_${currentUserId}`);

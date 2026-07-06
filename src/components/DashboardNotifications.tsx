@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { MessageSquare, Megaphone, Newspaper, X } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -19,7 +20,7 @@ export function DashboardNotifications() {
       try {
         const u = JSON.parse(userStr);
         setUserId(u.id);
-        setUserRole(u.role || "");
+        setUserRole(localStorage.getItem('current_role') || u.role || '');
       } catch (e) {}
     }
   }, []);
@@ -38,9 +39,7 @@ export function DashboardNotifications() {
       setUnreadMessages(msgCount || 0);
 
       // 2. Announcements
-      const { data: annData } = await supabase
-        .from('announcements')
-        .select('announcement_id');
+      const annData = await fetchVisibleAnnouncements({ id: userId }, userRole || '', 100);
 
       if (annData) {
         const stored = localStorage.getItem(`ann_read_${userId}`);

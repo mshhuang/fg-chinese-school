@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { Users, BookOpen, ClipboardCheck, Coins, UserCheck, UserPlus, Megaphone, CheckCircle2, FileText, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -71,7 +72,7 @@ export default function PrincipalDashboard() {
       setStats({ totalStudents: studentCount, activeClasses: classesCount || 0, absencesToday });
 
       // Load Announcements
-      const { data: annData } = await supabase.from('announcements').select('*').order('announcement_id', { ascending: false }).limit(3);
+      const annData = await fetchVisibleAnnouncements(localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!) : user, localStorage.getItem('current_role') || 'principal', 3);
       if (annData) setAnnouncements(annData);
 
       // Load Programs

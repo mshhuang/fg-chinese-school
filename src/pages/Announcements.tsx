@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2, Paperclip } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
+import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { BuilderIconCustom, AdminIconCustom, StaffIconCustom, VolunteerIconCustom, TeacherIconCustom, StudentIconCustom } from "../components/icons";
 import { logSystemActivity } from "../lib/logger";
@@ -161,7 +162,7 @@ export default function Announcements() {
         const u = JSON.parse(userStr);
         setUser(u);
         currentUserId = u.id;
-        currentUserRole = u.role;
+        currentUserRole = localStorage.getItem('current_role') || u.role;
         setSelectedPostingRole(u.role);
       } catch (e) {}
     }
@@ -186,50 +187,7 @@ export default function Announcements() {
     }
 
     // Load announcements and their replies
-    let query = supabase.from('announcements').select(`
-      announcement_id,
-      title,
-      content,
-      created_by,
-      created_at,
-      target_role_id,
-      target_role_ids,
-      target_class_ids,
-      target_user_ids,
-      users:created_by ( first_name, last_name, email, user_roles ( roles ( role_name ) ) ),
-      roles:target_role_id ( role_name ),
-      announcement_replies (
-        reply_id,
-        content,
-        created_at,
-        users:user_id ( first_name, last_name, email, user_roles ( roles ( role_name ) ) )
-      )
-    `).order('created_at', { ascending: false });
-
-    const { data: anns } = await query;
-    
-    let finalAnns = anns || [];
-
-    // Temporary logic: Ideally we'd filter on the DB side based on RLS.
-    // For now, filter so users only see what is relevant to them or all if admin/builder.
-    if (currentUserRole !== 'admin' && currentUserRole !== 'principal' && currentUserRole !== 'builder' && currentUserId) {
-        // Need to match either 'all', their role, their classes, or their userId
-        const userRoleId = rolesRes.data?.find(r => r.role_name.toLowerCase() === currentUserRole.toLowerCase())?.role_id;
-        
-        // Let's get classes for this user (not strictly needed if we just let them see all they're targeted by)
-        // Since we don't have user_classes pre-fetched here simply, we'll just check userId and roleId
-        finalAnns = finalAnns.filter(a => {
-           if (a.created_by === currentUserId) return true;
-           if (!a.target_role_ids?.length && !a.target_class_ids?.length && !a.target_user_ids?.length && !a.target_role_id) return true; // targeted to all
-           
-           if (a.target_role_ids?.includes(userRoleId)) return true;
-           if (a.target_user_ids?.includes(currentUserId)) return true;
-           if (a.target_role_id === userRoleId) return true;
-           
-           return false; // Not showing class specifically unless joined, but good enough for now
-        });
-    }
-
+    const finalAnns = await fetchVisibleAnnouncements(userStr ? JSON.parse(userStr) : user, currentUserRole);
     setAnnouncements(finalAnns);
     setLoading(false);
   };
