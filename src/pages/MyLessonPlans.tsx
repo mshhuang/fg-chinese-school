@@ -54,7 +54,21 @@ export default function MyLessonPlans() {
                 const { data: usersData } = await supabase.from('users').select('user_id, first_name, last_name').in('user_id', teacherIds).order('first_name');
                 if (usersData) {
                    const filteredUsers = usersData.filter(u => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
-                   setTeachers(filteredUsers);
+                   const sortedUsers = filteredUsers.sort((a, b) => {
+                      const nameA = formatTeacherName(a.first_name, a.last_name);
+                      const nameB = formatTeacherName(b.first_name, b.last_name);
+                      const isMaleA = nameA.startsWith('Mr.');
+                      const isMaleB = nameB.startsWith('Mr.');
+                      
+                      if (isMaleA && !isMaleB) return -1;
+                      if (!isMaleA && isMaleB) return 1;
+                      
+                      const firstNameA = (a.first_name || '').trim();
+                      const firstNameB = (b.first_name || '').trim();
+                      
+                      return firstNameA.localeCompare(firstNameB);
+                   });
+                   setTeachers(sortedUsers);
                 }
              }
           }

@@ -19,19 +19,17 @@ export default function PrincipalClasses() {
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   const handleTeacherChange = async (classId: string, teacherId: string) => {
-    const newTeacherId = teacherId === "unassigned" ? null : teacherId;
-    
     // @ts-ignore
-    const { error } = await supabase.from('classes').update({ primary_teacher_id: newTeacherId }).eq('class_id', classId);
+    const { error } = await supabase.from('classes').update({ primary_teacher_id: teacherId }).eq('class_id', classId);
     if (error) {
       alert("Error updating teacher: " + error.message);
       return;
     }
     
-    const updatedTeacher = teachers.find(t => t.user_id === newTeacherId);
+    const updatedTeacher = teachers.find(t => t.user_id === teacherId);
     setClassesData(classesData.map(c => 
       c.class_id === classId 
-        ? { ...c, primary_teacher_id: newTeacherId, users: updatedTeacher }
+        ? { ...c, primary_teacher_id: teacherId, users: updatedTeacher }
         : c
     ));
   };
@@ -119,7 +117,22 @@ export default function PrincipalClasses() {
             const userIds = (urData as any[]).map(ur => ur.user_id);
             const { data: tData } = await supabase.from('users').select('user_id, first_name, last_name').in('user_id', userIds);
             if (tData) {
-              setTeachers(tData.filter((t: any) => !(t.first_name === "Youlin" && t.last_name === "Venerable")));
+               const filteredUsers = tData.filter((t: any) => !(t.first_name === "Youlin" && t.last_name === "Venerable"));
+               const sortedUsers = filteredUsers.sort((a, b) => {
+                  const nameA = formatTeacherName(a.first_name, a.last_name);
+                  const nameB = formatTeacherName(b.first_name, b.last_name);
+                  const isMaleA = nameA.startsWith('Mr.');
+                  const isMaleB = nameB.startsWith('Mr.');
+                  
+                  if (isMaleA && !isMaleB) return -1;
+                  if (!isMaleA && isMaleB) return 1;
+                  
+                  const firstNameA = (a.first_name || '').trim();
+                  const firstNameB = (b.first_name || '').trim();
+                  
+                  return firstNameA.localeCompare(firstNameB);
+               });
+               setTeachers(sortedUsers);
             }
          }
        }
@@ -295,11 +308,10 @@ export default function PrincipalClasses() {
                       </div>
                       <div className="flex flex-col flex-1 min-w-0">
                          <select 
-                            value={activeClass?.primary_teacher_id || "unassigned"}
+                            value={activeClass?.primary_teacher_id || ""}
                             onChange={(e) => activeClass && handleTeacherChange(activeClass.class_id, e.target.value)}
                             className="font-title text-base font-bold text-on-surface bg-transparent border-none outline-none cursor-pointer focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full truncate"
                          >
-                            <option value="unassigned">Unassigned</option>
                             {teachers.map(t => (
                                <option key={t.user_id} value={t.user_id}>{formatTeacherName(t.first_name, t.last_name)}</option>
                             ))}

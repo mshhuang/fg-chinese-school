@@ -2,7 +2,7 @@ import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { 
   Building2, User, Users as ParentUsers, GraduationCap, Settings as Wrench, Pickaxe,
   LayoutDashboard, School, MessageSquare, Calendar, Users, Bell, Flower2, BookOpen, Settings, Megaphone, Newspaper, ChevronDown, Check, LogOut, Database, KeyRound, Clock, Activity, TerminalSquare, RefreshCcw, Server, ShieldAlert, AlertCircle,
-  Menu, X, FileText
+  Menu, X, FileText, Ticket
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { useState, useRef, useEffect } from "react";
@@ -18,7 +18,7 @@ const ROLE_CONFIGS: Record<string, any> = {
   student: { name: "Mei Lin", roleLabel: "Student", badge: "Grade 4", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/student/dashboard" }, { icon: Megaphone, label: "Announcements", href: "/student/announcements" }, { icon: Calendar, label: "Schedule and Calendar", href: "/student/schedule" }, { icon: BookOpen, label: "Assignments", href: "/student/assignments" }, { icon: MessageSquare, label: "Messages", href: "/student/messages" }, { icon: Users, label: "Clubs", href: "/student/clubs", disabled: true }, { icon: User, label: "My Profile", href: "/profile" } ] },
   staff: { name: "David", roleLabel: "Staff", badge: "Operations", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/staff/dashboard" }, { icon: Calendar, label: "Calendar", href: "/staff/calendar" }, { icon: Megaphone, label: "Announcements", href: "/staff/announcements" }, { icon: FileText, label: "Attendance", href: "/staff/attendance", disabled: true }, { icon: MessageSquare, label: "Messages", href: "/staff/messages" }, { icon: User, label: "My Profile", href: "/profile" } ] },
   volunteer: { name: "Sarah", roleLabel: "Volunteer", badge: "Support", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/volunteer/dashboard" }, { icon: Calendar, label: "Calendar", href: "/volunteer/calendar" }, { icon: Megaphone, label: "Announcements", href: "/volunteer/announcements" }, { icon: FileText, label: "Attendance", href: "/volunteer/attendance", disabled: true }, { icon: MessageSquare, label: "Messages", href: "/volunteer/messages" }, { icon: User, label: "My Profile", href: "/profile" } ] },
-  builder: { name: "Vickie", roleLabel: "Builder", badge: "System", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/builder/dashboard" }, { icon: Calendar, label: "Calendar", href: "/builder/calendar" }, { icon: Database, label: "Database", href: "/builder/database" }, { icon: Megaphone, label: "Announcements", href: "/builder/announcements" }, { icon: MessageSquare, label: "Messages", href: "/builder/messages" }, { icon: Users, label: "User Management", href: "/builder/users" }, { icon: Clock, label: "Sessions", href: "/builder/sessions" }, { icon: ShieldAlert, label: "Password Reminders", href: "/builder/password-reminders" } ] }
+  builder: { name: "Vickie", roleLabel: "Builder", badge: "System", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/builder/dashboard" }, { icon: Calendar, label: "Calendar", href: "/builder/calendar" }, { icon: Database, label: "Database", href: "/builder/database" }, { icon: Megaphone, label: "Announcements", href: "/builder/announcements" }, { icon: MessageSquare, label: "Messages", href: "/builder/messages" }, { icon: Users, label: "User Management", href: "/builder/users" }, { icon: Clock, label: "Sessions", href: "/builder/sessions" }, { icon: ShieldAlert, label: "Password Reminders", href: "/builder/password-reminders" }, { icon: Ticket, label: "Support Tickets", href: "/builder/support-tickets" } ] }
 };
 
 export default function MainLayout() {
@@ -462,8 +462,10 @@ export default function MainLayout() {
                <Menu className="w-6 h-6 group-hover:scale-110 transition-transform" />
             </button>
          </header>
-         <div className="flex-1 overflow-auto print:overflow-visible print:h-auto print:block">
-            <Outlet />
+         <div id="main-scroll-container" className="flex-1 overflow-auto print:overflow-visible print:h-auto print:block">
+            <div id="main-scroll-inner" className="min-h-full">
+               <Outlet />
+            </div>
          </div>
 
          {/* Passcode Modal for Builder Role */}

@@ -1,5 +1,5 @@
 import { Clock, CheckCircle2, Bookmark, Flame, Calendar, PlusCircle, ArrowRight, BookOpen, Megaphone, ClipboardEdit, FileText } from "lucide-react";
-import { cn, formatTeacherName } from "../lib/utils";
+import { cn, formatTeacherName, extractPlainText } from "../lib/utils";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { useState, useEffect } from "react";
@@ -131,14 +131,7 @@ export default function TeacherDashboard() {
                         <span className="font-caption text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-sm uppercase tracking-wide font-bold">New</span>
                      </div>
                      <p className="font-body text-on-surface-variant text-sm line-clamp-2">
-                        {latestAnnouncement.content ? (() => {
-                          try {
-                             const contentStr = atob(latestAnnouncement.content).replace(/<[^>]+>/g, '');
-                             return contentStr.replace(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*/is, '');
-                          } catch (e) {
-                             return latestAnnouncement.content.replace(/<[^>]+>/g, '').replace(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*/is, '');
-                          }
-                        })() : ''}
+                        {extractPlainText(latestAnnouncement.content)}
                      </p>
                   </div>
                   

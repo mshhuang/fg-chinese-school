@@ -6,7 +6,7 @@ import { Users, BookOpen, ClipboardCheck, Coins, UserCheck, UserPlus, Megaphone,
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { DashboardNotifications } from "../components/DashboardNotifications";
-import { formatTeacherName } from "../lib/utils";
+import { formatTeacherName, extractPlainText } from "../lib/utils";
 
 const data = [
   { name: 'Mon', students: 500 },
@@ -168,7 +168,7 @@ export default function PrincipalDashboard() {
                            <h4 className="font-label font-bold text-on-surface">{ann.title}</h4>
                         </div>
                         <p className="font-body text-sm text-on-surface-variant line-clamp-2">
-                           {ann.content ? ann.content.replace(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*/is, '') : ""}
+                           {extractPlainText(ann.content)}
                         </p>
                      </div>
                    ))

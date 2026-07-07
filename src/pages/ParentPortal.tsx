@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Copy as Sun, FileText, Clock, MessageSquare, AlertTriangle, Users, CheckCircle2, Coins, BookOpen, Megaphone, Calendar } from "lucide-react";
-import { cn } from "../lib/utils";
+import { cn, extractPlainText } from "../lib/utils";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 
@@ -105,14 +105,7 @@ export default function ParentPortal() {
                  <span className="font-caption text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-sm uppercase tracking-wide font-bold">New</span>
               </div>
               <p className="font-body text-on-surface-variant text-sm line-clamp-2">
-                 {announcement.content ? (() => {
-                    try {
-                       const contentStr = atob(announcement.content).replace(/<[^>]+>/g, '');
-                       return contentStr.replace(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*/is, '');
-                    } catch (e) {
-                       return announcement.content.replace(/<[^>]+>/g, '').replace(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*/is, '');
-                    }
-                 })() : ''}
+                 {extractPlainText(announcement.content)}
               </p>
            </div>
            

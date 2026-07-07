@@ -7,7 +7,7 @@ import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
 export default function AdminReports() {
-  const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'credentials' | 'attendance'>('teachers');
+  const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'attendance'>('teachers');
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -181,14 +181,7 @@ export default function AdminReports() {
         >
           <ClipboardList className="w-4 h-4" /> Enrollments
         </button>
-        <button
-          onClick={() => setActiveTab('credentials')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
-            activeTab === 'credentials' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-          }`}
-        >
-          <KeyRound className="w-4 h-4" /> Credentials
-        </button>
+        
         <button
           onClick={() => setActiveTab('attendance')}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
@@ -514,131 +507,6 @@ export default function AdminReports() {
                      </table>
                    </div>
                 )}
-              </div>
-            )}
-
-            {activeTab === 'credentials' && (
-              <div>
-                <ReportPrintHeader title="User Credentials Report" />
-                <div className="flex flex-col gap-2 mb-6 print:hidden">
-                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
-                       <h2 className="font-display text-2xl font-bold text-on-surface">User Credentials Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
-                   </div>
-                   <p className="text-on-surface-variant">A secure report listing usernames and passwords for all users, grouped by their assigned classes.</p>
-                </div>
-                
-                {classes.map(cls => {
-                   const classEnrollments = enrollments.filter(e => String(e.class_id) === String(cls.class_id));
-                   
-                   let teacher = teachers.find(t => t.user_id === cls.primary_teacher_id);
-                   // In case users object is populated in the class record
-                   if (!teacher && cls.users) {
-                     teacher = { ...cls.users, user_id: cls.primary_teacher_id, user_name: cls.users.user_name, password_hash: cls.users.password_hash };
-                   }
-                   
-                   return (
-                     <div key={cls.class_id} className="mb-8">
-                       <h3 className="font-display text-xl font-bold mb-4 px-3 py-2 bg-surface-container rounded-lg border border-outline-variant/30 text-on-surface">
-                         {cls.class_name || cls.name || 'Unnamed Class'}
-                       </h3>
-                       
-                       <div className="overflow-x-auto print:overflow-visible ml-4">
-                         <table className="w-full text-left border-collapse border border-outline-variant/30 shadow-sm rounded-lg overflow-hidden print:overflow-visible">
-                           <thead className="bg-surface-container-low">
-                             <tr className="border-b border-outline-variant/50">
-                               <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Role</th>
-                               <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Name</th>
-                               <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Username</th>
-                               <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Password</th>
-                             </tr>
-                           </thead>
-                           <tbody>
-                             {teacher && (
-                               <tr className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid bg-primary/5">
-                                 <td className="py-2 px-4 font-label text-sm text-primary font-bold">Teacher</td>
-                                 <td className="py-2 px-4 font-body text-sm text-on-surface font-medium">{formatTeacherName(teacher.first_name, teacher.last_name)}</td>
-                                 <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{teacher.user_name || '-'}</td>
-                                 <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{teacher.password_hash || '-'}</td>
-                               </tr>
-                             )}
-                             
-                             {classEnrollments.map((enr, idx) => {
-                               const student = students.find(s => String(s.user_id) === String(enr.student_id));
-                               if (!student) return null;
-                               return (
-                                 <tr key={enr.enrollment_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid">
-                                   <td className="py-2 px-4 font-label text-sm text-on-surface-variant">Student</td>
-                                   <td className="py-2 px-4 font-body text-sm text-on-surface">{student.first_name} {student.last_name}</td>
-                                   <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{student.user_name || '-'}</td>
-                                   <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{student.password_hash || '-'}</td>
-                                 </tr>
-                               );
-                             })}
-                             
-                             {!teacher && classEnrollments.length === 0 && (
-                               <tr>
-                                 <td colSpan={4} className="py-4 text-center text-on-surface-variant text-sm">No users found for this class.</td>
-                               </tr>
-                             )}
-                           </tbody>
-                         </table>
-                       </div>
-                     </div>
-                   );
-                })}
-
-                {classes.length === 0 && (
-                  <div className="py-6 text-center text-on-surface-variant">No classes found.</div>
-                )}
-                
-                {(() => {
-                   const primaryTeacherIds = new Set(classes.map(c => c.primary_teacher_id));
-                   const otherTeachers = teachers.filter(t => !primaryTeacherIds.has(t.user_id));
-                   
-                   if (otherTeachers.length > 0 || volunteers.length > 0) {
-                     return (
-                       <div className="mb-8 mt-12 border-t border-outline-variant/30 pt-8 print:mt-8 print:pt-4">
-                         <h3 className="font-display text-xl font-bold mb-4 px-3 py-2 bg-surface-container rounded-lg border border-outline-variant/30 text-on-surface">
-                           Support Staff & Volunteers
-                         </h3>
-                         
-                         <div className="overflow-x-auto print:overflow-visible ml-4">
-                           <table className="w-full text-left border-collapse border border-outline-variant/30 shadow-sm rounded-lg overflow-hidden print:overflow-visible">
-                             <thead className="bg-surface-container-low">
-                               <tr className="border-b border-outline-variant/50">
-                                 <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Role</th>
-                                 <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Name</th>
-                                 <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Username</th>
-                                 <th className="py-3 px-4 font-label font-bold text-xs text-on-surface-variant uppercase tracking-wider">Password</th>
-                               </tr>
-                             </thead>
-                             <tbody>
-                               {otherTeachers.map(teacher => (
-                                 <tr key={teacher.user_id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid bg-primary/5">
-                                   <td className="py-2 px-4 font-label text-sm text-primary font-bold">Teacher (Unassigned)</td>
-                                   <td className="py-2 px-4 font-body text-sm text-on-surface font-medium">{formatTeacherName(teacher.first_name, teacher.last_name)}</td>
-                                   <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{teacher.user_name || '-'}</td>
-                                   <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{teacher.password_hash || '-'}</td>
-                                 </tr>
-                               ))}
-                               
-                               {volunteers.map(volunteer => (
-                                 <tr key={volunteer.user_id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid bg-amber-500/5">
-                                   <td className="py-2 px-4 font-label text-sm text-amber-600 font-bold">Volunteer</td>
-                                   <td className="py-2 px-4 font-body text-sm text-on-surface font-medium">{volunteer.first_name} {volunteer.last_name}</td>
-                                   <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{volunteer.user_name || '-'}</td>
-                                   <td className="py-2 px-4 font-mono text-sm text-on-surface-variant">{volunteer.password_hash || '-'}</td>
-                                 </tr>
-                               ))}
-                             </tbody>
-                           </table>
-                         </div>
-                       </div>
-                     );
-                   }
-                   return null;
-                })()}
               </div>
             )}
           </div>

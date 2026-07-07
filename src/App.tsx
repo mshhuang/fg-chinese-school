@@ -46,6 +46,7 @@ import BuilderDashboard from "./pages/BuilderDashboard";
 import AuditLogs from "./pages/AuditLogs";
 import ChangePassword from "./pages/ChangePassword";
 import LiveErrorLogs from "./pages/LiveErrorLogs";
+import SupportTickets from "./pages/SupportTickets";
 import BuilderDatabase from "./pages/BuilderDatabase";
 import PasswordReminderRequests from "./pages/PasswordReminderRequests";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -58,6 +59,7 @@ import TeacherCalendar from "./pages/TeacherCalendar";
 import StaffCalendar from "./pages/StaffCalendar";
 import VolunteerCalendar from "./pages/VolunteerCalendar";
 import AdminReports from "./pages/AdminReports";
+import SupportWidget from "./components/SupportWidget";
 
 function PageTracker() {
   const location = useLocation();
@@ -152,6 +154,7 @@ export default function App() {
            <Route path="/builder/activities" element={<Activities />} />
            <Route path="/builder/audit-logs" element={<AuditLogs />} />
            <Route path="/builder/error-logs" element={<LiveErrorLogs />} />
+           <Route path="/builder/support-tickets" element={<SupportTickets />} />
            <Route path="/builder/database" element={<BuilderDatabase />} />
            <Route path="/builder/password-reminders" element={<PasswordReminderRequests />} />
 
@@ -160,6 +163,7 @@ export default function App() {
            <Route path="/profile" element={<Profile />} />
         </Route>
       </Routes>
+      <SupportWidget />
     </BrowserRouter>
   );
 }
