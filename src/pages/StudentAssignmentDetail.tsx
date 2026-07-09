@@ -122,6 +122,35 @@ export default function StudentAssignmentDetail() {
     });
   };
 
+  const handleUnsubmitAssignment = async (assignmentStudentId: number) => {
+    // We can extract current feedback so they can edit it
+    let subAtts = [];
+    let feedbackText = '';
+    if (assignment.feedback && assignment.feedback.includes('\n\n---SUBMISSION_ATTACHMENTS---\n')) {
+        try {
+            const parts = assignment.feedback.split('\n\n---SUBMISSION_ATTACHMENTS---\n');
+            feedbackText = parts[0];
+            subAtts = JSON.parse(parts[1]);
+        } catch(e) {}
+    } else {
+        feedbackText = assignment.feedback || '';
+    }
+
+    const { error } = await supabase.from('assignment_students').update({ status: 'pending' }).eq('assignment_student_id', assignmentStudentId);
+    if (error) {
+       console.error("Error unsubmitting assignment:", error);
+       alert("Error unsubmitting assignment: " + error.message);
+       return;
+    }
+
+    setAssignment({ ...assignment, status: 'pending' });
+    
+    setTextByTask(prev => ({ ...prev, [assignmentStudentId]: feedbackText }));
+    if (subAtts.length > 0) {
+        setAttachmentsByTask(prev => ({ ...prev, [assignmentStudentId]: subAtts }));
+    }
+  };
+
   if (loading) {
      return <div className="p-8 text-center text-on-surface-variant font-body">Loading...</div>;
   }
@@ -248,6 +277,13 @@ export default function StudentAssignmentDetail() {
                          )}
                          {!feedbackText && subAtts.length === 0 && (
                              <p className="font-body text-on-surface-variant italic">You submitted this assignment without any text or attachments.</p>
+                         )}
+                         {a.status === 'submitted' && (
+                             <div className="flex items-center justify-end pt-4 mt-2 border-t border-primary/20">
+                                <button onClick={() => handleUnsubmitAssignment(a.assignment_student_id)} className="bg-surface text-primary hover:bg-surface-variant px-6 py-2.5 rounded-xl text-sm font-label font-bold transition-all border border-primary/20 shadow-sm hover:shadow">
+                                   Unsubmit Assignment
+                                </button>
+                             </div>
                          )}
                      </div>
                  );
