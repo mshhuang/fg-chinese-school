@@ -58,16 +58,33 @@ export default function AuditLogs() {
             </h1>
             <p className="font-body text-on-surface-variant">Comprehensive record of data creations, updates, and deletions.</p>
           </div>
-          <div className="flex gap-2 self-start md:self-auto">
+          <div className="flex flex-wrap gap-2 self-start md:self-auto">
              <button 
                 onClick={async () => {
                    setLoading(true);
-                   await supabase.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-                   setLogs([]);
+                   const thirtyDaysAgo = new Date();
+                   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                   await supabase.from('audit_logs').delete().lt('created_at', thirtyDaysAgo.toISOString());
                    await fetchLogs();
                 }}
                 className="px-4 py-2 bg-error-container text-on-error-container hover:bg-error/20 rounded-full text-sm font-label transition-colors">
-                Clear All Logs
+                Clear &gt; 30 Days
+             </button>
+             <button 
+                onClick={async () => {
+                   if (selectedTable !== 'All Tables') {
+                      setLoading(true);
+                      await supabase.from('audit_logs').delete().eq('table_name', selectedTable);
+                      await fetchLogs();
+                   } else {
+                      setLoading(true);
+                      await supabase.from('audit_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                      setLogs([]);
+                      await fetchLogs();
+                   }
+                }}
+                className="px-4 py-2 bg-error-container text-on-error-container hover:bg-error/20 rounded-full text-sm font-label transition-colors">
+                {selectedTable === 'All Tables' ? 'Clear All Logs' : `Clear ${selectedTable} Logs`}
              </button>
              <button 
                 onClick={fetchLogs}

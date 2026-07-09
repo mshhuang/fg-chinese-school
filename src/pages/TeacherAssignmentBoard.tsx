@@ -89,7 +89,23 @@ export default function TeacherAssignmentBoard() {
        teacherId = u.id;
     }
     const { data } = await supabase.from('classes').select('*').order('class_name');
-    if (data) setClasses(data);
+    if (data) {
+       setClasses(data);
+       if (teacherId) {
+          const { data: submittedData } = await supabase
+            .from('assignments')
+            .select('class_id, assignment_students!inner(status)')
+            .eq('teacher_id', teacherId)
+            .eq('assignment_students.status', 'submitted');
+            
+          if (submittedData && submittedData.length > 0) {
+              const searchParams = new URLSearchParams(location.search);
+              if (!searchParams.get('classId')) {
+                  setSelectedClassId(String(submittedData[0].class_id));
+              }
+          }
+       }
+    }
   };
 
   const fetchAssignments = async (classId: string) => {
@@ -510,9 +526,9 @@ export default function TeacherAssignmentBoard() {
                                        <button 
                                          onClick={() => handleUpdateStudentStatus(as.assignment_student_id, as.status)}
                                          className="p-1.5 hover:bg-surface-variant text-on-surface-variant rounded-full transition-colors"
-                                         title={as.status === 'pending' ? 'Mark as Completed' : 'Mark as Pending'}
+                                         title={as.status === 'completed' ? 'Mark as Pending' : 'Mark as Completed'}
                                        >
-                                         {as.status === 'pending' ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <XCircle className="w-4 h-4 text-error" />}
+                                         {as.status === 'completed' ? <XCircle className="w-4 h-4 text-error" /> : <CheckCircle2 className="w-4 h-4 text-primary" />}
                                        </button>
                                     </div>
                                  </div>

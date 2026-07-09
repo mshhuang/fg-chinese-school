@@ -14,6 +14,8 @@ export default function StudentPortal() {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
 
+  const [myPrograms, setMyPrograms] = useState<any[]>([]);
+
   useEffect(() => {
     async function fetchStudentData() {
       const userStr = localStorage.getItem('user');
@@ -23,6 +25,7 @@ export default function StudentPortal() {
           if (user && user.first_name) {
             setUserName(user.first_name);
           }
+
           if (user && user.id && user.id !== 'demo') {
             const { data } = await supabase
               .from('parent_child')
@@ -35,6 +38,7 @@ export default function StudentPortal() {
                 )
               `)
               .eq('child_id', user.id) as any;
+
             if (data) {
                 const parentsData = data.map((d: any) => ({
                     ...d.users,
@@ -43,18 +47,73 @@ export default function StudentPortal() {
                 setParents(parentsData);
             }
 
-            const { data: userData } = await supabase
-              .from('users')
-              .select('created_at')
-              .eq('id', user.id)
-              .single();
-            if (userData?.created_at) {
-               const start = new Date(userData.created_at);
-               const now = new Date();
-               const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-               setProgramDays(diff >= 0 ? diff : 0);
+            const { data: enrollmentsData } = await supabase
+              .from('enrollments')
+              .select(`
+                enrollment_date,
+                status,
+                programs (
+                  program_id,
+                  program_name,
+                  start_date
+                )
+              `)
+              .eq('student_id', user.id);
+
+            if (enrollmentsData && enrollmentsData.length > 0) {
+               const validPrograms = enrollmentsData.filter((e: any) => e.programs).map((e: any) => ({
+                  ...e.programs,
+                  status: e.status
+               }));
+               
+               // Deduplicate programs by program_id since a student might be enrolled in multiple classes in the same program
+               const uniquePrograms = Array.from(new Map(validPrograms.map((p: any) => [p.program_id, p])).values()).map((p: any) => {
+                  let days = 0;
+                  if (p.start_date) {
+                     const start = new Date(p.start_date);
+                     const now = new Date();
+                     const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                     days = diff >= 0 ? diff : 0;
+                  }
+                  return { ...p, days };
+               });
+               setMyPrograms(uniquePrograms);
+
+               const totalDays = uniquePrograms.reduce((sum, p) => sum + (p.days || 0), 0);
+               if (totalDays > 0) {
+                 setProgramDays(totalDays);
+               } else {
+                 // Fallback if no start_date on active programs
+                 const sortedEnrollments = [...enrollmentsData].filter(e => e.enrollment_date).sort((a: any, b: any) => new Date(a.enrollment_date).getTime() - new Date(b.enrollment_date).getTime());
+                 if (sortedEnrollments.length > 0) {
+                    const start = new Date(sortedEnrollments[0].enrollment_date);
+                    const now = new Date();
+                    const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                    setProgramDays(diff >= 0 ? diff : 0);
+                 } else {
+                    const { data: userData } = await supabase.from('users').select('created_at').eq('id', user.id).single();
+                    if (userData?.created_at) {
+                       const start = new Date(userData.created_at);
+                       const now = new Date();
+                       const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                       setProgramDays(diff >= 0 ? diff : 0);
+                    }
+                 }
+               }
             } else {
-               setProgramDays(14);
+               const { data: userData } = await supabase
+                 .from('users')
+                 .select('created_at')
+                 .eq('id', user.id)
+                 .single();
+               if (userData?.created_at) {
+                  const start = new Date(userData.created_at);
+                  const now = new Date();
+                  const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                  setProgramDays(diff >= 0 ? diff : 0);
+               } else {
+                  setProgramDays(0);
+               }
             }
 
             // Fetch latest announcement
@@ -206,10 +265,21 @@ export default function StudentPortal() {
              </div>
              
              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1.5 p-4 rounded-xl border bg-primary-container/10 border-primary-container/20">
-                   <h4 className="font-label font-bold text-primary">2016 Summer camp</h4>
-                   <p className="font-caption text-xs text-on-surface-variant">Enrolled</p>
-                </div>
+                {myPrograms.length > 0 ? myPrograms.map((prog, i) => (
+                   <div key={i} className="flex flex-col gap-1.5 p-4 rounded-xl border bg-primary-container/10 border-primary-container/20">
+                      <h4 className="font-label font-bold text-primary">{prog.program_name}</h4>
+                      <div className="flex justify-between items-center">
+                        <p className="font-caption text-xs text-on-surface-variant">{prog.status || 'Enrolled'}</p>
+                        {prog.days !== undefined && (
+                          <span className="text-xs font-bold text-primary flex items-center gap-1">🔥 {prog.days} Days</span>
+                        )}
+                      </div>
+                   </div>
+                )) : (
+                   <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-outline-variant/30">
+                      <p className="font-caption text-xs text-on-surface-variant">No programs found.</p>
+                   </div>
+                )}
              </div>
            </section>
 

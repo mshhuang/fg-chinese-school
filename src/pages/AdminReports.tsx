@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Printer, Download, Users, School, BookOpen, ClipboardList, KeyRound, CheckSquare } from "lucide-react";
+import { Printer, Download, Users, School, BookOpen, ClipboardList, KeyRound, CheckSquare, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatTeacherName } from "../lib/utils";
 import { ReportPrintHeader } from "../components/admin/ReportPrintHeader";
@@ -7,17 +7,22 @@ import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
 export default function AdminReports() {
-  const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'attendance'>('teachers');
+  const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'attendance' | 'credentials' | 'login_history'>('teachers');
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [enrollments, setEnrollments] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const [volunteers, setVolunteers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [loginLogs, setLoginLogs] = useState<any[]>([]);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [loginDate, setLoginDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [loginSortBy, setLoginSortBy] = useState<'time' | 'user'>('time');
   const [attendanceTeacherFilter, setAttendanceTeacherFilter] = useState('all');
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [loginLogsLoading, setLoginLogsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,6 +47,7 @@ export default function AdminReports() {
         }
 
         if (usersData && rolesData && userRolesData && usersData.length > 0) {
+           setAllUsers(usersData);
            const teacherRole = rolesData.find((r: any) => r.role_name.toLowerCase() === 'teacher');
            const studentRole = rolesData.find((r: any) => r.role_name.toLowerCase() === 'student');
            const volunteerRole = rolesData.find((r: any) => r.role_name.toLowerCase() === 'volunteer');
@@ -102,6 +108,35 @@ export default function AdminReports() {
        fetchAttendance();
     }
   }, [activeTab, attendanceDate]);
+
+  useEffect(() => {
+    if (activeTab === 'login_history') {
+       fetchLoginLogs();
+    }
+  }, [activeTab, loginDate]);
+
+  async function fetchLoginLogs() {
+     setLoginLogsLoading(true);
+     const startOfDay = new Date(loginDate);
+     startOfDay.setHours(0, 0, 0, 0);
+     const endOfDay = new Date(loginDate);
+     endOfDay.setHours(23, 59, 59, 999);
+     
+     const { data, error } = await supabase
+       .from('system_logs')
+       .select('*')
+       .eq('action_type', 'login')
+       .gte('created_at', startOfDay.toISOString())
+       .lte('created_at', endOfDay.toISOString())
+       .order('created_at', { ascending: false });
+       
+     if (data) {
+       setLoginLogs(data);
+     } else if (error) {
+       console.error("Login logs fetch error:", error);
+     }
+     setLoginLogsLoading(false);
+  }
 
   async function fetchAttendance() {
      setAttendanceLoading(true);
@@ -189,6 +224,22 @@ export default function AdminReports() {
           }`}
         >
           <CheckSquare className="w-4 h-4" /> Attendance
+        </button>
+        <button
+          onClick={() => setActiveTab('credentials')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
+            activeTab === 'credentials' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <KeyRound className="w-4 h-4" /> Credentials
+        </button>
+        <button
+          onClick={() => setActiveTab('login_history')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
+            activeTab === 'login_history' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <Clock className="w-4 h-4" /> Login History
         </button>
       </div>
 
@@ -368,21 +419,45 @@ export default function AdminReports() {
                           const cls = classId === 'unassigned' ? null : classes.find(c => String(c.class_id) === String(classId));
                           const classEnrollments = classGroups[classId];
                           
-                          let teacherName = 'Unassigned';
-                          if (cls) {
-                             if (cls.users) {
-                               teacherName = formatTeacherName(cls.users.first_name, cls.users.last_name);
-                             } else {
-                               const teacher = teachers.find(t => t.user_id === cls.primary_teacher_id);
-                               if (teacher) teacherName = formatTeacherName(teacher.first_name, teacher.last_name);
-                             }
+                          const enrolledTeachers = classEnrollments
+                            .filter((enr: any) => teachers.some(t => String(t.user_id) === String(enr.student_id)))
+                            .map((enr: any) => teachers.find(t => String(t.user_id) === String(enr.student_id)));
+
+                          const enrolledVolunteers = classEnrollments
+                            .filter((enr: any) => volunteers.some(v => String(v.user_id) === String(enr.student_id)))
+                            .map((enr: any) => volunteers.find(v => String(v.user_id) === String(enr.student_id)));
+
+                          const studentEnrollments = classEnrollments
+                            .filter((enr: any) => students.some(s => String(s.user_id) === String(enr.student_id)) || (!teachers.some(t => String(t.user_id) === String(enr.student_id)) && !volunteers.some(v => String(v.user_id) === String(enr.student_id))));
+
+                          let allTeacherNames: string[] = [];
+                          if (cls && cls.primary_teacher_id) {
+                            const primaryT = teachers.find(t => String(t.user_id) === String(cls.primary_teacher_id));
+                            if (primaryT) {
+                              allTeacherNames.push(formatTeacherName(primaryT.first_name, primaryT.last_name));
+                            } else if (cls.users) {
+                              allTeacherNames.push(formatTeacherName(cls.users.first_name, cls.users.last_name));
+                            }
                           }
+                          
+                          enrolledTeachers.forEach((t: any) => {
+                            if (t) {
+                              const name = formatTeacherName(t.first_name, t.last_name);
+                              if (!allTeacherNames.includes(name)) allTeacherNames.push(name);
+                            }
+                          });
+                          
+                          const teacherNameStr = allTeacherNames.length > 0 ? allTeacherNames.join(", ") : 'Unassigned';
+                          const volunteerNameStr = enrolledVolunteers.map((v: any) => v ? formatTeacherName(v.first_name, v.last_name) : '').filter(Boolean).join(", ");
 
                           return (
                             <div key={classId} className="mb-6 ml-4">
                               <h4 className="font-label font-bold text-lg mb-2 text-on-surface flex justify-between items-end border-b border-outline-variant/30 pb-1">
                                 <span>{cls ? (cls.class_name || cls.name) : 'Unassigned Class'}</span>
-                                <span className="text-sm font-normal text-on-surface-variant">Teacher: {teacherName}</span>
+                                <div className="text-right flex flex-col">
+                                   <span className="text-sm font-normal text-on-surface-variant">Teacher(s): {teacherNameStr}</span>
+                                   {volunteerNameStr && <span className="text-xs font-normal text-on-surface-variant/80">Volunteer(s): {volunteerNameStr}</span>}
+                                </div>
                               </h4>
                               <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                                 <table className="w-full text-left border-collapse">
@@ -393,7 +468,7 @@ export default function AdminReports() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {classEnrollments.map((enr, idx) => {
+                                    {studentEnrollments.map((enr: any, idx: number) => {
                                       const student = students.find(s => String(s.user_id) === String(enr.student_id));
                                       return (
                                         <tr key={enr.enrollment_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:hover:bg-transparent print:break-inside-avoid">
@@ -501,6 +576,142 @@ export default function AdminReports() {
                          {attendanceRecords.filter(att => attendanceTeacherFilter === 'all' || att.classes?.primary_teacher_id === attendanceTeacherFilter).length === 0 && (
                            <tr>
                              <td colSpan={5} className="py-6 text-center text-on-surface-variant">No attendance records found for this date.</td>
+                           </tr>
+                         )}
+                       </tbody>
+                     </table>
+                   </div>
+                )}
+              </div>
+            )}
+            
+            {activeTab === 'credentials' && (
+              <div>
+                <ReportPrintHeader title="User Credentials Report" />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">User Credentials</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
+                   </div>
+                   <p className="text-on-surface-variant">A report displaying all users and their usernames. Passwords are encrypted for security.</p>
+                </div>
+                
+                <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-surface-container-low">
+                      <tr className="border-b border-outline-variant/50">
+                        <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Name</th>
+                        <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Username</th>
+                        <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Role</th>
+                        <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Password Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allUsers.map((user, idx) => {
+                         const isTeacher = teachers.some(t => t.user_id === user.user_id);
+                         const isStudent = students.some(s => s.user_id === user.user_id);
+                         const isVolunteer = volunteers.some(v => v.user_id === user.user_id);
+                         const role = isTeacher ? 'Teacher' : isStudent ? 'Student' : isVolunteer ? 'Volunteer' : 'Staff / Other';
+                         return (
+                           <tr key={user.user_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
+                             <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">{user.first_name} {user.last_name}</td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{user.user_name || '-'}</td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{role}</td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant">
+                               {user.password_hash || 'Not Set'}
+                             </td>
+                           </tr>
+                         );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            
+            {activeTab === 'login_history' && (
+              <div>
+                <ReportPrintHeader title={`Login History Report - ${loginDate}`} />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Login History Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{loginDate}</span>
+                   </div>
+                   <p className="text-on-surface-variant">A report tracking when users logged into the system.</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4 mb-6 print:hidden">
+                   <div className="flex flex-col gap-2">
+                     <label className="font-label text-sm font-bold text-on-surface-variant">Date</label>
+                     <input 
+                       type="date" 
+                       value={loginDate}
+                       onChange={e => setLoginDate(e.target.value)}
+                       className="px-4 py-2 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
+                     />
+                   </div>
+                   <div className="flex flex-col gap-2">
+                     <label className="font-label text-sm font-bold text-on-surface-variant">Sort By</label>
+                     <select
+                       value={loginSortBy}
+                       onChange={e => setLoginSortBy(e.target.value as 'time' | 'user')}
+                       className="px-4 py-2 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
+                     >
+                       <option value="time">Login Time</option>
+                       <option value="user">User Name</option>
+                     </select>
+                   </div>
+                </div>
+                
+                {loginLogsLoading ? (
+                   <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>
+                ) : (
+                   <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
+                     <table className="w-full text-left border-collapse">
+                       <thead className="bg-surface-container-low">
+                         <tr className="border-b border-outline-variant/50">
+                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Time</th>
+                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Name</th>
+                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Role</th>
+                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Device</th>
+                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">IP Address</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {[...loginLogs]
+                           .sort((a, b) => {
+                             if (loginSortBy === 'user') {
+                               const nameA = a.user_name || '';
+                               const nameB = b.user_name || '';
+                               if (nameA !== nameB) return nameA.localeCompare(nameB);
+                             }
+                             return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                           })
+                           .map(log => {
+                             return (
+                               <tr key={log.log_id || log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
+                                 <td className="py-3 px-4 font-body text-sm text-on-surface">
+                                    {new Date(log.created_at).toLocaleTimeString()}
+                                 </td>
+                                 <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
+                                    {log.user_name || 'Unknown User'}
+                                 </td>
+                                 <td className="py-3 px-4 font-body text-sm text-on-surface-variant">
+                                    {log.user_role || '-'}
+                                 </td>
+                                 <td className="py-3 px-4 font-body text-sm text-on-surface-variant">
+                                    {log.browser || '-'}
+                                 </td>
+                                 <td className="py-3 px-4 font-body text-sm text-on-surface-variant max-w-xs truncate" title={log.ip_address || ''}>
+                                    {log.ip_address || '-'}
+                                 </td>
+                               </tr>
+                             );
+                           })}
+                           
+                         {loginLogs.length === 0 && (
+                           <tr>
+                             <td colSpan={5} className="py-6 text-center text-on-surface-variant">No login records found for this date.</td>
                            </tr>
                          )}
                        </tbody>

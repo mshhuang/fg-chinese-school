@@ -26,11 +26,12 @@ export function formatTeacherName(firstName?: string | null, lastName?: string |
   if (!fName && !lName) return defaultRole;
 
   if (fName === 'Youlin' && lName === 'Venerable') {
-    return '有仁法師';
+    return '有霖法師';
   }
 
   if (fName === 'Derek') return 'Mr. Derek';
   if (fName === 'Janice') return 'Ms. Janice';
+  if (fName === 'Vickie') return 'Ms. Vickie';
   if (fName === 'Kayvan') return 'Mr. Kayvan';
   if (fName === 'Yang' && lName === 'Li') return 'Mr. Li';
 

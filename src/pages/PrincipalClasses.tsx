@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Search, Filter, Users, Calendar as CalendarIcon, Clock, BookOpen, MoreHorizontal, Plus, Loader2, ImagePlus, X } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
@@ -30,6 +31,22 @@ export default function PrincipalClasses() {
     setClassesData(classesData.map(c => 
       c.class_id === classId 
         ? { ...c, primary_teacher_id: teacherId, users: updatedTeacher }
+        : c
+    ));
+  };
+
+  const handleCoTeacherChange = async (classId: string, teacherId: string) => {
+    const value = teacherId || null;
+    const { error } = await supabase.from('classes').update({ co_teacher_id: value }).eq('class_id', classId);
+    if (error) {
+      alert("Error updating co-teacher: " + error.message);
+      return;
+    }
+    
+    const updatedCoTeacher = teachers.find(t => t.user_id === teacherId);
+    setClassesData(classesData.map(c => 
+      c.class_id === classId 
+        ? { ...c, co_teacher_id: value, co_teacher: updatedCoTeacher }
         : c
     ));
   };
@@ -141,6 +158,7 @@ export default function PrincipalClasses() {
        const { data: clsData } = await supabase.from('classes').select(`
           *,
           users:primary_teacher_id (first_name, last_name),
+          co_teacher:co_teacher_id (first_name, last_name),
           enrollments (program_id)
        `);
        
@@ -312,12 +330,36 @@ export default function PrincipalClasses() {
                             onChange={(e) => activeClass && handleTeacherChange(activeClass.class_id, e.target.value)}
                             className="font-title text-base font-bold text-on-surface bg-transparent border-none outline-none cursor-pointer focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full truncate"
                          >
+                            <option value="">Select Homeroom Teacher</option>
                             {teachers.map(t => (
                                <option key={t.user_id} value={t.user_id}>{formatTeacherName(t.first_name, t.last_name)}</option>
                             ))}
                          </select>
                       </div>
                    </div>
+
+                   <h4 className="font-label text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-4 mt-6">Co-Teacher</h4>
+                   <div className="flex items-center gap-4 bg-surface px-4 py-3 rounded-2xl border border-outline-variant/30">
+                      <div className="w-12 h-12 rounded-full border-2 border-surface shadow-sm bg-surface-variant flex items-center justify-center font-bold text-lg text-on-surface-variant overflow-hidden shrink-0">
+                         {activeClass?.co_teacher ? activeClass.co_teacher.first_name?.[0] : '?'}
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0">
+                         <select 
+                            value={activeClass?.co_teacher_id || ""}
+                            onChange={(e) => activeClass && handleCoTeacherChange(activeClass.class_id, e.target.value)}
+                            className="font-title text-base font-bold text-on-surface bg-transparent border-none outline-none cursor-pointer focus:ring-1 focus:ring-primary rounded px-1 -ml-1 w-full truncate"
+                         >
+                            <option value="">None (TBD)</option>
+                            {teachers.map(t => (
+                               <option key={t.user_id} value={t.user_id}>{formatTeacherName(t.first_name, t.last_name)}</option>
+                            ))}
+                         </select>
+                      </div>
+                   </div>
+                   
+                   <p className="font-body text-xs text-on-surface-variant mt-4 px-1">
+                     Need to assign multiple teachers or volunteers? Use the <Link to="/admin/management" className="text-primary font-bold hover:underline">Enrollments Tool</Link> in System Setup.
+                   </p>
                 </div>
              </div>
 

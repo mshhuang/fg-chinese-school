@@ -11,7 +11,7 @@ export default function AdminEnrollments() {
   
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [enrollmentMode, setEnrollmentMode] = useState<"parent" | "direct">("parent");
+  const [enrollmentMode, setEnrollmentMode] = useState<"parent" | "direct">("direct");
   const [allStudents, setAllStudents] = useState<any[]>([]);
   const [studentSearchTerm, setStudentSearchTerm] = useState("");
   
@@ -23,7 +23,7 @@ export default function AdminEnrollments() {
     program: "",
     notes: "",
     status: "Active",
-    enrollment_date: new Date().toISOString().split('T')[0],
+    enrollment_date: "2026-07-06",
     drop_date: ""
   });
 
@@ -51,7 +51,7 @@ export default function AdminEnrollments() {
     );
 
     if (isDuplicate) {
-        showToast("This student is already enrolled in this program and class.", "error");
+        showToast("This user is already enrolled in this program and class.", "error");
         return;
     }
 
@@ -85,7 +85,7 @@ export default function AdminEnrollments() {
       supabase.from('enrollments').select('*'),
       supabase.from('classes').select('*'),
       supabase.from('programs').select('*').order('program_name', { ascending: true }),
-      supabase.from('user_roles').select('user_id, roles!inner(role_name)').eq('roles.role_name', 'Student')
+      supabase.from('user_roles').select('user_id, roles!inner(role_name)').in('roles.role_name', ['Student', 'Teacher', 'Volunteer'])
     ]);
     if (usersRes.error) console.error("Users Fetch Error:", usersRes.error);
     if (usersRes.data) setUsers(usersRes.data);
@@ -97,7 +97,8 @@ export default function AdminEnrollments() {
     if (programsRes.error) console.error("Programs Fetch Error:", programsRes.error);
     if (programsRes.data) setPrograms(programsRes.data);
     if (userRolesRes && userRolesRes.data && usersRes.data) {
-       const studentRoleMappings = userRolesRes.data.filter((ur: any) => ur.roles?.role_name?.toLowerCase() === 'student');
+       const allowedRoles = ['student', 'teacher', 'volunteer'];
+       const studentRoleMappings = userRolesRes.data.filter((ur: any) => allowedRoles.includes(ur.roles?.role_name?.toLowerCase()));
        const studentIds = new Set(studentRoleMappings.map((ur: any) => ur.user_id));
        const studentsList = usersRes.data.filter(u => studentIds.has(u.user_id));
        studentsList.sort((a, b) => a.last_name?.localeCompare(b.last_name));
@@ -124,7 +125,7 @@ export default function AdminEnrollments() {
       }
       
       if (selectedChildren.length === 0) {
-         showToast("Please select at least one student.", "error");
+         showToast("Please select at least one user.", "error");
          return;
       }
       if (!enrollmentDetails.program) {
@@ -168,7 +169,7 @@ export default function AdminEnrollments() {
       }
 
       if (duplicateNames.length > 0) {
-         showToast(`The following students are already enrolled in this program and class: ${duplicateNames.join(', ')}`, "error");
+         showToast(`The following users are already enrolled in this program and class: ${duplicateNames.join(', ')}`, "error");
          if (newEnrollments.length === 0) return;
       }
 
@@ -179,7 +180,7 @@ export default function AdminEnrollments() {
          setShowForm(false);
          setSelectedParent("");
          setSelectedChildren([]);
-         setEnrollmentDetails({ class_id: "", program: "", notes: "", status: "Active", enrollment_date: new Date().toISOString().split('T')[0], drop_date: "" });
+         setEnrollmentDetails({ class_id: "", program: "", notes: "", status: "Active", enrollment_date: "2026-07-06", drop_date: "" });
          fetchData();
          showToast("Successfully enrolled!", "success");
       } else {
@@ -203,7 +204,7 @@ export default function AdminEnrollments() {
       <div className="flex justify-between items-center bg-surface-container-low p-6 rounded-3xl border border-outline-variant/30">
          <div>
             <h2 className="font-display text-2xl font-bold text-on-surface">Enrollments</h2>
-            <p className="font-body text-on-surface-variant mt-1">Manage student enrollments and programs.</p>
+            <p className="font-body text-on-surface-variant mt-1">Manage user enrollments and programs.</p>
          </div>
          <button 
            onClick={() => setShowForm(!showForm)}
@@ -232,7 +233,7 @@ export default function AdminEnrollments() {
                     onClick={() => { setEnrollmentMode("direct"); setSelectedChildren([]); }}
                     className={`font-label font-bold text-sm px-4 py-2 rounded-full transition-colors ${enrollmentMode === "direct" ? "bg-primary text-on-primary" : "bg-surface-variant text-on-surface-variant hover:bg-surface-container-high"}`}
                  >
-                    Direct Student Selection
+                    Direct User Selection
                  </button>
               </div>
 
@@ -286,12 +287,12 @@ export default function AdminEnrollments() {
               {enrollmentMode === "direct" && (
                  <div className="flex flex-col gap-4 bg-surface-container p-5 rounded-2xl">
                     <div className="flex items-center gap-2 text-secondary font-bold font-label">
-                       <GraduationCap className="w-5 h-5" /> Select Students
+                       <GraduationCap className="w-5 h-5" /> Select Users
                     </div>
                     
                     <input 
                        type="text" 
-                       placeholder="Search students by name..."
+                       placeholder="Search users by name..."
                        value={studentSearchTerm}
                        onChange={(e) => setStudentSearchTerm(e.target.value)}
                        className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface mb-2"
@@ -334,7 +335,7 @@ export default function AdminEnrollments() {
                           );
                        })}
                        {allStudents.filter(student => (student.first_name + " " + student.last_name).toLowerCase().includes(studentSearchTerm.toLowerCase())).filter(student => !enrollmentDetails.class_id || !enrollments.some(e => e.student_id === student.user_id && e.class_id === Number(enrollmentDetails.class_id))).length === 0 && (
-                          <p className="text-on-surface-variant font-body py-2 italic text-sm col-span-2">No students found or all match current class.</p>
+                          <p className="text-on-surface-variant font-body py-2 italic text-sm col-span-2">No users found or all match current class.</p>
                        )}
                     </div>
                  </div>
@@ -407,7 +408,7 @@ export default function AdminEnrollments() {
             <table className="w-full text-left border-collapse min-w-[800px] relative">
                <thead className="sticky top-0 z-10">
                   <tr className="bg-surface-container-low border-b border-outline-variant/30 text-on-surface-variant shadow-sm">
-                     <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Student</th>
+                     <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">User</th>
                      <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Parent</th>
                      <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Program</th>
                      <th className="p-4 font-label text-xs uppercase tracking-wider font-bold">Class</th>

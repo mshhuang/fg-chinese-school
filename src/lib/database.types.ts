@@ -55,6 +55,7 @@ export type Database = {
           class_id: string;
           class_name: string;
           primary_teacher_id: string | null;
+          co_teacher_id: string | null;
         };
         Insert: Omit<Database['public']['Tables']['classes']['Row'], 'class_id'>;
         Update: Partial<Database['public']['Tables']['classes']['Row']>;

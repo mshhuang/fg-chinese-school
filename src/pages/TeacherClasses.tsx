@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import { cn } from "../lib/utils";
+import { cn, formatTeacherName } from "../lib/utils";
 
 export default function TeacherClasses() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,7 +30,7 @@ export default function TeacherClasses() {
        setCurrentUserId(u.id);
 
        // Fetch ALL classes, so teachers can view/assign homework to any class if they are a co-teacher
-       const { data: clsData } = await supabase.from('classes').select('*, enrollments(count)');
+       const { data: clsData } = await supabase.from('classes').select('*, enrollments(count), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)');
        
        if (clsData) {
          setClassesData(clsData);
@@ -42,7 +42,7 @@ export default function TeacherClasses() {
   }, []);
 
   const filteredClasses = classesData.filter(c => {
-    if (viewMode === 'my_classes' && c.primary_teacher_id !== currentUserId) return false;
+    if (viewMode === 'my_classes' && c.primary_teacher_id !== currentUserId && c.co_teacher_id !== currentUserId) return false;
     return c.class_name?.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
@@ -68,7 +68,7 @@ export default function TeacherClasses() {
                    : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
                )}
              >
-                My Homeroom Classes
+                My Classes
              </button>
              <button
                onClick={() => setViewMode('all_classes')}
@@ -79,7 +79,7 @@ export default function TeacherClasses() {
                    : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
                )}
              >
-                All Classes (Co-Teacher)
+                All Classes
              </button>
           </div>
 
@@ -108,13 +108,39 @@ export default function TeacherClasses() {
              {filteredClasses.map(cls => (
                 <div key={cls.class_id} className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col hover:shadow-md transition-all shadow-sm">
                     <div className="flex justify-between items-start mb-4">
-                       <h3 className="font-display text-2xl font-bold text-on-surface">{cls.class_name}</h3>
+                       <div className="flex flex-col gap-2">
+                           <h3 className="font-display text-2xl font-bold text-on-surface">{cls.class_name}</h3>
+                           <span className={cn(
+                              "self-start px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label",
+                              cls.primary_teacher_id === currentUserId 
+                                  ? "bg-primary-container text-on-primary-container"
+                                  : "bg-secondary-container text-on-secondary-container"
+                           )}>
+                              {cls.primary_teacher_id === currentUserId ? "Homeroom Teacher" : "Co-Teacher"}
+                           </span>
+                       </div>
                        <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label bg-primary-container/20 text-primary border border-primary/20">
                           Active
                        </span>
                     </div>
 
                     <div className="flex flex-col gap-3 mb-6">
+                       <div className="flex flex-col gap-1 mb-2 p-3 rounded-xl bg-surface-variant/30 border border-outline-variant/30">
+                          <div className="text-sm">
+                             <span className="font-bold text-on-surface-variant">Homeroom: </span>
+                             <span className="text-on-surface font-medium">{formatTeacherName(cls.users?.first_name, cls.users?.last_name, 'Teacher')}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-bold text-on-surface-variant">Co-Teacher: </span>
+                            <span className="text-on-surface font-medium">
+                               {cls.co_teacher_id === currentUserId 
+                                 ? "You" 
+                                 : cls.co_teacher 
+                                   ? formatTeacherName(cls.co_teacher.first_name, cls.co_teacher.last_name, 'Teacher') 
+                                   : "TBD"}
+                            </span>
+                          </div>
+                       </div>
                        <div className="flex items-center gap-3 text-on-surface-variant">
                          <Clock className="w-4 h-4 shrink-0" />
                          <span className="font-body text-sm">Schedule TBD</span>

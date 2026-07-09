@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ExternalLink, Save, FileText, LayoutDashboard, UserSquare2, RefreshCw } from "lucide-react";
+import { ExternalLink, Save, FileText, LayoutDashboard, UserSquare2, RefreshCw, Info, Sparkles } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatTeacherName } from "../lib/utils";
 
@@ -161,12 +161,17 @@ export default function MyLessonPlans() {
   const getPreviewUrl = (url: string) => {
      if (!url) return "";
      try {
-         if (url.includes('docs.google.com') && url.includes('/edit')) {
-             if (url.includes('/presentation/')) {
-                 return url.replace(/\/edit.*$/, '/embed');
-             }
-             return url.replace(/\/edit.*$/, '/preview');
+         let processedUrl = url.trim();
+         if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+             processedUrl = 'https://' + processedUrl;
          }
+         if (processedUrl.includes('docs.google.com')) {
+             if (processedUrl.includes('/presentation/')) {
+                 return processedUrl.replace(/\/(edit|view).*$/, '/embed');
+             }
+             return processedUrl.replace(/\/(edit|view).*$/, '/preview');
+         }
+         return processedUrl;
      } catch(e) {}
      return url;
   };
@@ -227,8 +232,27 @@ export default function MyLessonPlans() {
        {selectedTeacherId ? (
          <>
            <div className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col gap-4 shrink-0 shadow-sm">
-             <div className="font-title text-lg text-on-surface font-bold flex items-center gap-2">
+             <div className="font-title text-lg text-on-surface font-bold flex items-center gap-2 relative">
                <FileText className="w-5 h-5 text-primary" /> Google Doc or Slide Link
+               {!isAdmin && (
+                 <div className="relative group flex items-center">
+                   <div className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-3 py-1 rounded-full cursor-help hover:bg-blue-200 transition-colors border border-blue-200 ml-2">
+                     <Info className="w-4 h-4 animate-pulse" />
+                     <span className="text-xs font-bold font-label uppercase tracking-wider">Help</span>
+                   </div>
+                   <div className="absolute right-0 top-full mt-3 hidden group-hover:block w-80 bg-surface-container-highest text-on-surface text-sm p-5 rounded-2xl shadow-xl border border-outline-variant/50 z-[100] pointer-events-none transform transition-all duration-200 origin-top-right">
+                      <div className="absolute -top-2 right-6 w-4 h-4 bg-surface-container-highest border-t border-l border-outline-variant/50 rotate-45"></div>
+                      <p className="font-bold font-display text-primary mb-3 text-base flex items-center gap-2"><Sparkles className="w-4 h-4" /> Sharing Instructions</p>
+                      <ol className="list-decimal pl-5 space-y-2 font-body text-on-surface-variant">
+                        <li>Open your Google Doc or Slide.</li>
+                        <li>Click the blue <strong>Share</strong> button in the top right.</li>
+                        <li>Under "General access", change Restricted to <strong>Anyone with the link</strong>.</li>
+                        <li>Ensure the role on the right is set to <strong>Viewer</strong>.</li>
+                        <li>Click <strong>Copy link</strong> and paste it into the field below.</li>
+                      </ol>
+                   </div>
+                 </div>
+               )}
              </div>
              <p className="font-body text-sm text-on-surface-variant">
                {isAdmin ? 'View the Google Doc/Slide link provided by the selected teacher.' : 'Share a Google Doc or Slide link for administrators to view your curriculum.'}

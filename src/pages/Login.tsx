@@ -163,7 +163,7 @@ export default function Login() {
 
       let userRoles = roleData?.map((r: any) => r.roles?.role_name?.toLowerCase()).filter(Boolean) || [];
       
-      const isHHuang = userData.user_name === 'hhuang' || userData.email === 'hhuang@example.com' || userData.email === 'hhuang';
+      const isHHuang = userData.user_name === 'hhuang' || userData.email === 'hhuang@example.com' || userData.email === 'hhuang' || userData.email === 'ms.huey.huang@gmail.com';
       if (!isHHuang) {
           userRoles = userRoles.filter((r: string) => r !== 'builder');
       }

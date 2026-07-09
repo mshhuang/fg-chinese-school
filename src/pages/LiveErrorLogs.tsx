@@ -9,6 +9,7 @@ export default function LiveErrorLogs() {
   const [loading, setLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = useState<'type' | 'path' | 'user'>('type');
 
   useEffect(() => {
     fetchLogs();
@@ -62,6 +63,15 @@ export default function LiveErrorLogs() {
             <p className="font-body text-on-surface-variant">Real-time feed of system warnings and explicit error messages.</p>
           </div>
           <div className="flex items-center gap-3">
+             <select
+               value={groupBy}
+               onChange={(e) => setGroupBy(e.target.value as 'type' | 'path' | 'user')}
+               className="bg-surface-container border border-outline-variant/30 text-on-surface text-sm rounded-xl px-3 py-2 outline-none focus:border-primary transition-colors"
+             >
+               <option value="type">Group by Type</option>
+               <option value="path">Group by Path</option>
+               <option value="user">Group by User</option>
+             </select>
             {userRole === 'builder' && (
               !showConfirm ? (
                  <button 
@@ -140,8 +150,27 @@ DROP POLICY IF EXISTS "error_logs_policy" ON error_logs; CREATE POLICY "error_lo
                 </div>
              </div>
         ) : (
-             <div className="space-y-4">
-                {logs.map((log) => (
+             <div className="space-y-8">
+                {Object.entries(
+                  logs.reduce((acc, log) => {
+                    let groupKey = 'unknown';
+                    if (groupBy === 'type') {
+                       groupKey = log.type || 'unknown';
+                    } else if (groupBy === 'path') {
+                       groupKey = log.path || 'Unknown Path';
+                    } else if (groupBy === 'user') {
+                       groupKey = log.users ? `${log.users.first_name} ${log.users.last_name}` : (log.user_id || 'System');
+                    }
+                    if (!acc[groupKey]) acc[groupKey] = [];
+                    acc[groupKey].push(log);
+                    return acc;
+                  }, {} as Record<string, any[]>)
+                ).map(([type, typeLogs]) => (
+                   <div key={type} className="space-y-4">
+                      <h2 className="text-xl font-bold uppercase tracking-wider text-on-surface mb-2 flex items-center gap-2">
+                         {type} <span className="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-sm font-mono">{typeLogs.length}</span>
+                      </h2>
+                      {typeLogs.map((log) => (
                    <div key={log.id} className="bg-surface-container-low rounded-xl p-4 border border-outline-variant/30 flex flex-col gap-3">
                       <div className="flex items-center gap-3 text-sm">
                          <span className={cn(
@@ -172,6 +201,8 @@ DROP POLICY IF EXISTS "error_logs_policy" ON error_logs; CREATE POLICY "error_lo
                             <pre className="text-xs font-mono text-error whitespace-pre-wrap break-all">{typeof log.details === 'object' ? JSON.stringify(log.details, null, 2) : log.details}</pre>
                          </div>
                       )}
+                   </div>
+                      ))}
                    </div>
                 ))}
              </div>

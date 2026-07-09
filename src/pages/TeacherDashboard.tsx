@@ -38,8 +38,15 @@ export default function TeacherDashboard() {
   
   const fetchAssignedClasses = async (teacherId: string) => {
      if (teacherId === 'demo') return;
-     const { data } = await supabase.from('classes').select('*, programs(program_name)').eq('primary_teacher_id', teacherId);
-     if (data) setAssignedClasses(data);
+     const { data } = await supabase.from('classes').select('*, programs(program_name), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)');
+     if (data) {
+        data.sort((a, b) => {
+           if (a.primary_teacher_id === teacherId && b.primary_teacher_id !== teacherId) return -1;
+           if (b.primary_teacher_id === teacherId && a.primary_teacher_id !== teacherId) return 1;
+           return 0;
+        });
+        setAssignedClasses(data.filter(c => c.primary_teacher_id === teacherId || c.co_teacher_id === teacherId));
+     }
   };
 
   const fetchRecentSubmissions = async (currentUser: any) => {
@@ -90,7 +97,7 @@ export default function TeacherDashboard() {
            <h2 className="font-display text-4xl text-on-surface font-bold">
               {greeting}, {formatTeacherName(user?.first_name, user?.last_name, 'Teacher')}
            </h2>
-           <p className="font-body text-lg text-on-surface-variant mt-2">You have {assignedClasses.length} active classes.</p>
+           <p className="font-body text-lg text-on-surface-variant mt-2">You have {assignedClasses.filter(c => c.primary_teacher_id === user?.id).length} homeroom classes and {assignedClasses.filter(c => c.primary_teacher_id !== user?.id).length} co-teacher classes.</p>
         </div>
       </section>
 
@@ -195,12 +202,37 @@ export default function TeacherDashboard() {
                </h3>
                <div className="flex flex-col gap-3">
                   {assignedClasses.length > 0 ? assignedClasses.map(cls => (
-                     <div key={cls.class_id} className="flex items-center justify-between p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                        <div>
-                           <h4 className="font-label font-bold text-on-surface">{cls.class_name || cls.name || 'Unnamed Class'}</h4>
-                           <p className="font-caption text-xs text-on-surface-variant mt-1">{cls.programs?.program_name || 'No program'}</p>
+                     <div key={cls.class_id} className="flex flex-col gap-2 p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                        <div className="flex items-center justify-between">
+                           <div>
+                              <h4 className="font-label font-bold text-on-surface">{cls.class_name || cls.name || 'Unnamed Class'}</h4>
+                              <p className="font-caption text-xs text-on-surface-variant mt-1">{cls.programs?.program_name || 'No program'}</p>
+                           </div>
+                           <span className={cn(
+                              "px-3 py-1 rounded-full font-label text-xs font-bold whitespace-nowrap",
+                              cls.primary_teacher_id === user?.id
+                                 ? "bg-primary-container/20 text-primary"
+                                 : "bg-secondary-container/20 text-secondary"
+                           )}>
+                              {cls.primary_teacher_id === user?.id ? "Homeroom Teacher" : "Co-Teacher"}
+                           </span>
                         </div>
-                        <span className="px-3 py-1 bg-secondary-container/20 text-secondary rounded-full font-label text-xs font-bold">Teacher</span>
+                        <div className="flex flex-wrap gap-4 mt-2 pt-2 border-t border-outline-variant/20">
+                           <div className="text-xs">
+                              <span className="font-bold text-on-surface-variant">Homeroom: </span>
+                              <span className="text-on-surface">{formatTeacherName(cls.users?.first_name, cls.users?.last_name, 'Teacher')}</span>
+                           </div>
+                           <div className="text-xs">
+                              <span className="font-bold text-on-surface-variant">Co-Teacher: </span>
+                              <span className="text-on-surface">
+                                 {cls.co_teacher_id === user?.id 
+                                   ? `You (${formatTeacherName(user?.first_name, user?.last_name, 'Teacher')})` 
+                                   : cls.co_teacher
+                                     ? formatTeacherName(cls.co_teacher.first_name, cls.co_teacher.last_name, 'Teacher')
+                                     : 'TBD'}
+                              </span>
+                           </div>
+                        </div>
                      </div>
                   )) : (
                      <p className="text-sm text-on-surface-variant py-2">No assigned programs found.</p>

@@ -600,8 +600,12 @@ export default function AdminUsers() {
       )}
 
       {showAdd && (
-        <div className="bg-surface-container-low p-6 md:p-8 rounded-3xl border border-outline-variant/40 shadow-sm relative overflow-hidden">
-           <h3 className="font-title text-xl font-bold text-on-surface mb-6">{editingUserId ? 'Edit User' : 'Create New User'}</h3>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest p-6 md:p-8 border-l border-outline-variant/40 shadow-2xl relative overflow-y-auto w-full max-w-2xl h-full transition-transform transform translate-x-0">
+           <div className="flex justify-between items-center mb-6">
+             <h3 className="font-title text-xl font-bold text-on-surface">{editingUserId ? 'Edit User' : 'Create New User'}</h3>
+             <button onClick={() => setShowAdd(false)} className="text-on-surface-variant hover:text-on-surface"><X className="w-6 h-6" /></button>
+           </div>
            <form onSubmit={handleAddSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="font-label text-sm font-bold text-on-surface-variant">First Name</label>
@@ -733,6 +737,7 @@ export default function AdminUsers() {
                  <button type="button" onClick={cancelAdd} className="border border-outline-variant px-8 py-3 rounded-full font-label font-bold text-on-surface-variant hover:bg-surface-variant transition-colors">Cancel</button>
               </div>
            </form>
+          </div>
         </div>
       )}
 
@@ -853,8 +858,12 @@ export default function AdminUsers() {
       )}
 
       {showAddRole && activeTab === 'roles' && (
-        <div className="bg-surface-container-low p-6 md:p-8 rounded-3xl border border-outline-variant/40 shadow-sm relative overflow-hidden">
-           <h3 className="font-title text-xl font-bold text-on-surface mb-6">{editingRoleId ? 'Edit Role' : 'Create New Role'}</h3>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest p-6 md:p-8 border-l border-outline-variant/40 shadow-2xl relative overflow-y-auto w-full max-w-md h-full transition-transform transform translate-x-0">
+           <div className="flex justify-between items-center mb-6">
+             <h3 className="font-title text-xl font-bold text-on-surface">{editingRoleId ? 'Edit Role' : 'Create New Role'}</h3>
+             <button onClick={() => setShowAddRole(false)} className="text-on-surface-variant hover:text-on-surface"><X className="w-6 h-6" /></button>
+           </div>
            <form onSubmit={handleAddRoleSubmit} className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
                 <label className="font-label text-sm font-bold text-on-surface-variant">Role Name</label>
@@ -865,6 +874,7 @@ export default function AdminUsers() {
                  <button type="button" onClick={() => setShowAddRole(false)} className="border border-outline-variant px-8 py-3 rounded-full font-label font-bold text-on-surface-variant hover:bg-surface-variant transition-colors">Cancel</button>
               </div>
            </form>
+          </div>
         </div>
       )}
 
@@ -917,8 +927,12 @@ export default function AdminUsers() {
       )}
 
       {showAddFamily && activeTab === 'families' && (
-        <div className="bg-surface-container-low p-6 md:p-8 rounded-3xl border border-outline-variant/40 shadow-sm relative overflow-hidden">
-           <h3 className="font-title text-xl font-bold text-on-surface mb-6">Link Parent & Child</h3>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest p-6 md:p-8 border-l border-outline-variant/40 shadow-2xl relative overflow-y-auto w-full max-w-4xl h-full transition-transform transform translate-x-0">
+           <div className="flex justify-between items-center mb-6">
+             <h3 className="font-title text-xl font-bold text-on-surface">Link Parent & Child</h3>
+             <button onClick={() => setShowAddFamily(false)} className="text-on-surface-variant hover:text-on-surface"><X className="w-6 h-6" /></button>
+           </div>
            <form onSubmit={handleAddFamilySubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="flex flex-col gap-2">
                 <label className="font-label text-sm font-bold text-on-surface-variant">Select Primary User</label>
@@ -956,6 +970,7 @@ export default function AdminUsers() {
                  <button type="button" onClick={() => setShowAddFamily(false)} className="border border-outline-variant px-8 py-3 rounded-full font-label font-bold text-on-surface-variant hover:bg-surface-variant transition-colors">Cancel</button>
               </div>
            </form>
+          </div>
         </div>
       )}
 

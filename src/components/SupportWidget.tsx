@@ -128,13 +128,16 @@ export default function SupportWidget() {
   return (
     <>
       {/* Floating Button */}
-      <div id="support-widget" className="fixed bottom-6 right-6 z-[9999]">
+      <div id="support-widget" className="fixed bottom-6 right-6 z-[9999] group flex items-center justify-end">
+        <div className="absolute right-full mr-4 bg-surface-container-highest text-on-surface text-xs font-label font-bold px-3 py-2 rounded-xl shadow-md border border-outline-variant/30 pointer-events-none opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 whitespace-nowrap hidden sm:block">
+           Report an issue
+        </div>
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-primary text-on-primary p-4 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center group"
+          className="bg-primary text-on-primary p-4 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center relative"
           title="Report an Issue"
         >
-          <MessageSquare className="w-6 h-6 group-hover:scale-110 transition-transform" />
+          <MessageSquare className="w-6 h-6 hover:scale-110 transition-transform" />
         </button>
       </div>
 
