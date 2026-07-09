@@ -26,6 +26,7 @@ import ParentSchedule from "./pages/ParentSchedule";
 import StudentClubs from "./pages/StudentClubs";
 import StudentSchedule from "./pages/StudentSchedule";
 import StudentAssignments from "./pages/StudentAssignments";
+import StudentAssignmentDetail from "./pages/StudentAssignmentDetail";
 import Profile from "./pages/Profile";
 import StudentMessages from "./pages/StudentMessages";
 import StaffDashboard from "./pages/StaffDashboard";
@@ -120,6 +121,7 @@ export default function App() {
            <Route path="/student/messages" element={<StudentMessages />} />
            <Route path="/student/profile" element={<Profile />} />
            <Route path="/student/assignments" element={<StudentAssignments />} />
+           <Route path="/student/assignments/:id" element={<StudentAssignmentDetail />} />
            <Route path="/student/schedule" element={<StudentSchedule />} />
            <Route path="/student/clubs" element={<StudentClubs />} />
            

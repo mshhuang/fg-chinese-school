@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { BookOpen, Clock, CheckCircle2, ChevronRight, AlertCircle, FileText, Upload, X } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
@@ -242,78 +243,16 @@ export default function StudentAssignments() {
                   })()}
 
                   <div className="mt-auto flex flex-col pt-4 border-t border-outline-variant/20 gap-4">
-                     {isSubmitted && (() => {
-                         let subAtts = [];
-                         if (a.feedback && a.feedback.includes('\n\n---SUBMISSION_ATTACHMENTS---\n')) {
-                             try {
-                                 subAtts = JSON.parse(a.feedback.split('\n\n---SUBMISSION_ATTACHMENTS---\n')[1]);
-                             } catch(e) {}
-                         }
-                         if (subAtts.length > 0) {
-                             return (
-                                 <div className="flex flex-col gap-2">
-                                     <span className="font-label text-xs font-bold text-on-surface-variant">Your Submission:</span>
-                                     <div className="flex flex-wrap gap-2">
-                                         {subAtts.map((att: any, i: number) => (
-                                             <a key={i} href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-primary-container/30 px-2 py-1 rounded border border-primary/20 text-xs font-label hover:bg-primary-container/50 transition-colors text-primary">
-                                                 <FileText className="w-3.5 h-3.5" />
-                                                 <span className="truncate max-w-[150px]" title={att.name}>{att.name}</span>
-                                             </a>
-                                         ))}
-                                     </div>
-                                 </div>
-                             );
-                         }
-                         return null;
-                     })()}
-                     
-                     {!isSubmitted && (
-                         <div className="flex flex-col gap-3">
-                             <div className="flex flex-col gap-2">
-                                 <label className="font-label text-xs font-bold text-on-surface-variant">Your Report / Answers</label>
-                                 <textarea
-                                     value={textByTask[a.assignment_student_id] || ''}
-                                     onChange={(e) => setTextByTask(prev => ({ ...prev, [a.assignment_student_id]: e.target.value }))}
-                                     placeholder="Type your response here..."
-                                     className="w-full px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface min-h-[100px] resize-y"
-                                 />
-                             </div>
-                             <div className="flex flex-col gap-2">
-                                 <label className="font-label text-xs font-bold text-on-surface-variant">Attach Work (Optional)</label>
-                                 {(attachmentsByTask[a.assignment_student_id] || []).length > 0 && (
-                                     <div className="flex flex-wrap gap-2">
-                                         {(attachmentsByTask[a.assignment_student_id] || []).map((att, i) => (
-                                             <div key={i} className="flex items-center gap-1.5 bg-surface-container-low px-2 py-1 rounded border border-outline-variant/30 text-xs font-body">
-                                                 <FileText className="w-3.5 h-3.5 text-primary" />
-                                                 <span className="truncate max-w-[120px]" title={att.name}>{att.name}</span>
-                                                 <button type="button" onClick={() => removeAttachment(a.assignment_student_id, i)} className="text-on-surface-variant hover:text-error ml-1">
-                                                     <X className="w-3.5 h-3.5" />
-                                                 </button>
-                                             </div>
-                                         ))}
-                                     </div>
-                                 )}
-                                 <label className="flex items-center justify-center gap-2 w-full border border-dashed border-outline-variant/50 hover:border-primary/50 bg-surface-container-lowest hover:bg-surface-container-low transition-colors py-3 rounded-lg cursor-pointer">
-                                     <Upload className="w-4 h-4 text-primary" />
-                                     <span className="font-label text-xs font-bold text-primary">Upload File</span>
-                                     <input type="file" className="hidden" onChange={(e) => handleFileUpload(a.assignment_student_id, e)} />
-                                 </label>
-                             </div>
-                         </div>
-                     )}
-
-                     <div className="flex items-center justify-between mt-2">
+                     <div className="flex items-center justify-between">
                          <div className="flex flex-col">
                            <span className="font-caption text-[10px] uppercase text-on-surface-variant font-bold tracking-wider">Due Date</span>
                            <span className={cn("font-label text-sm font-bold", isLate ? "text-error" : "text-on-surface")}>
                               {assignData?.due_date ? new Date(assignData.due_date).toLocaleString() : 'No Due Date'}
                            </span>
                          </div>
-                         {!isSubmitted && (
-                            <button onClick={() => handleSubmitAssignment(a.assignment_student_id)} className="bg-primary text-on-primary hover:bg-primary/90 px-6 py-2 rounded-xl text-sm font-label font-bold transition-colors">
-                               Submit Assignment
-                            </button>
-                         )}
+                         <Link to={`/student/assignments/${a.assignment_student_id}`} className="bg-primary text-on-primary hover:bg-primary/90 px-6 py-2 rounded-xl text-sm font-label font-bold transition-colors">
+                            {isSubmitted ? 'View Details' : 'View & Submit'}
+                         </Link>
                      </div>
                   </div>
                </div>

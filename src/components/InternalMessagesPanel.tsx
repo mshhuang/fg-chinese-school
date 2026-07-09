@@ -445,11 +445,6 @@ export function InternalMessagesPanel() {
                        <div className="flex justify-between items-center mb-0.5">
                           <span className="font-label text-base font-bold text-on-surface truncate pr-2 flex items-baseline">
                              {chat.name}
-                             {chat.role_names && chat.role_names.length > 0 && (
-                                <span className="text-[11px] font-normal text-on-surface-variant ml-2 opacity-80 shrink-0">
-                                   ({chat.role_names.map((r: string) => r.toLowerCase() === 'admin' ? 'School Admin' : r).join(', ')})
-                                </span>
-                             )}
                           </span>
                           {chat.unread > 0 && (
                              <span className="flex w-3 h-3 relative shrink-0">
@@ -484,11 +479,6 @@ export function InternalMessagesPanel() {
                     <div>
                        <h3 className="font-label font-bold text-lg text-on-surface flex items-baseline gap-2">
                           {activeConversation?.name}
-                          {activeConversation?.role_names && activeConversation.role_names.length > 0 && (
-                             <span className="text-xs font-normal text-on-surface-variant opacity-80">
-                                ({activeConversation.role_names.map((r: string) => r.toLowerCase() === 'admin' ? 'School Admin' : r).join(', ')})
-                             </span>
-                          )}
                        </h3>
                     </div>
                  </div>

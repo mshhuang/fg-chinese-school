@@ -165,7 +165,7 @@ DROP POLICY IF EXISTS "error_logs_policy" ON error_logs; CREATE POLICY "error_lo
                     acc[groupKey].push(log);
                     return acc;
                   }, {} as Record<string, any[]>)
-                ).map(([type, typeLogs]) => (
+                ).map(([type, typeLogs]: [string, any[]]) => (
                    <div key={type} className="space-y-4">
                       <h2 className="text-xl font-bold uppercase tracking-wider text-on-surface mb-2 flex items-center gap-2">
                          {type} <span className="bg-surface-variant text-on-surface-variant px-2 py-0.5 rounded-full text-sm font-mono">{typeLogs.length}</span>
