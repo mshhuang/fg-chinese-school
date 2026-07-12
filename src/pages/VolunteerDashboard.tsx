@@ -4,11 +4,18 @@ import { useNavigate } from "react-router-dom";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { DashboardNotifications } from "../components/DashboardNotifications";
+import { QRCodeBadge } from "../components/QRCodeBadge";
+import { QrCode } from "lucide-react";
 
 export default function VolunteerDashboard() {
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [clockStatus, setClockStatus] = useState<'clocked_in' | 'clocked_out' | 'loading'>('loading');
+
+  const [greeting, setGreeting] = useState("Good morning");
   
   // Calendar State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -25,8 +32,12 @@ export default function VolunteerDashboard() {
       let userRoles: string[] = [];
       if (userStr) {
         const u = JSON.parse(userStr);
-        userId = u.user_id;
+
+        userId = (u.user_id || u.id);
+        setUser(u);
         userRoles = u.role_names || [];
+        fetchClockStatus(u);
+
       }
 
       // Fetch announcements. For simplicity, fetching all active ones where audience includes their role or is 'all'
@@ -38,6 +49,43 @@ export default function VolunteerDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+
+  const fetchClockStatus = async (currentUser: any) => {
+    if (!currentUser || currentUser.id === 'demo') {
+       setClockStatus('clocked_out');
+       return;
+    }
+    const startOfDay = new Date();
+    startOfDay.setHours(0,0,0,0);
+    const { data } = await supabase
+       .from('staff_clock_ins')
+       .select('*')
+       .eq('user_id', currentUser.id)
+       .gte('created_at', startOfDay.toISOString())
+       .order('created_at', { ascending: false })
+       .limit(1);
+       
+    if (data && data.length > 0) {
+       setClockStatus(data[0].action_type === 'clock_in' ? 'clocked_in' : 'clocked_out');
+    } else {
+       setClockStatus('clocked_out');
+    }
+  };
+
+  const handleClockInOut = async () => {
+    if (!user || (user?.user_id || user?.id) === 'demo') return;
+    const newStatus = clockStatus === 'clocked_in' ? 'clocked_out' : 'clocked_in';
+    setClockStatus('loading');
+    
+    const { error } = await supabase.from('staff_clock_ins').insert({
+       user_id: (user?.user_id || user?.id),
+       action_type: newStatus === 'clocked_in' ? 'clock_in' : 'clock_out',
+       daily_status: newStatus === 'clocked_in' ? 'check-in the building' : 'shifts over'
+    });
+    if (error) console.error("Error clocking in:", error);
+    setClockStatus(newStatus);
   };
 
   const nextMonth = () => {
@@ -84,6 +132,24 @@ export default function VolunteerDashboard() {
             View your upcoming shifts, events, and manage daily operations.
           </p>
         </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
+            <button 
+                onClick={handleClockInOut}
+                disabled={clockStatus === 'loading'}
+                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-full font-label font-bold transition-colors shadow-sm disabled:opacity-50 ${
+                    clockStatus === 'clocked_in'
+                        ? 'bg-error-container text-on-error-container hover:bg-error-container/90 border border-error/20'
+                        : 'bg-primary text-on-primary hover:bg-primary/90'
+                }`}
+            >
+               <Clock className="w-5 h-5 fill-current opacity-80" />
+               {clockStatus === 'loading' ? 'Loading...' : clockStatus === 'clocked_in' ? 'Clock Out' : 'Clock In'}
+            </button>
+            <button onClick={() => setShowQrCode(true)} className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-label font-bold transition-colors shadow-sm bg-primary-container text-on-primary-container hover:bg-primary-container/80">
+               <QrCode className="w-5 h-5" /> 
+               My ID Badge
+            </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
@@ -97,6 +163,15 @@ export default function VolunteerDashboard() {
                Operations
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <button onClick={() => navigate('/volunteer/scanner')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
+                  <div className="bg-primary/10 p-3 rounded-xl text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                     <QrCode className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-title text-lg font-bold text-on-surface">QR Scanner</h4>
+                    <p className="font-body text-sm text-on-surface-variant mt-1">Scan student or staff ID badges</p>
+                  </div>
+               </button>
                <button onClick={() => {}} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 transition-all text-left opacity-50 grayscale pointer-events-none cursor-not-allowed">
                   <div className="bg-secondary/10 p-3 rounded-xl text-secondary">
                      <ClipboardEdit className="w-6 h-6" />
@@ -153,6 +228,13 @@ export default function VolunteerDashboard() {
 
         </div>
       </div>
+          {showQrCode && user && (
+        <QRCodeBadge 
+           studentId={(user?.user_id || user?.id)} 
+           studentName={user.first_name + ' ' + user.last_name} 
+           onClose={() => setShowQrCode(false)} 
+        />
+     )}
     </div>
   );
 }

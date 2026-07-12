@@ -83,17 +83,6 @@ export default function SupportWidget() {
         } catch(e) {}
       }
 
-      // Log to error_logs as a support ticket
-      await supabase.from('error_logs').insert({
-        type: 'support_ticket',
-        user_id: userId,
-        message: `Feedback/Issue Report from ${userName}`,
-        details: { 
-          description, 
-          screenshot: screenshotData || null
-        },
-        path: window.location.pathname
-      });
       
       // Also notify builder via internal messages
       let messageBody = `**Issue Report from ${userName}**\n\n**Page:** ${window.location.pathname}\n\n**Description:**\n${description}`;

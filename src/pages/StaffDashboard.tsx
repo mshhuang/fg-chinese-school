@@ -4,11 +4,15 @@ import { useNavigate } from "react-router-dom";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { DashboardNotifications } from "../components/DashboardNotifications";
+import { QRCodeBadge } from "../components/QRCodeBadge";
+import { QrCode } from "lucide-react";
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [user, setUser] = useState<any>(null);
   
   // Calendar State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -25,7 +29,8 @@ export default function StaffDashboard() {
       let userRoles: string[] = [];
       if (userStr) {
         const u = JSON.parse(userStr);
-        userId = u.user_id;
+        userId = (u.user_id || u.id);
+        setUser(u);
         userRoles = u.role_names || [];
       }
 
@@ -84,6 +89,12 @@ export default function StaffDashboard() {
             View your upcoming shifts, events, and manage daily operations.
           </p>
         </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
+            <button onClick={() => setShowQrCode(true)} className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-label font-bold transition-colors shadow-sm bg-primary-container text-on-primary-container hover:bg-primary-container/80">
+               <QrCode className="w-5 h-5" /> 
+               My ID Badge
+            </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
@@ -97,6 +108,15 @@ export default function StaffDashboard() {
                Operations
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+               <button onClick={() => navigate('/staff/scanner')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
+                  <div className="bg-primary/10 p-3 rounded-xl text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                     <QrCode className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-title text-lg font-bold text-on-surface">QR Scanner</h4>
+                    <p className="font-body text-sm text-on-surface-variant mt-1">Scan student or staff ID badges</p>
+                  </div>
+               </button>
                <button onClick={() => {}} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 transition-all text-left opacity-50 grayscale pointer-events-none cursor-not-allowed">
                   <div className="bg-secondary/10 p-3 rounded-xl text-secondary">
                      <ClipboardEdit className="w-6 h-6" />
@@ -153,6 +173,13 @@ export default function StaffDashboard() {
 
         </div>
       </div>
+          {showQrCode && user && (
+        <QRCodeBadge 
+           studentId={(user?.user_id || user?.id)} 
+           studentName={user.first_name + ' ' + user.last_name} 
+           onClose={() => setShowQrCode(false)} 
+        />
+     )}
     </div>
   );
 }

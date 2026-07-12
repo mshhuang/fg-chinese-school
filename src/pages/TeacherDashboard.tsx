@@ -1,10 +1,12 @@
-import { Clock, CheckCircle2, Bookmark, Flame, Calendar, PlusCircle, ArrowRight, BookOpen, Megaphone, ClipboardEdit, FileText } from "lucide-react";
+import { Clock, CheckCircle2, Bookmark, Users, Flame, Calendar, PlusCircle, ArrowRight, BookOpen, Megaphone, ClipboardEdit, FileText, AlertCircle } from "lucide-react";
 import { cn, formatTeacherName, extractPlainText } from "../lib/utils";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardNotifications } from "../components/DashboardNotifications";
+import { QRCodeBadge } from "../components/QRCodeBadge";
+import { QrCode } from "lucide-react";
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
@@ -13,6 +15,13 @@ export default function TeacherDashboard() {
   const [user, setUser] = useState<any>(null);
   const [greeting, setGreeting] = useState("Good morning");
   const [assignedClasses, setAssignedClasses] = useState<any[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, any>>({});
+  const [clockStatus, setClockStatus] = useState<'clocked_in' | 'clocked_out' | 'loading'>('loading');
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [studentCheckInCount, setStudentCheckInCount] = useState(0);
+  const [totalStudentsCount, setTotalStudentsCount] = useState(0);
+  const [clockModalState, setClockModalState] = useState<'closed' | 'in_initial' | 'in_no' | 'in_success' | 'out_initial' | 'out_no' | 'out_success'>('closed');
+  const [clockModalReason, setClockModalReason] = useState('');
 
   useEffect(() => {
     const userJson = localStorage.getItem('user');
@@ -33,19 +42,115 @@ export default function TeacherDashboard() {
     fetchRecentSubmissions(currentUser);
     if (currentUser) {
        fetchAssignedClasses(currentUser.id);
+       fetchClockStatus(currentUser);
     }
   }, []);
   
+  
+  const fetchClockStatus = async (currentUser: any) => {
+    if (!currentUser || currentUser.id === 'demo') {
+       setClockStatus('clocked_out');
+       return;
+    }
+    const startOfDay = new Date();
+    startOfDay.setHours(0,0,0,0);
+    const { data } = await supabase
+       .from('staff_clock_ins')
+       .select('*')
+       .eq('user_id', currentUser.id)
+       .gte('created_at', startOfDay.toISOString())
+       .order('created_at', { ascending: false })
+       .limit(1);
+    
+    if (data && data.length > 0) {
+       setClockStatus(data[0].action_type === 'clock_in' ? 'clocked_in' : 'clocked_out');
+    } else {
+       setClockStatus('clocked_out');
+    }
+  };
+
+  const handleClockButtonClicked = () => {
+    if (!user || (user?.user_id || user?.id) === 'demo') return;
+    setClockModalReason('');
+    if (clockStatus === 'clocked_in') {
+       setClockModalState('out_initial');
+    } else {
+       setClockModalState('in_initial');
+    }
+  };
+
+  const processClockIn = async (reason: string) => {
+    setClockStatus('loading');
+    const { error } = await supabase.from('staff_clock_ins').insert({
+       user_id: (user?.user_id || user?.id),
+       action_type: 'clock_in',
+       daily_status: reason
+    });
+    if (error) console.error("Error clocking in:", error);
+    setClockStatus('clocked_in');
+    setClockModalState('in_success');
+  };
+
+  const processClockOut = async (reason: string) => {
+    setClockStatus('loading');
+    const { error } = await supabase.from('staff_clock_ins').insert({
+       user_id: (user?.user_id || user?.id),
+       action_type: 'clock_out',
+       daily_status: reason
+    });
+    if (error) console.error("Error clocking out:", error);
+    setClockStatus('clocked_out');
+    setClockModalState('out_success');
+  };
+
+  
   const fetchAssignedClasses = async (teacherId: string) => {
      if (teacherId === 'demo') return;
-     const { data } = await supabase.from('classes').select('*, programs(program_name), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)');
+     const { data: userData } = await supabase.from('users').select('user_id, first_name, last_name, user_roles(roles(role_name))');
+     const uMap: Record<string, any> = {};
+     if (userData) {
+        userData.forEach((u: any) => {
+           const isVolunteer = u.user_roles?.some((ur: any) => ur.roles?.role_name === 'Volunteer');
+           uMap[u.user_id] = { ...u, isVolunteer };
+        });
+        setUsersMap(uMap);
+     }
+     
+     const { data } = await supabase.from('classes').select('*, users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name), co_teachers');
      if (data) {
         data.sort((a, b) => {
            if (a.primary_teacher_id === teacherId && b.primary_teacher_id !== teacherId) return -1;
            if (b.primary_teacher_id === teacherId && a.primary_teacher_id !== teacherId) return 1;
            return 0;
         });
-        setAssignedClasses(data.filter(c => c.primary_teacher_id === teacherId || c.co_teacher_id === teacherId));
+        const myClasses = data.filter(c => c.primary_teacher_id === teacherId || c.co_teacher_id === teacherId || (c.co_teachers || []).includes(teacherId));
+        setAssignedClasses(myClasses);
+        
+        // Fetch total enrolled students for these classes
+        if (myClasses.length > 0) {
+            const classIds = myClasses.map(c => c.class_id);
+            const { data: enrollments } = await supabase.from('enrollments').select('student_id').in('class_id', classIds);
+            
+            if (enrollments) {
+                const uniqueStudents = [...new Set(enrollments.map(e => e.student_id))];
+                setTotalStudentsCount(uniqueStudents.length);
+                
+                // Fetch check-ins for these students today
+                const startOfDay = new Date();
+                startOfDay.setHours(0,0,0,0);
+                const { data: logs } = await supabase
+                   .from('system_logs')
+                   .select('user_id')
+                   .eq('action_type', 'school_check_in')
+                   .gte('created_at', startOfDay.toISOString());
+                
+                if (logs) {
+                   const checkedInStudents = logs.filter(log => uniqueStudents.includes(log.user_id));
+                   const uniqueCheckedIn = [...new Set(checkedInStudents.map(l => l.user_id))];
+                   setStudentCheckInCount(uniqueCheckedIn.length);
+                }
+            }
+        }
      }
   };
 
@@ -97,25 +202,39 @@ export default function TeacherDashboard() {
            <h2 className="font-display text-4xl text-on-surface font-bold">
               {greeting}, {formatTeacherName(user?.first_name, user?.last_name, 'Teacher')}
            </h2>
-           <p className="font-body text-lg text-on-surface-variant mt-2">You have {assignedClasses.filter(c => c.primary_teacher_id === user?.id).length} homeroom classes and {assignedClasses.filter(c => c.primary_teacher_id !== user?.id).length} co-teacher classes.</p>
+           <p className="font-body text-lg text-on-surface-variant mt-2">You have {assignedClasses.filter(c => c.primary_teacher_id === (user?.user_id || user?.id)).length} homeroom classes and {assignedClasses.filter(c => c.primary_teacher_id !== (user?.user_id || user?.id)).length} co-teacher classes.</p>
+        </div>
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
+            <button onClick={() => setShowQrCode(true)} className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-label font-bold transition-colors shadow-sm bg-primary-container text-on-primary-container hover:bg-primary-container/80">
+               <QrCode className="w-5 h-5" /> 
+               My ID Badge
+            </button>
+            <button onClick={() => navigate('/teacher/scanner')} className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-label font-bold transition-colors shadow-sm bg-secondary-container text-on-secondary-container hover:bg-secondary-container/80">
+               <CheckCircle2 className="w-5 h-5" /> 
+               QR Scanner
+            </button>
+            <button 
+                onClick={handleClockButtonClicked}
+                disabled={clockStatus === 'loading'}
+                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-full font-label font-bold transition-colors shadow-sm disabled:opacity-50 ${
+                    clockStatus === 'clocked_in' 
+                       ? 'bg-error-container text-on-error-container hover:bg-error-container/90 border border-error/20' 
+                       : 'bg-primary text-on-primary hover:bg-primary/90'
+                }`}
+            >
+               <Clock className="w-5 h-5 fill-current opacity-80" /> 
+               {clockStatus === 'loading' ? 'Loading...' : clockStatus === 'clocked_in' ? 'Clock Out' : 'Clock In'}
+            </button>
         </div>
       </section>
 
       {/* Overlay for grayed out parts */}
-      <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none top-32">
-         <div className="bg-surface/80 backdrop-blur-md border border-outline-variant/30 px-8 py-6 rounded-3xl shadow-2xl text-center pointer-events-auto">
-            <h2 className="font-display text-3xl font-bold text-on-surface mb-2">Coming Soon</h2>
-            <p className="font-body text-on-surface-variant text-lg">The teacher dashboard is currently under construction.</p>
-         </div>
-      </div>
+      
 
-      <div className="flex flex-col gap-8 opacity-30 grayscale pointer-events-none select-none">
+      <div className="flex flex-col gap-8">
         {/* Rest of the original header buttons */}
-        <section className="flex flex-col md:flex-row justify-end items-start md:items-center gap-6 -mt-24 mb-8">
+        <section className="flex flex-col md:flex-row justify-end items-start md:items-center gap-6 -mt-4 mb-4">
           <div className="flex gap-4 w-full md:w-auto">
-            <button className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary-container text-on-primary-container px-6 py-3 rounded-full font-label font-bold hover:bg-primary-container/90 transition-colors shadow-sm">
-               <PlusCircle className="w-5 h-5 fill-current opacity-80" /> Lesson Plan
-            </button>
           </div>
         </section>
 
@@ -124,35 +243,65 @@ export default function TeacherDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           
           {/* Left Column */}
-          <div className="md:col-span-8 flex flex-col gap-8">
-             {/* School Announcements */}
-             {latestAnnouncement && (
-               <div className="bg-primary-container/10 rounded-3xl border border-primary-container/30 p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-6">
-                  <div className="w-12 h-12 md:w-16 md:h-16 bg-surface-container-lowest rounded-full flex items-center justify-center shrink-0 border-2 border-primary-container z-10 shadow-sm">
-                     <Megaphone className="w-5 h-5 md:w-8 md:h-8 text-primary opacity-80" />
-                  </div>
-                  
-                  <div className="flex-1">
-                     <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-label text-base text-on-surface font-bold">{latestAnnouncement.title}</h3>
-                        <span className="font-caption text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-sm uppercase tracking-wide font-bold">New</span>
+          <div className="md:col-span-12 flex flex-col gap-8">
+             {/* My Programs */}
+             <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] flex flex-col gap-6">
+               <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
+                  <BookOpen className="text-primary w-6 h-6" />
+                  Assigned Programs
+               </h3>
+               <div className="flex flex-col gap-3">
+                  {assignedClasses.length > 0 ? assignedClasses.map(cls => (
+                     <div key={cls.class_id} className="flex flex-col gap-2 p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                        <div className="flex items-center justify-between">
+                           <div>
+                              <h4 className="font-label font-bold text-on-surface">{cls.class_name || cls.name || 'Unnamed Class'}</h4>
+                              <p className="font-caption text-xs text-on-surface-variant mt-1">2026 Summer Camp</p>
+                           </div>
+                           <span className={cn(
+                              "px-3 py-1 rounded-full font-label text-xs font-bold whitespace-nowrap",
+                              cls.primary_teacher_id === (user?.user_id || user?.id) 
+                                 ? "bg-primary-container/20 text-primary" 
+                                 : "bg-secondary-container/20 text-secondary"
+                           )}>
+                              {cls.primary_teacher_id === (user?.user_id || user?.id) ? "Homeroom Teacher" : "Co-Teacher"}
+                           </span>
+                        </div>
+                        <div className="flex flex-wrap gap-4 mt-2 pt-2 border-t border-outline-variant/20">
+                           <div className="text-xs">
+                              <span className="font-bold text-on-surface-variant">Homeroom: </span>
+                              <span className="text-on-surface">{formatTeacherName(cls.users?.first_name, cls.users?.last_name, 'Teacher')}</span>
+                           </div>
+                           <div className="text-xs">
+                              <span className="font-bold text-on-surface-variant">Co-Teacher: </span>
+                              <span className="text-on-surface">
+                                 {(() => {
+                                 const currentUserId = user?.user_id || user?.id;
+                                 const allCoTeachers = [
+                                    ...(cls.co_teacher_id && !(cls.co_teachers || []).includes(cls.co_teacher_id) ? [cls.co_teacher_id] : []),
+                                    ...(cls.co_teachers || [])
+                                 ];
+                                 if (allCoTeachers.length === 0) return 'TBD';
+                                 
+                                 return allCoTeachers.map(id => {
+                                    if (id === currentUserId) return `You (${formatTeacherName(user?.first_name, user?.last_name, 'Teacher')})`;
+                                    const u = usersMap[id];
+                                    if (!u) return 'Unknown';
+                                    if (u.isVolunteer) return `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Volunteer';
+                                    return formatTeacherName(u.first_name, u.last_name, 'Teacher');
+                                 }).join(', ');
+                               })()}
+                              </span>
+                           </div>
+                        </div>
                      </div>
-                     <p className="font-body text-on-surface-variant text-sm line-clamp-2">
-                        {extractPlainText(latestAnnouncement.content)}
-                     </p>
-                  </div>
-                  
-                  <button 
-                    onClick={() => navigate('/teacher/announcements')}
-                    className="font-label text-sm text-primary font-bold hover:underline shrink-0"
-                  >
-                     Read More
-                  </button>
+                  )) : (
+                     <p className="text-sm text-on-surface-variant italic">No classes assigned yet.</p>
+                  )}
                </div>
-             )}
+            </div>
 
-             {/* Agenda */}
-             <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] relative overflow-hidden">
+             <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] relative overflow-hidden opacity-50 grayscale pointer-events-none">
                  <div className="flex justify-between items-center z-10 relative mb-8 border-b border-surface-variant pb-4">
                     <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
                        <Calendar className="text-primary w-6 h-6" />
@@ -168,141 +317,177 @@ export default function TeacherDashboard() {
                    <ScheduleItem block time="11:45 AM" end="12:30 PM" title="Lunch Break" location="Staff Room" />
                  </div>
              </div>
-
-             {/* Quick Actions */}
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                 <div className="bg-surface-container-low p-6 rounded-2xl border-b-4 border-tertiary-container/40 hover:border-tertiary-container transition-colors shadow-sm flex flex-col gap-4 cursor-pointer">
-                    <div className="flex justify-between items-center">
-                      <Bookmark className="text-tertiary w-6 h-6" />
-                      <span className="text-2xl font-display font-bold text-on-surface">--</span>
-                    </div>
-                    <div>
-                      <h4 className="font-label font-bold text-on-surface mb-1">Grade Pending</h4>
-                      <p className="font-caption text-sm text-on-surface-variant">Mid-term history essays</p>
-                    </div>
-                 </div>
-
-                 <div className="bg-surface-container-low p-6 rounded-2xl border-b-4 border-secondary-container/40 hover:border-secondary-container transition-colors shadow-sm flex flex-col gap-4 cursor-pointer">
-                    <div className="flex justify-between items-center">
-                      <CheckCircle2 className="text-secondary w-6 h-6" />
-                      <span className="text-2xl font-display font-bold text-on-surface">--</span>
-                    </div>
-                    <div>
-                      <h4 className="font-label font-bold text-on-surface mb-1">Approved Plans</h4>
-                      <p className="font-caption text-sm text-on-surface-variant">For next week's classes</p>
-                    </div>
-                 </div>
-             </div>
-
-             {/* My Programs */}
-             <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] flex flex-col gap-6">
-               <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
-                  <BookOpen className="text-primary w-6 h-6" />
-                  Assigned Programs
-               </h3>
-               <div className="flex flex-col gap-3">
-                  {assignedClasses.length > 0 ? assignedClasses.map(cls => (
-                     <div key={cls.class_id} className="flex flex-col gap-2 p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                        <div className="flex items-center justify-between">
-                           <div>
-                              <h4 className="font-label font-bold text-on-surface">{cls.class_name || cls.name || 'Unnamed Class'}</h4>
-                              <p className="font-caption text-xs text-on-surface-variant mt-1">{cls.programs?.program_name || 'No program'}</p>
-                           </div>
-                           <span className={cn(
-                              "px-3 py-1 rounded-full font-label text-xs font-bold whitespace-nowrap",
-                              cls.primary_teacher_id === user?.id
-                                 ? "bg-primary-container/20 text-primary"
-                                 : "bg-secondary-container/20 text-secondary"
-                           )}>
-                              {cls.primary_teacher_id === user?.id ? "Homeroom Teacher" : "Co-Teacher"}
-                           </span>
-                        </div>
-                        <div className="flex flex-wrap gap-4 mt-2 pt-2 border-t border-outline-variant/20">
-                           <div className="text-xs">
-                              <span className="font-bold text-on-surface-variant">Homeroom: </span>
-                              <span className="text-on-surface">{formatTeacherName(cls.users?.first_name, cls.users?.last_name, 'Teacher')}</span>
-                           </div>
-                           <div className="text-xs">
-                              <span className="font-bold text-on-surface-variant">Co-Teacher: </span>
-                              <span className="text-on-surface">
-                                 {cls.co_teacher_id === user?.id 
-                                   ? `You (${formatTeacherName(user?.first_name, user?.last_name, 'Teacher')})` 
-                                   : cls.co_teacher
-                                     ? formatTeacherName(cls.co_teacher.first_name, cls.co_teacher.last_name, 'Teacher')
-                                     : 'TBD'}
-                              </span>
-                           </div>
-                        </div>
-                     </div>
-                  )) : (
-                     <p className="text-sm text-on-surface-variant py-2">No assigned programs found.</p>
-                  )}
-               </div>
-             </div>
           </div>
-
-          {/* Right Column */}
-          <div className="md:col-span-4 flex flex-col gap-8">
-             
-             {/* Recent Submissions Status */}
-             <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] flex flex-col gap-6">
-                <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
-                   <Clock className="text-primary w-6 h-6" />
-                   My Submissions
-                </h3>
-                
-                <div className="flex flex-col gap-4">
-                   {recentSubmissions.length > 0 ? recentSubmissions.map((sub, i) => {
-                      let st = 'draft';
-                      if (sub.status === 'Pending Approval') st = 'pending';
-                      else if (sub.status === 'Published') st = 'approved';
-                      else if (sub.status === 'Rejected') st = 'changes';
-                      return <SubmissionItem key={i} title={sub.title} status={st} date={sub.date || "Unknown"} />
-                   }) : (
-                      <p className="text-on-surface-variant text-sm py-4 text-center">No recent submissions found.</p>
-                   )}
-                </div>
-
-                <button 
-                   onClick={() => navigate('/teacher/newsletters')}
-                   className="w-full mt-2 py-3 font-label text-sm text-primary border border-primary/20 rounded-full hover:bg-primary-container/10 transition-colors font-bold">
-                   View All Newsletters
-                </button>
-             </div>
-             
-             {/* Highlight / Inspiration */}
-             <div className="bg-[#fdfbe9] rounded-3xl border border-[#d4af37]/40 p-8 shadow-[0_4px_20px_rgba(212,175,55,0.08)] flex flex-col gap-4 relative overflow-hidden group">
-                <div className="absolute -right-8 -top-8 text-primary/10 transition-transform group-hover:scale-110 duration-700">
-                    <Flame className="w-48 h-48" />
-                </div>
-                <h3 className="font-title text-xl text-on-surface font-bold z-10">Teacher Resource</h3>
-                <p className="font-body text-on-surface-variant z-10 leading-relaxed text-sm">
-                  Explore the new interactive maps for historical routes. Designed for Smartboards.
-                </p>
-                <span className="font-label text-sm text-primary flex items-center gap-1.5 mt-2 font-bold cursor-pointer hover:underline z-10 w-fit">
-                   Explore Library <ArrowRight className="w-4 h-4" />
-                </span>
-             </div>
-
-          </div>
-
-        </div>
-      </div>
+          
+       </div>
     </div>
+
+      {/* Clock In/Out Modals */}
+      {clockModalState !== 'closed' && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl p-8 max-w-md w-full shadow-2xl relative">
+            
+            {clockModalState === 'in_initial' && (
+              <div className="flex flex-col gap-6">
+                <h3 className="font-display text-2xl text-on-surface font-bold text-center">
+                  Dear teacher, are you check in from school building?
+                </h3>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => processClockIn('check-in the building')}
+                    className="flex-1 bg-primary text-on-primary py-3 rounded-xl font-label font-bold"
+                  >
+                    Yes
+                  </button>
+                  <button 
+                    onClick={() => setClockModalState('in_no')}
+                    className="flex-1 bg-error-container text-on-error-container py-3 rounded-xl font-label font-bold"
+                  >
+                    No
+                  </button>
+                </div>
+                <button 
+                  onClick={() => setClockModalState('closed')}
+                  className="absolute top-4 right-4 text-on-surface-variant"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {clockModalState === 'in_no' && (
+              <div className="flex flex-col gap-6">
+                <h3 className="font-display text-xl text-on-surface font-bold">
+                  Please explain why not check in from school building:
+                </h3>
+                <textarea 
+                  className="w-full bg-surface-container-highest border-none rounded-xl p-4 text-on-surface resize-none focus:ring-2 focus:ring-primary outline-none"
+                  rows={4}
+                  value={clockModalReason}
+                  onChange={(e) => setClockModalReason(e.target.value)}
+                  placeholder="Enter reason..."
+                />
+                <button 
+                  onClick={() => processClockIn(clockModalReason || 'Not in building')}
+                  className="w-full bg-primary text-on-primary py-3 rounded-xl font-label font-bold"
+                >
+                  Confirm
+                </button>
+                <button 
+                  onClick={() => setClockModalState('closed')}
+                  className="absolute top-4 right-4 text-on-surface-variant"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {clockModalState === 'in_success' && (
+              <div className="flex flex-col gap-6 items-center text-center">
+                <div className="w-16 h-16 bg-primary-container text-primary rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="font-display text-2xl text-on-surface font-bold">
+                  Welcome, Teacher! Have a fantastic day!
+                </h3>
+                <button 
+                  onClick={() => setClockModalState('closed')}
+                  className="w-full bg-primary text-on-primary py-3 rounded-xl font-label font-bold"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+            {clockModalState === 'out_initial' && (
+              <div className="flex flex-col gap-6">
+                <h3 className="font-display text-2xl text-on-surface font-bold text-center">
+                  Dear teacher, are you check out from school building?
+                </h3>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => processClockOut('classes over')}
+                    className="flex-1 bg-primary text-on-primary py-3 rounded-xl font-label font-bold"
+                  >
+                    Yes
+                  </button>
+                  <button 
+                    onClick={() => setClockModalState('out_no')}
+                    className="flex-1 bg-error-container text-on-error-container py-3 rounded-xl font-label font-bold"
+                  >
+                    No
+                  </button>
+                </div>
+                <button 
+                  onClick={() => setClockModalState('closed')}
+                  className="absolute top-4 right-4 text-on-surface-variant"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {clockModalState === 'out_no' && (
+              <div className="flex flex-col gap-6">
+                <h3 className="font-display text-xl text-on-surface font-bold">
+                  Please explain why not check out from school building:
+                </h3>
+                <textarea 
+                  className="w-full bg-surface-container-highest border-none rounded-xl p-4 text-on-surface resize-none focus:ring-2 focus:ring-primary outline-none"
+                  rows={4}
+                  value={clockModalReason}
+                  onChange={(e) => setClockModalReason(e.target.value)}
+                  placeholder="Enter reason..."
+                />
+                <button 
+                  onClick={() => processClockOut(clockModalReason || 'Not in building')}
+                  className="w-full bg-primary text-on-primary py-3 rounded-xl font-label font-bold"
+                >
+                  Confirm
+                </button>
+                <button 
+                  onClick={() => setClockModalState('closed')}
+                  className="absolute top-4 right-4 text-on-surface-variant"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {clockModalState === 'out_success' && (
+              <div className="flex flex-col gap-6 items-center text-center">
+                <div className="w-16 h-16 bg-primary-container text-primary rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="font-display text-2xl text-on-surface font-bold">
+                  Thank you for all you do. Have a wonderful evening!
+                </h3>
+                <button 
+                  onClick={() => setClockModalState('closed')}
+                  className="w-full bg-primary text-on-primary py-3 rounded-xl font-label font-bold"
+                >
+                  Done
+                </button>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {showQrCode && user && (
+         <QRCodeBadge 
+            studentId={(user?.user_id || user?.id)} 
+            studentName={`${user?.first_name || ''} ${user?.last_name || ''}`} 
+            onClose={() => setShowQrCode(false)} 
+         />
+      )}
+
+  </div>
   );
 }
 
-function ScheduleItem({ time, end, title, location, current, block }: any) {
-  if (block) {
-    return (
-       <div className="flex gap-4 p-4 rounded-xl bg-surface-variant/30 items-center justify-center border border-outline-variant/30 border-dashed">
-          <span className="font-label text-sm text-on-surface-variant opacity-80">{time}</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-outline-variant/50"></span>
-          <span className="font-label text-sm text-on-surface-variant opacity-80">{title}</span>
-       </div>
-    );
-  }
-
+function ScheduleItem({ time, end, title, location, current }: any) {
   return (
     <div className={cn(
       "flex gap-4 p-4 rounded-2xl border transition-all",
@@ -334,7 +519,7 @@ function SubmissionItem({ title, status, date }: any) {
       default: return 'bg-surface-variant text-on-surface-variant';
     }
   };
-
+  
   const getStatusLabel = () => {
     switch(status) {
       case 'pending': return 'Pending Review';

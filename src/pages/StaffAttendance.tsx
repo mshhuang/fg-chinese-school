@@ -1,27 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { ClipboardEdit, Search, Loader2, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Filter, Users, ClipboardCheck, ClipboardList, FileText, TrendingUp, DoorOpen, ChevronRight, CheckCircle2, User, Loader2, BookOpen } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLocation, useNavigate } from "react-router-dom";
+import { cn, formatTeacherName } from "../lib/utils";
 
 export default function StaffAttendance() {
   const location = useLocation();
   const navigate = useNavigate();
   const stateClass = location.state?.class;
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<any | null>(null);
   const [students, setStudents] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
-  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [attendance, setAttendance] = useState<Record<string, string>>({});
+  const [clockIns, setClockIns] = useState<Record<string, 'checked_in' | 'checked_out' | 'not_checked_in'>>({});
+  const [clockInTimes, setClockInTimes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [studentsLoading, setStudentsLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
-  const [user, setUser] = useState<any>(null);
-  const [isTeacherUser, setIsTeacherUser] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(9);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [coTeachersMap, setCoTeachersMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const init = async () => {
@@ -29,24 +28,41 @@ export default function StaffAttendance() {
       if (userStr) {
         try {
           const parsedUser = JSON.parse(userStr);
-          setUser(parsedUser);
           
-          let query = supabase.from('classes').select('*').order('class_name');
+          let query = supabase.from('classes').select('*, users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)').order('class_name');
           
-          // Check if user is a teacher
           const { data: roles } = await supabase.from('user_roles')
             .select('roles(role_name)')
             .eq('user_id', parsedUser.id);
             
           const isTeacher = roles?.some((r: any) => r.roles?.role_name === 'Teacher');
-          setIsTeacherUser(!!isTeacher);
           if (isTeacher) {
-             query = query.eq('primary_teacher_id', parsedUser.id);
+             // Fetch classes where user is primary teacher, legacy co-teacher, or in the co_teachers array
+             query = query.or(`primary_teacher_id.eq.${parsedUser.id},co_teacher_id.eq.${parsedUser.id},co_teachers.cs.{${parsedUser.id}}`);
           }
           
           const { data, error } = await query;
           if (!error && data) {
             setClasses(data);
+            // Fetch users for co_teachers array
+            const coTeacherIds = new Set<string>();
+            data.forEach((c: any) => {
+               if (c.co_teachers) {
+                   c.co_teachers.forEach((id: string) => coTeacherIds.add(id));
+               }
+            });
+            if (coTeacherIds.size > 0) {
+               supabase.from('users').select('user_id, first_name, last_name').in('user_id', Array.from(coTeacherIds)).then(({data: usersData}) => {
+                   if (usersData) {
+                      const map: Record<string, any> = {};
+                      usersData.forEach((u: any) => map[u.user_id] = u);
+                      setCoTeachersMap(map);
+                   }
+               });
+            }
+            if (data.length > 0 && !stateClass) {
+              handleSelectClass(data[0]);
+            }
           }
         } catch (e) {}
       }
@@ -58,254 +74,359 @@ export default function StaffAttendance() {
     };
     init();
   }, [stateClass]);
-  
-  const handleSelectClass = async (cls: any, dateToUse?: string) => {
-    const targetDate = dateToUse || attendanceDate;
+
+    const handleSelectClass = async (cls: any) => {
     setSelectedClass(cls);
     setStudentsLoading(true);
     setAttendance({});
-    setNotes({});
+    setClockIns({});
     
-    // Fetch students
-    const { data, error } = await supabase.from('enrollments')
-      .select(`
-         student_id,
-         users!enrollments_student_id_fkey (first_name, last_name)
-      `)
-      .eq('class_id', cls.class_id);
-      
-    if (!error && data) {
-       const mapped = data.map(d => ({
-          student_id: d.student_id,
-          first_name: (d.users as any)?.first_name || 'Unknown',
-          last_name: (d.users as any)?.last_name || 'Student'
-       })).sort((a, b) => a.last_name.localeCompare(b.last_name));
-       setStudents(mapped);
+    // Fetch today's actual school clock in status from database
+    const [year, month, day] = attendanceDate.split('-').map(Number);
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+    
+    const { data: clockInData } = await supabase.from('student_clock_ins')
+       .select('student_id, action_type, created_at')
+       .gte('created_at', startOfDay.toISOString())
+       .lte('created_at', endOfDay.toISOString())
+       .order('created_at', { ascending: false });
        
-       // check today's attendance
-       const { data: existing } = await supabase.from('attendance')
-          .select('student_id, status, notes')
-          .eq('class_id', cls.class_id)
-          .eq('attendance_date', targetDate);
-          
-       if (existing && existing.length > 0) {
-          const attMap: Record<string, boolean> = {};
-          const noteMap: Record<string, string> = {};
-          existing.forEach(r => {
-             if (r.student_id && r.status !== null) {
-                attMap[r.student_id] = r.status === 'Present';
-                if (r.notes) noteMap[r.student_id] = r.notes;
+    const cMap: Record<string, 'checked_in' | 'checked_out' | 'not_checked_in'> = {};
+    const tMap: Record<string, string> = {};
+    if (clockInData) {
+       clockInData.forEach(r => {
+          if (cMap[r.student_id] === undefined) {
+             cMap[r.student_id] = r.action_type === 'school_check_in' ? 'checked_in' : 'checked_out';
+             tMap[r.student_id] = r.created_at;
+          }
+       });
+    }
+    setClockIns(cMap);
+    setClockInTimes(tMap);
+    
+    let currentStudents: any[] = [];
+    const { data: enrollData, error } = await supabase.from("enrollments").select("student_id").eq("class_id", cls.class_id);
+    console.log("DEBUG StaffAttendance enrollments fetch:", enrollData, error, cls.class_id);
+    if (!error && enrollData && enrollData.length > 0) {
+       const studentIds = enrollData.map((e: any) => e.student_id).filter(Boolean);
+       console.log("DEBUG studentIds:", studentIds);
+       if (studentIds.length > 0) {
+         const { data: usersData } = await supabase.from("users").select("user_id, first_name, last_name").in("user_id", studentIds);
+         console.log("DEBUG usersData:", usersData);
+
+         if (usersData) {
+            currentStudents = usersData.map((u: any) => ({
+               student_id: u.user_id,
+               first_name: u.first_name || "Unknown",
+               last_name: u.last_name || "Student",
+               avatar_url: null
+            })).sort((a: any, b: any) => a.last_name.localeCompare(b.last_name));
+            setStudents(currentStudents);
+         } else { setStudents([]); }
+       } else { setStudents([]); }
+    } else { setStudents([]); }
+    
+    // Mock attendance for visual demo, or fetch real
+    const { data: existing } = await supabase.from('attendance')
+       .select('student_id, status')
+       .eq('class_id', cls.class_id)
+       .eq('attendance_date', attendanceDate);
+       
+    if (existing && existing.length > 0) {
+       const attMap: Record<string, string> = {};
+       existing.forEach(r => {
+          if (r.student_id && r.status !== null) {
+             attMap[r.student_id] = r.status;
+          }
+       });
+       setAttendance(attMap);
+    } else {
+       // Default real values based on actual school building check-ins!
+       const initMap: Record<string, string> = {};
+       currentStudents.forEach((s) => {
+          if (s.student_id) {
+             const cStatus = cMap[s.student_id] || 'not_checked_in';
+             if (cStatus === 'checked_in') {
+                initMap[s.student_id] = 'Present';
+             } else if (cStatus === 'checked_out') {
+                initMap[s.student_id] = 'Checked Out';
+             } else {
+                initMap[s.student_id] = 'Not Arrived';
              }
-          });
-          setAttendance(attMap);
-          setNotes(noteMap);
-          setIsSubmitted(true);
-       } else {
-          // default all present
-          const initMap: Record<string, boolean> = {};
-          mapped.forEach(s => {
-             if (s.student_id) initMap[s.student_id] = true;
-          });
-          setAttendance(initMap);
-          setIsSubmitted(false);
-       }
+          }
+       });
+       setAttendance(initMap);
     }
     setStudentsLoading(false);
   };
 
-  const handleSaveAttendance = async () => {
-    if (!selectedClass) return;
-    setSaving(true);
-    
-    // delete existing for today
-    await supabase.from('attendance')
-       .delete()
-       .eq('class_id', selectedClass.class_id)
-       .eq('attendance_date', attendanceDate);
-       
-    // insert new
-    const toInsert = Object.keys(attendance).map(studentId => ({
-       class_id: selectedClass.class_id,
-       student_id: studentId,
-       attendance_date: attendanceDate,
-       marked_by: user?.id,
-       status: attendance[studentId] ? 'Present' : 'Absent',
-       notes: !attendance[studentId] ? notes[studentId] || null : null
-    }));
-    
-    if (toInsert.length > 0) {
-       await supabase.from('attendance').insert(toInsert);
-    }
-    
-    setSaving(false);
-    setIsSubmitted(true);
-    setSuccessMsg("Attendance submitted successfully!");
-    
-    setTimeout(() => {
-      setSuccessMsg("");
-    }, 3000);
-  };
-  
-  const filteredClasses = classes.filter(c => c.class_name?.toLowerCase().includes(searchQuery.toLowerCase()));
+  if (loading) {
+     return <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!loading && classes.length === 0) {
+     return (
+       <div className="p-6 md:p-8 w-full max-w-7xl mx-auto flex flex-col items-center justify-center pb-32 md:pb-8 min-h-[60vh]">
+          <div className="bg-surface-container-low p-12 rounded-3xl border border-outline-variant/30 text-center flex flex-col items-center max-w-lg">
+             <div className="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-6">
+                <BookOpen className="w-8 h-8 text-on-surface-variant/50" />
+             </div>
+             <h2 className="text-2xl font-display font-bold text-on-surface mb-4">No Classes Assigned</h2>
+             <p className="text-on-surface-variant font-body">You are not currently assigned as a primary or co-teacher for any classes. If you believe this is an error, please contact the administration.</p>
+          </div>
+       </div>
+     );
+  }
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl mx-auto w-full">
-      <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">Attendance & Reports</h1>
-      <p className="font-body text-on-surface-variant max-w-2xl text-lg mb-8">
-        Submit the student attendance by class for today's sessions.
-      </p>
+    <div className="p-6 md:p-8 w-full max-w-7xl mx-auto flex flex-col items-center pb-32 md:pb-8">
+      <div className="w-full max-w-5xl">
+        {/* Top Tabs */}
+        <div className="flex gap-3 mb-10 overflow-x-auto hide-scrollbar pb-2">
+          {classes.map(cls => {
+             const isSelected = selectedClass?.class_id === cls.class_id;
+             return (
+               <button
+                 key={cls.class_id}
+                 onClick={() => handleSelectClass(cls)}
+                 className={cn(
+                   "px-8 py-2.5 rounded-full font-label font-bold text-sm transition-all whitespace-nowrap",
+                   isSelected 
+                     ? "bg-primary text-white shadow-sm" 
+                     : "bg-white border border-outline-variant/30 text-on-surface-variant hover:bg-surface"
+                 )}
+               >
+                 {cls.class_name}
+               </button>
+             );
+          })}
+        </div>
 
-      <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-[0_8px_30px_rgba(212,175,55,0.05)]">
-        {!selectedClass ? (
-          <>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-              <h2 className="font-title text-2xl text-on-surface font-bold flex items-center gap-3">
-                 <ClipboardEdit className="text-secondary w-6 h-6" /> 
-                 Select a Class
-              </h2>
-              <div className="relative w-full md:w-64">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-on-surface-variant" />
-                <input 
-                  type="text" 
-                  placeholder="Search class..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-surface-container rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body text-sm"
-                />
-              </div>
+        {selectedClass && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Header Area */}
+            <div className="mb-10">
+               <h1 className="text-4xl md:text-5xl font-bold font-display text-primary mb-4 tracking-tight">
+                 {selectedClass.class_name}
+               </h1>
+               
+               <div className="flex items-center gap-6 text-sm font-label font-bold text-on-surface-variant mb-6">
+                 <div className="flex items-center gap-2">
+                   <DoorOpen className="w-4 h-4 text-secondary" />
+                   Room {selectedClass.room_number || "TBD"}
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <Users className="w-4 h-4 text-secondary" />
+                   {students.length} Students
+                 </div>
+               </div>
+
+               {/* Teaching Team */}
+               <div className="inline-flex items-center gap-4 bg-white border border-outline-variant/30 rounded-full p-2 pr-6 shadow-sm">
+                 <div className="flex items-center gap-2 text-sm font-label px-3">
+                    <User className="w-4 h-4 text-primary" />
+                    <span className="font-bold text-primary">Teaching Team</span>
+                 </div>
+                 <div className="flex items-center gap-2 text-sm bg-surface-container-lowest border border-outline-variant/30 rounded-full px-4 py-1.5">
+                    <User className="w-3.5 h-3.5 text-on-surface-variant" />
+                    <span className="font-bold text-on-surface-variant">Lead:</span> 
+                    <span>{formatTeacherName(selectedClass.users?.first_name, selectedClass.users?.last_name, "Teacher")}</span>
+                 </div>
+                 <div className="flex items-center gap-2 text-sm bg-surface-container-lowest border border-outline-variant/30 rounded-full px-4 py-1.5">
+                    <User className="w-3.5 h-3.5 text-on-surface-variant" />
+                                        <span className="font-bold text-on-surface-variant">Co-Teacher:</span> 
+                    <span>
+                       {(() => {
+                          const allCoTeachers = [
+                             ...(selectedClass.co_teacher_id && !(selectedClass.co_teachers || []).includes(selectedClass.co_teacher_id) ? [selectedClass.co_teacher_id] : []),
+                             ...(selectedClass.co_teachers || [])
+                          ];
+                          if (allCoTeachers.length === 0) return 'TBD';
+                          
+                                                    return allCoTeachers.map(id => {
+                             // try to check if it's the current user
+                             const userStr = localStorage.getItem("user");
+                             if (userStr) {
+                                try {
+                                    const parsedUser = JSON.parse(userStr);
+                                    if (id === parsedUser.id) return `You (${formatTeacherName(parsedUser.first_name, parsedUser.last_name, "Teacher")})`;
+                                } catch (e) {}
+                             }
+                             
+                             if (id === selectedClass.co_teacher_id && selectedClass.co_teacher) {
+                                 return formatTeacherName(selectedClass.co_teacher.first_name, selectedClass.co_teacher.last_name, "Teacher");
+                             }
+                             const u = coTeachersMap[id];
+                             if (u) return formatTeacherName(u.first_name, u.last_name, "Teacher");
+                             
+                             return 'Unknown';
+                          }).join(', ');
+                       })()}
+                    </span>
+                 </div>
+               </div>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-               {loading ? (
-                  <div className="col-span-full py-8 text-center text-on-surface-variant flex justify-center items-center gap-2">
-                     <Loader2 className="w-5 h-5 animate-spin" /> Loading classes...
+
+            {/* Management Tools */}
+            <div className="mb-12">
+               <div className="flex items-center gap-2 font-bold text-primary mb-4">
+                  <div className="w-5 h-5 border-[2px] border-dashed border-primary rounded-md flex items-center justify-center opacity-70">
+                    <div className="w-1.5 h-1.5 bg-primary rounded-full" />
                   </div>
-               ) : filteredClasses.length === 0 ? (
-                  <div className="col-span-full py-8 text-center text-on-surface-variant">No classes found.</div>
-               ) : (
-                  filteredClasses.map(cls => (
-                     <button 
-                       key={cls.class_id}
-                       onClick={() => handleSelectClass(cls)}
-                       className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl border border-outline-variant/30 hover:border-primary/50 transition-colors text-left group"
-                     >
-                        <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm shrink-0">
-                              {cls.class_name?.substring(0,2).toUpperCase()}
-                           </div>
-                           <div className="min-w-0 flex-1">
-                              <div className="font-title font-bold text-on-surface group-hover:text-primary transition-colors truncate">{cls.class_name}</div>
-                              <div className="font-body text-xs text-on-surface-variant mt-0.5">Take Attendance</div>
-                           </div>
-                        </div>
-                     </button>
-                  ))
-               )}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-               <div className="flex items-center gap-4">
-                  <button onClick={() => stateClass ? navigate('/teacher/classes') : setSelectedClass(null)} className="p-2 hover:bg-surface-variant rounded-full text-on-surface-variant transition-colors">
-                     <ArrowLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="font-title text-2xl text-on-surface font-bold flex items-center gap-3 truncate max-w-sm">
-                     {selectedClass.class_name} Attendance
-                  </h2>
+                  Management Tools
                </div>
-               <div className="flex items-center gap-4 flex-wrap">
-                  <input 
-                     type="date" 
-                     value={attendanceDate}
-                     onChange={(e) => {
-                        setAttendanceDate(e.target.value);
-                        handleSelectClass(selectedClass, e.target.value);
-                     }}
-                     className="font-label text-sm text-on-surface-variant bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/20 hover:border-primary/30 outline-none focus:border-primary/50 transition-colors"
-                  />
-                  
-                  {successMsg && (
-                     <div className="flex items-center justify-center px-4 py-1.5 bg-primary/10 text-primary rounded-xl font-label text-sm font-bold animate-in fade-in zoom-in duration-300">
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        {successMsg}
-                     </div>
-                  )}
-                  {isSubmitted ? (
-                     <button 
-                        onClick={() => setIsSubmitted(false)}
-                        className="bg-surface-variant text-on-surface-variant px-6 py-1.5 rounded-xl font-label text-sm font-bold shadow-sm hover:bg-surface-variant/80 transition-colors flex items-center gap-2"
-                     >
-                        Edit
-                     </button>
-                  ) : (
-                     <button 
-                        onClick={handleSaveAttendance}
-                        disabled={saving || studentsLoading || students.length === 0}
-                        className="bg-primary text-on-primary px-6 py-1.5 rounded-xl font-label text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-                     >
-                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        {saving ? 'Saving...' : 'Submit'}
-                     </button>
-                  )}
+               <div className="flex flex-wrap gap-4">
+                 <ToolCard 
+                    icon={<ClipboardCheck className="w-6 h-6 text-primary" />} 
+                    title="Attendance" 
+                    subtitle="Track & View Sheets" 
+                    onClick={() => navigate('/teacher/attendance-sheet')}
+                 />
+                 <ToolCard 
+                    icon={<ClipboardList className="w-6 h-6 text-secondary" />} 
+                    title="Assignments" 
+                    subtitle="Manage Tasks" 
+                    onClick={() => navigate('/teacher/assignments')}
+                 />
+                 <ToolCard 
+                    icon={<FileText className="w-6 h-6 text-tertiary" />} 
+                    title="Class Notes" 
+                    subtitle="Observations" 
+                 />
+                 <ToolCard 
+                    icon={<TrendingUp className="w-6 h-6 text-primary" />} 
+                    title="Performance" 
+                    subtitle="Class Metrics" 
+                 />
                </div>
             </div>
-            
-            <div className="bg-surface-container-low rounded-2xl border border-outline-variant/20 overflow-hidden">
+
+            {/* Student Roster */}
+            <div>
+               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                 <div className="flex items-center gap-2 font-bold text-primary">
+                    <Users className="w-5 h-5" />
+                    Student Roster
+                 </div>
+                 <div className="flex items-center gap-3">
+                    <div className="relative flex items-center bg-surface border border-outline-variant/30 rounded-full px-4 py-2 w-64 focus-within:border-primary focus-within:bg-white transition-colors">
+                       <Search className="w-4 h-4 text-on-surface-variant mr-2" />
+                       <input 
+                         type="text" 
+                         placeholder="Search students..." 
+                         value={searchQuery}
+                         onChange={(e) => setSearchQuery(e.target.value)}
+                         className="bg-transparent border-none outline-none text-sm w-full placeholder-[#8A8476] text-on-surface-variant"
+                       />
+                    </div>
+                    <button className="w-10 h-10 rounded-full bg-secondary text-white flex items-center justify-center hover:bg-secondary/90 transition-colors shadow-sm">
+                       <Filter className="w-4 h-4" />
+                    </button>
+                 </div>
+               </div>
+
                {studentsLoading ? (
-                  <div className="py-12 text-center text-on-surface-variant flex justify-center items-center gap-2">
-                     <Loader2 className="w-5 h-5 animate-spin" /> Loading students...
-                  </div>
-               ) : students.length === 0 ? (
-                  <div className="py-12 text-center text-on-surface-variant">
-                     No students enrolled in this class.
-                  </div>
+                  <div className="py-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-on-surface-variant" /></div>
                ) : (
-                  <div className="divide-y divide-outline-variant/10">
-                     {students.map((s, idx) => (
-                        <div key={s.student_id} className="flex flex-col sm:flex-row sm:items-center p-4 hover:bg-surface-variant/20 transition-colors gap-4">
-                           <div className="flex items-center gap-3 w-full sm:w-48 shrink-0">
-                              <div className="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center font-bold text-sm shrink-0 uppercase">
-                                 {idx + 1}
-                              </div>
-                              <span className="font-body text-sm font-bold text-on-surface truncate">{s.first_name} {s.last_name}</span>
-                           </div>
-                           <div className="flex items-center gap-2 flex-1 sm:justify-end flex-wrap">
-                              {attendance[s.student_id] === false && (
-                                  <input 
-                                     type="text"
-                                     placeholder="Reason for absence..."
-                                     value={notes[s.student_id] || ''}
-                                     onChange={e => setNotes(p => ({...p, [s.student_id]: e.target.value}))}
-                                     disabled={isSubmitted}
-                                     className="mr-2 px-3 py-1.5 bg-surface rounded-lg border border-outline-variant/30 text-sm outline-none focus:border-primary/50 transition-colors w-full sm:w-64 max-w-xs text-on-surface"
-                                  />
+                  <>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 w-full">
+                       {(() => {
+                          const filteredStudents = students.filter(s => s.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || s.last_name.toLowerCase().includes(searchQuery.toLowerCase()));
+                          return (
+                            <>
+                              {filteredStudents.slice(0, visibleCount).map(student => {
+                                 const status = attendance[student.student_id] || 'Not Arrived';
+                                 const cStatus = clockIns[student.student_id] || 'not_checked_in';
+                                 
+                                 let displayStatus = status;
+                                 let statusColor = 'bg-[#78909C]'; // default slate-gray
+
+                                 if (status === 'Present') {
+                                    if (clockInTimes[student.student_id]) {
+                                       const d = new Date(clockInTimes[student.student_id]);
+                                       const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                       const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+                                       displayStatus = `${student.first_name} arrived at school at ${timeStr} on ${dateStr}`;
+                                    } else {
+                                       displayStatus = 'Present (In School)';
+                                    }
+                                    statusColor = 'bg-[#2E7D32]'; // Green
+                                 } else if (status === 'Checked Out') {
+                                    displayStatus = 'Checked Out (Left School)';
+                                    statusColor = 'bg-[#E65100]'; // Orange
+                                 } else if (status === 'Absent') {
+                                    displayStatus = 'Absent';
+                                    statusColor = 'bg-[#D32F2F]'; // Red
+                                 } else if (status === 'Not Arrived') {
+                                    displayStatus = 'Not Arrived';
+                                    statusColor = 'bg-[#78909C]'; // slate gray
+                                 } else if (status === 'Late') {
+                                    displayStatus = 'Late';
+                                    statusColor = 'bg-[#FBC02D]'; // Yellow
+                                 } else if (status === 'Excused') {
+                                    displayStatus = 'Excused';
+                                    statusColor = 'bg-[#0288D1]'; // Blue
+                                 }
+                                 
+                                 return (
+                                   <div key={student.student_id} className="w-full bg-white border border-primary/50 rounded-full p-2.5 flex items-center justify-between hover:shadow-md hover:border-primary transition-all cursor-pointer group">
+                                      <div className="flex items-center gap-5">
+                                         <div className="w-16 h-16 rounded-full overflow-hidden bg-white border-[3px] border-primary/50 shrink-0 p-0.5">
+                                            {student.avatar_url ? (
+                                               <img src={student.avatar_url} alt={student.first_name} className="w-full h-full object-cover rounded-full" />
+                                            ) : (
+                                               <div className="w-full h-full flex items-center justify-center text-on-surface-variant font-bold text-xl rounded-full bg-surface">
+                                                  {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+                                               </div>
+                                            )}
+                                         </div>
+                                         <div className="flex flex-col justify-center">
+                                            <span className="font-bold text-on-surface text-lg group-hover:text-primary transition-colors">
+                                               {student.first_name} {student.last_name}
+                                            </span>
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <div className={`w-2.5 h-2.5 rounded-full ${statusColor}`} />
+                                              <span className="font-label text-sm text-on-surface-variant font-medium">{displayStatus}</span>
+                                            </div>
+                                         </div>
+                                      </div>
+                                      <button className="w-10 h-10 rounded-full border border-primary/50 flex items-center justify-center mr-3 text-secondary group-hover:bg-secondary group-hover:text-white transition-colors">
+                                         <ChevronRight className="w-5 h-5" />
+                                       </button>
+                                   </div>
+                                 );
+                              })}
+                              
+                              {filteredStudents.length > visibleCount && (
+                                <div className="flex justify-center mt-4 w-full">
+                                   <button onClick={() => setVisibleCount(prev => prev + 9)} className="px-8 py-3 rounded-full border border-primary text-primary font-bold font-label hover:bg-primary hover:text-white transition-colors">
+                                      Load More Students
+                                   </button>
+                                </div>
                               )}
-                              <button 
-                                 onClick={() => !isSubmitted && setAttendance(p => ({...p, [s.student_id]: true}))}
-                                 disabled={isSubmitted}
-                                 className={`flex items-center justify-center gap-1.5 px-4 py-2 sm:px-3 sm:py-1.5 rounded-full font-label text-xs font-bold transition-colors w-24 sm:w-auto ${attendance[s.student_id] ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container border border-outline-variant/30 text-on-surface-variant'} ${!isSubmitted ? 'hover:bg-surface-variant' : 'opacity-80 cursor-default'}`}
-                              >
-                                 <CheckCircle2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> Present
-                              </button>
-                              <button 
-                                 onClick={() => !isSubmitted && setAttendance(p => ({...p, [s.student_id]: false}))}
-                                 disabled={isSubmitted}
-                                 className={`flex items-center justify-center gap-1.5 px-4 py-2 sm:px-3 sm:py-1.5 rounded-full font-label text-xs font-bold transition-colors w-24 sm:w-auto ${attendance[s.student_id] === false ? 'bg-error text-error-container shadow-sm' : 'bg-surface-container border border-outline-variant/30 text-on-surface-variant'} ${!isSubmitted ? 'hover:bg-surface-variant' : 'opacity-80 cursor-default'}`}
-                              >
-                                 <XCircle className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> Absent
-                              </button>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
+                            </>
+                          );
+                       })()}
+                    </div>
+                  </>
                )}
             </div>
-            
-            
-          </>
+          </div>
         )}
       </div>
     </div>
+  );
+}
+
+function ToolCard({ icon, title, subtitle, onClick }: { icon: React.ReactNode, title: string, subtitle: string, onClick?: () => void }) {
+  return (
+    <button onClick={onClick} className="flex-1 min-w-[180px] bg-surface-container-low rounded-3xl p-6 flex flex-col items-center justify-center text-center hover:-translate-y-1 hover:shadow-md transition-all border border-transparent hover:border-primary/30 group">
+       <div className="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+         {icon}
+       </div>
+       <span className="font-bold text-on-surface mb-1">{title}</span>
+       <span className="text-xs font-label text-on-surface-variant">{subtitle}</span>
+    </button>
   );
 }

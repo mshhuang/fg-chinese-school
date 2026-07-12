@@ -261,13 +261,13 @@ export default function TeacherAssignmentBoard() {
           className="flex-1 max-w-sm px-4 py-2.5 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
         >
           <option value="">-- Choose a class --</option>
-          <optgroup label="My Homeroom Classes">
-            {classes.filter(c => c.primary_teacher_id === user?.id).map(c => (
+                    <optgroup label="My Classes (Lead & Co-Teacher)">
+            {classes.filter(c => c.primary_teacher_id === user?.id || c.co_teacher_id === user?.id || (c.co_teachers || []).includes(user?.id)).map(c => (
               <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
             ))}
           </optgroup>
-          <optgroup label="All Other Classes (Co-Teacher)">
-            {classes.filter(c => c.primary_teacher_id !== user?.id).map(c => (
+          <optgroup label="Other Classes">
+            {classes.filter(c => c.primary_teacher_id !== user?.id && c.co_teacher_id !== user?.id && !(c.co_teachers || []).includes(user?.id)).map(c => (
               <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
             ))}
           </optgroup>

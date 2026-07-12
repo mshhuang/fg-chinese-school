@@ -76,12 +76,20 @@ export function DashboardNotifications() {
       }
     };
 
+    let debounceTimer: any;
+    const debouncedFetchNotifications = () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetchNotifications();
+        }, 1000);
+    };
+
     fetchNotifications();
 
     const channel = supabase
       .channel('public:internal_messages_dash_' + userId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'internal_messages', filter: `recipient_id=eq.${userId}` }, () => {
-         fetchNotifications();
+         debouncedFetchNotifications();
       })
       .subscribe();
 
@@ -89,6 +97,7 @@ export function DashboardNotifications() {
     window.addEventListener("news_read_updated", fetchNotifications);
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
       window.removeEventListener("ann_read_updated", fetchNotifications);
       window.removeEventListener("news_read_updated", fetchNotifications);

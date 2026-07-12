@@ -41,7 +41,7 @@ export default function FamilyTab() {
 
   async function fetchData() {
     const [u, r, ur, fam] = await Promise.all([
-      supabase.from('users').select('*'),
+      supabase.from('users').select('user_id, first_name, last_name, email, phone1, status, user_name'),
       supabase.from('roles').select('*'),
       supabase.from('user_roles').select('*'),
       supabase.from('parent_child').select('*')

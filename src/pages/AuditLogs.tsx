@@ -4,6 +4,30 @@ import { supabase } from '../lib/supabase';
 import { Trash, ShieldAlert, Loader2, Calendar, Database } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+
+const JsonTable = ({ data, colorClass }: { data: any, colorClass: string }) => {
+  if (!data || typeof data !== 'object') {
+    return <pre className={`text-xs font-mono ${colorClass} whitespace-pre-wrap break-all`}>{JSON.stringify(data, null, 2)}</pre>;
+  }
+  
+  return (
+    <div className="overflow-x-auto w-full">
+      <table className="w-full text-left border-collapse text-xs">
+        <tbody>
+          {Object.entries(data).map(([key, value], idx) => (
+            <tr key={idx} className="border-b border-outline-variant/10 last:border-0 hover:bg-surface-variant/10 transition-colors">
+              <th className="py-1.5 pr-4 font-mono font-medium text-on-surface-variant whitespace-nowrap align-top">{key}</th>
+              <td className={`py-1.5 font-mono ${colorClass} break-all`}>
+                {typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 export default function AuditLogs() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -245,13 +269,13 @@ $$);`}
                                       {log.old_data && (
                                          <div className="bg-surface-lowest p-3 rounded border border-outline-variant/20">
                                             <p className="text-[10px] font-bold text-on-surface-variant uppercase mb-2">Old Data</p>
-                                            <pre className="text-xs font-mono text-error whitespace-pre-wrap break-all">{JSON.stringify(log.old_data, null, 2)}</pre>
+                                            <JsonTable data={log.old_data} colorClass="text-error" />
                                          </div>
                                       )}
                                       {log.new_data && (
                                          <div className="bg-surface-lowest p-3 rounded border border-outline-variant/20">
                                             <p className="text-[10px] font-bold text-on-surface-variant uppercase mb-2">New Data</p>
-                                            <pre className="text-xs font-mono text-primary whitespace-pre-wrap break-all">{JSON.stringify(log.new_data, null, 2)}</pre>
+                                            <JsonTable data={log.new_data} colorClass="text-primary" />
                                          </div>
                                       )}
                                    </div>

@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight, Calendar, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { cn, formatTeacherName } from "../lib/utils";
@@ -7,10 +7,15 @@ import { cn, formatTeacherName } from "../lib/utils";
 export default function TeacherClasses() {
   const [searchQuery, setSearchQuery] = useState("");
   const [classesData, setClassesData] = useState<any[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'my_classes' | 'all_classes'>('my_classes');
   const [currentUserId, setCurrentUserId] = useState<string>('');
+  
+  const [schoolScheduleUrl, setSchoolScheduleUrl] = useState<string | null>(null);
+  const [schoolScheduleModalOpen, setSchoolScheduleModalOpen] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,7 +35,22 @@ export default function TeacherClasses() {
        setCurrentUserId(u.id);
 
        // Fetch ALL classes, so teachers can view/assign homework to any class if they are a co-teacher
-       const { data: clsData } = await supabase.from('classes').select('*, enrollments(count), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)');
+       const { data: userData } = await supabase.from('users').select('user_id, first_name, last_name, user_roles(roles(role_name))');
+       const uMap: Record<string, any> = {};
+       if (userData) {
+          userData.forEach((user: any) => {
+             const isVolunteer = user.user_roles?.some((ur: any) => ur.roles?.role_name === 'Volunteer');
+             uMap[user.user_id] = { ...user, isVolunteer };
+          });
+          setUsersMap(uMap);
+       }
+       
+       const { data: settingsData } = await supabase.from('announcements').select('*').eq('title', 'SYSTEM_SCHOOL_SCHEDULE_URL').single();
+       if (settingsData && settingsData.content) {
+          setSchoolScheduleUrl(settingsData.content);
+       }
+       
+       const { data: clsData } = await supabase.from('classes').select('*, enrollments(count), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name), co_teachers');
        
        if (clsData) {
          setClassesData(clsData);
@@ -41,8 +61,9 @@ export default function TeacherClasses() {
     fetchData();
   }, []);
 
+
   const filteredClasses = classesData.filter(c => {
-    if (viewMode === 'my_classes' && c.primary_teacher_id !== currentUserId && c.co_teacher_id !== currentUserId) return false;
+    if (viewMode === 'my_classes' && c.primary_teacher_id !== currentUserId && c.co_teacher_id !== currentUserId && !(c.co_teachers || []).includes(currentUserId)) return false;
     return c.class_name?.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
@@ -80,6 +101,13 @@ export default function TeacherClasses() {
                )}
              >
                 All Classes
+             </button>
+             <button
+               onClick={() => setSchoolScheduleModalOpen(true)}
+               className="whitespace-nowrap px-6 py-2.5 rounded-full font-label text-sm transition-all border font-bold shrink-0 bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50 flex items-center gap-2"
+             >
+                <Calendar className="w-4 h-4" />
+                School Schedule
              </button>
           </div>
 
@@ -130,14 +158,33 @@ export default function TeacherClasses() {
                              <span className="font-bold text-on-surface-variant">Homeroom: </span>
                              <span className="text-on-surface font-medium">{formatTeacherName(cls.users?.first_name, cls.users?.last_name, 'Teacher')}</span>
                           </div>
-                          <div className="text-sm">
+                                                    <div className="text-sm">
                             <span className="font-bold text-on-surface-variant">Co-Teacher: </span>
                             <span className="text-on-surface font-medium">
-                               {cls.co_teacher_id === currentUserId 
-                                 ? "You" 
-                                 : cls.co_teacher 
-                                   ? formatTeacherName(cls.co_teacher.first_name, cls.co_teacher.last_name, 'Teacher') 
-                                   : "TBD"}
+                               {(() => {
+                                  const allCoTeachers = [
+                                     ...(cls.co_teacher_id && !(cls.co_teachers || []).includes(cls.co_teacher_id) ? [cls.co_teacher_id] : []),
+                                     ...(cls.co_teachers || [])
+                                  ];
+                                  if (allCoTeachers.length === 0) return 'TBD';
+                                  
+                                  return allCoTeachers.map(id => {
+                                     if (id === currentUserId) {
+                                         const u = usersMap[id];
+                                         if (u) return `You (${formatTeacherName(u.first_name, u.last_name, 'Teacher')})`;
+                                         return "You";
+                                     }
+                                     const u = usersMap[id];
+                                     if (!u) {
+                                         if (id === cls.co_teacher_id && cls.co_teacher) {
+                                             return formatTeacherName(cls.co_teacher.first_name, cls.co_teacher.last_name, 'Teacher');
+                                         }
+                                         return 'Unknown';
+                                     }
+                                     if (u.isVolunteer) return `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Volunteer';
+                                     return formatTeacherName(u.first_name, u.last_name, 'Teacher');
+                                  }).join(', ');
+                               })()}
                             </span>
                           </div>
                        </div>
@@ -164,7 +211,7 @@ export default function TeacherClasses() {
                        </div>
                        <div className="flex items-center gap-4">
                           {cls.primary_teacher_id === currentUserId && (
-                             <button onClick={() => {}} className="text-secondary font-label text-sm font-bold flex items-center gap-1 opacity-50 grayscale pointer-events-none cursor-not-allowed">
+                             <button onClick={() => navigate('/teacher/attendance', { state: { class: cls } })} className="text-secondary font-label text-sm font-bold flex items-center gap-1 hover:underline">
                                Attendance
                              </button>
                           )}
@@ -177,9 +224,10 @@ export default function TeacherClasses() {
              ))}
 
              {filteredClasses.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center p-12 bg-surface-container-low border border-dashed border-outline-variant/40 rounded-3xl">
+                <div className="col-span-full flex flex-col items-center justify-center p-12 bg-surface-container-low border border-dashed border-outline-variant/40 rounded-3xl text-center">
                    <BookOpen className="w-12 h-12 text-on-surface-variant opacity-50 mb-4" />
-                   <p className="font-body text-lg text-on-surface font-medium">No classes found</p>
+                   <p className="font-display text-2xl font-bold text-on-surface mb-2">No Classes Assigned</p>
+                   <p className="font-body text-on-surface-variant max-w-md">You are not currently assigned as a primary or co-teacher for any classes. If you believe this is an error, please contact the administration.</p>
                 </div>
              )}
           </div>
@@ -191,6 +239,33 @@ export default function TeacherClasses() {
              <button className="absolute top-6 right-6 text-white bg-black/50 p-2 rounded-full hover:bg-black/80 transition-colors cursor-pointer" onClick={() => setEnlargedImage(null)}>
                <X className="w-6 h-6" />
              </button>
+         </div>
+       )}
+
+       {schoolScheduleModalOpen && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+           <div className="bg-surface rounded-3xl p-6 md:p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative border border-outline-variant/30 shadow-xl">
+             <button
+               onClick={() => setSchoolScheduleModalOpen(false)}
+               className="absolute top-4 right-4 p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors"
+             >
+               <X className="w-6 h-6" />
+             </button>
+             <h2 className="text-2xl font-display font-bold text-on-surface mb-6">School-wide Schedule</h2>
+             
+             {schoolScheduleUrl ? (
+               <div className="flex flex-col gap-6">
+                 <div className="rounded-xl overflow-hidden border border-outline-variant/30 flex items-center justify-center bg-surface-variant/30 relative">
+                    <img src={schoolScheduleUrl} alt="School Schedule" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+                 </div>
+               </div>
+             ) : (
+               <div className="flex flex-col items-center justify-center py-12 gap-4">
+                 <Calendar className="w-16 h-16 text-on-surface-variant opacity-50" />
+                 <p className="text-on-surface-variant font-medium text-lg">No school-wide schedule uploaded yet.</p>
+               </div>
+             )}
+           </div>
          </div>
        )}
     </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Copy as Sun, FileText, Clock, MessageSquare, AlertTriangle, Users, CheckCircle2, Coins, BookOpen, Megaphone, Calendar } from "lucide-react";
 import { cn, extractPlainText } from "../lib/utils";
+import { QRCodeBadge } from "../components/QRCodeBadge";
+import { QrCode } from "lucide-react";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 
@@ -8,6 +10,9 @@ export default function ParentPortal() {
   const [activeChild, setActiveChild] = useState<string>("mei");
   const [children, setChildren] = useState<any[]>([]);
   const [announcement, setAnnouncement] = useState<any>(null);
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [checkInStatus, setCheckInStatus] = useState<'checked_in' | 'checked_out' | 'not_checked_in' | 'loading'>('loading');
+  const [checkInTime, setCheckInTime] = useState("");
 
   useEffect(() => {
     async function fetchChildren() {
@@ -34,6 +39,7 @@ export default function ParentPortal() {
          if (mappedChildren.length > 0) {
             setChildren(mappedChildren);
             setActiveChild(mappedChildren[0].user_id);
+            fetchCheckInStatus(mappedChildren[0].user_id);
          }
       }
       
@@ -44,6 +50,34 @@ export default function ParentPortal() {
     }
     fetchChildren();
   }, []);
+
+  
+  const fetchCheckInStatus = async (studentId: string) => {
+     setCheckInStatus('loading');
+     setCheckInTime('');
+     const startOfDay = new Date();
+     startOfDay.setHours(0,0,0,0);
+     const { data } = await supabase
+       .from('student_clock_ins')
+       .select('*')
+       .eq('student_id', studentId)
+       .gte('created_at', startOfDay.toISOString())
+       .order('created_at', { ascending: false })
+       .limit(1);
+     
+          if (data && data.length > 0) {
+        if (data[0].action_type === 'school_check_in') {
+            setCheckInStatus('checked_in');
+            setCheckInTime(data[0].created_at);
+        } else if (data[0].action_type === 'school_check_out') {
+            setCheckInStatus('checked_out');
+        } else {
+            setCheckInStatus('not_checked_in');
+        }
+     } else {
+        setCheckInStatus('not_checked_in');
+     }
+  };
 
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 w-full pb-32 md:pb-8 max-w-[1600px] mx-auto">
@@ -65,7 +99,10 @@ export default function ParentPortal() {
                    grade={child.grade || "Student"} 
                    img={`https://api.dicebear.com/7.x/initials/svg?seed=${child.first_name}`} // fallback avatar
                    active={activeChild === child.user_id} 
-                   onClick={() => setActiveChild(child.user_id)} 
+                   onClick={() => {
+    setActiveChild(child.user_id);
+    fetchCheckInStatus(child.user_id);
+  }} 
                 />
              ))
           ) : (
@@ -124,9 +161,21 @@ export default function ParentPortal() {
                  <Sun className="text-primary w-6 h-6" />
                  Daily Snapshot
               </h3>
-              <span className="font-caption text-sm bg-tertiary-container/20 text-tertiary px-4 py-1.5 rounded-full flex items-center gap-2 border border-tertiary/20 font-bold">
-                 <CheckCircle2 className="w-4 h-4" /> Present Today
-              </span>
+              <div className="flex items-center gap-3">
+                 <button onClick={() => setShowQrCode(true)} className="font-caption text-sm bg-primary/10 hover:bg-primary/20 text-primary px-4 py-1.5 rounded-full flex items-center gap-2 transition-colors font-bold">
+                    <QrCode className="w-4 h-4" /> Student ID
+                 </button>
+                 <span className={`font-caption text-sm px-4 py-1.5 rounded-full flex items-center gap-2 border font-bold ${checkInStatus === 'checked_in' ? 'bg-[#E8F5E9] text-[#2E7D32] border-[#2E7D32]/30' : checkInStatus === 'checked_out' ? 'bg-[#FFF3E0] text-[#E65100] border-[#E65100]/30' : 'bg-surface-variant text-on-surface-variant border-outline-variant/30'}`}>
+                    <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
+                       const cName = children.find(c => c.user_id === activeChild)?.first_name || (activeChild === 'mei' ? 'Mei' : activeChild === 'wei' ? 'Wei' : 'Student');
+                       if (!checkInTime) return `${cName} is in the school`;
+                       const d = new Date(checkInTime);
+                       const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                       const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+                       return `${cName} arrived at school at ${timeStr} on ${dateStr}`;
+                    })() : checkInStatus === 'checked_out' ? `${children.find(c => c.user_id === activeChild)?.first_name || (activeChild === 'mei' ? 'Mei' : activeChild === 'wei' ? 'Wei' : 'Student')} is ready to go home` : 'Not Checked In'}
+                 </span>
+              </div>
            </div>
 
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 z-10 relative">
@@ -231,6 +280,15 @@ export default function ParentPortal() {
         </div>
 
       </div>
+
+      {showQrCode && (
+         <QRCodeBadge 
+            studentId={children.find(c => c.user_id === activeChild)?.user_id || (activeChild === "mei" ? "mei_lin_id" : activeChild === "wei" ? "wei_lin_id" : activeChild)} 
+            studentName={children.find(c => c.user_id === activeChild) ? `${children.find(c => c.user_id === activeChild).first_name} ${children.find(c => c.user_id === activeChild).last_name}`.trim() : (activeChild === "mei" ? "Mei Lin" : "Wei Lin")} 
+            onClose={() => setShowQrCode(false)} 
+         />
+      )}
+
     </div>
   );
 }

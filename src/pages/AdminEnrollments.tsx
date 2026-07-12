@@ -80,9 +80,9 @@ export default function AdminEnrollments() {
   async function fetchData() {
     setLoading(true);
     try { const [usersRes, familiesRes, enrollmentsRes, classesRes, programsRes, userRolesRes] = await Promise.all([
-      supabase.from('users').select('*'),
+      supabase.from('users').select('user_id, first_name, last_name, email'),
       supabase.from('parent_child').select('*'),
-      supabase.from('enrollments').select('*'),
+      supabase.from('enrollments').select('enrollment_id, student_id, class_id, status, program_id'),
       supabase.from('classes').select('*'),
       supabase.from('programs').select('*').order('program_name', { ascending: true }),
       supabase.from('user_roles').select('user_id, roles!inner(role_name)').in('roles.role_name', ['Student', 'Teacher', 'Volunteer'])

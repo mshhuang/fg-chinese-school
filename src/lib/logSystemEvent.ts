@@ -11,29 +11,16 @@ export async function logSystemEvent(
     let user: any = {};
     if (userStr) {
       try {
-        user = JSON.parse(userStr);
+        user = JSON.parse(userStr) || {};
       } catch (e) {}
     }
 
-    const u_id = user.id && user.id !== 'demo' && user.id !== 'builder_secret' ? user.id : null;
+    const u_id = user?.id && user?.id !== 'demo' && user?.id !== 'builder_secret' ? user.id : null;
     
-    if (type === 'error' || type === 'warning') {
-       try {
-          const { error: err } = await supabase.from('error_logs').insert({
-             user_id: u_id,
-             type,
-             message,
-             details: details ? details : null,
-             path: path || window.location.pathname
-          });
-          if (err) console.warn('Failed to log to error_logs. Is the table created?', err);
-       } catch (e) {}
-    }
-
-    const payload: any = {
+    const payload: any = { 
        user_id: u_id,
-       user_name: user.id ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'System',
-       user_role: user.role || 'system',
+       user_name: user?.id ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'System',
+       user_role: user?.role || 'system',
        page_name: 'System Event',
        path: path || window.location.pathname,
        activity: `[${type.toUpperCase()}] ${message}`,

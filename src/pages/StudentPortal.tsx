@@ -5,9 +5,15 @@ import { cn } from "../lib/utils";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { DashboardNotifications } from "../components/DashboardNotifications";
+import { QRCodeBadge } from "../components/QRCodeBadge";
+import { QrCode, CheckCircle2 } from "lucide-react";
 
 export default function StudentPortal() {
   const [userName, setUserName] = useState("");
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [userId, setUserId] = useState("");
+  const [checkInStatus, setCheckInStatus] = useState<'checked_in' | 'checked_out' | 'not_checked_in' | 'loading'>('loading');
+  const [checkInTime, setCheckInTime] = useState("");
   const [programDays, setProgramDays] = useState(0);
   const [parents, setParents] = useState<any[]>([]);
   const [announcement, setAnnouncement] = useState<any>(null);
@@ -24,6 +30,8 @@ export default function StudentPortal() {
           const user = JSON.parse(userStr);
           if (user && user.first_name) {
             setUserName(user.first_name);
+            setUserId(user.id);
+            fetchCheckInStatus(user.id);
           }
 
           if (user && user.id && user.id !== 'demo') {
@@ -158,6 +166,34 @@ export default function StudentPortal() {
     fetchStudentData();
   }, []);
 
+  
+  const fetchCheckInStatus = async (studentId: string) => {
+     setCheckInStatus('loading');
+     setCheckInTime('');
+     const startOfDay = new Date();
+     startOfDay.setHours(0,0,0,0);
+     const { data } = await supabase
+       .from('student_clock_ins')
+       .select('*')
+       .eq('student_id', studentId)
+       .gte('created_at', startOfDay.toISOString())
+       .order('created_at', { ascending: false })
+       .limit(1);
+     
+          if (data && data.length > 0) {
+        if (data[0].action_type === 'school_check_in') {
+            setCheckInStatus('checked_in');
+            setCheckInTime(data[0].created_at);
+        } else if (data[0].action_type === 'school_check_out') {
+            setCheckInStatus('checked_out');
+        } else {
+            setCheckInStatus('not_checked_in');
+        }
+     } else {
+        setCheckInStatus('not_checked_in');
+     }
+  };
+
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-10 w-full pb-32 md:pb-8">
       <DashboardNotifications />
@@ -181,6 +217,22 @@ export default function StudentPortal() {
         <div className="flex-1 text-center md:text-left z-10">
           <h1 className="font-title text-2xl md:text-4xl text-primary font-bold mb-2">Welcome back, {userName}!</h1>
           <p className="font-body text-lg text-on-surface-variant mb-4">Your journey of knowledge continues. You're doing great!</p>
+
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-4">
+            <button onClick={() => setShowQrCode(true)} className="font-caption text-sm bg-primary-container hover:bg-primary-container/80 text-on-primary-container px-4 py-1.5 rounded-full flex items-center gap-2 transition-colors font-bold shadow-sm">
+              <QrCode className="w-4 h-4" /> My ID Badge
+            </button>
+            <span className={`font-caption text-sm px-4 py-1.5 rounded-full flex items-center gap-2 font-bold ${checkInStatus === 'checked_in' ? 'bg-[#E8F5E9] text-[#2E7D32] border border-[#2E7D32]/30' : checkInStatus === 'checked_out' ? 'bg-[#FFF3E0] text-[#E65100] border border-[#E65100]/30' : 'bg-surface-variant text-on-surface-variant border border-outline-variant/30'}`}>
+              <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
+                if (!checkInTime) return `${userName} is in the school`;
+                const d = new Date(checkInTime);
+                const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+                return `${userName} arrived at school at ${timeStr} on ${dateStr}`;
+              })() : checkInStatus === 'checked_out' ? `${userName} is ready to go home` : 'Not Checked In'}
+            </span>
+          </div>
+
           
           {parents.length > 0 && (
              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
@@ -301,7 +353,14 @@ export default function StudentPortal() {
            
 
         </div>
-      </div>
+            </div>
+      {showQrCode && userId && (
+        <QRCodeBadge 
+           studentId={userId} 
+           studentName={userName} 
+           onClose={() => setShowQrCode(false)} 
+        />
+     )}
     </div>
   );
 }
@@ -325,6 +384,7 @@ function Badge({ icon: Icon, label, active = true, color }: any) {
         <Icon className={cn("w-6 h-6", active ? "fill-current" : "")} />
       </div>
       <span className={cn("font-caption text-xs mt-2", active ? "font-bold text-on-surface" : "text-on-surface-variant")}>{label}</span>
+
     </div>
   );
 }

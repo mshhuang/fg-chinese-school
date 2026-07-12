@@ -41,7 +41,7 @@ export default function UserDirectoryTab() {
     setLoading(true);
     
     const [usersRes, mappingsRes, rolesRes] = await Promise.all([
-      supabase.from('users').select('*').order('created_at', { ascending: false }),
+      supabase.from('users').select('user_id, first_name, last_name, email, phone1, status, user_name').order('created_at', { ascending: false }),
       supabase.from('user_roles').select('*'),
       supabase.from('roles').select('*')
     ]);

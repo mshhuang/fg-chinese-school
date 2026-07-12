@@ -32,8 +32,11 @@ import StudentMessages from "./pages/StudentMessages";
 import StaffDashboard from "./pages/StaffDashboard";
 import VolunteerDashboard from "./pages/VolunteerDashboard";
 import StaffAttendance from "./pages/StaffAttendance";
+import AttendanceSheet from "./pages/AttendanceSheet";
 import VolunteerAttendance from "./pages/VolunteerAttendance";
 import StaffAvailability from "./pages/StaffAvailability";
+import QRScanner from "./pages/QRScanner";
+import QRCodeBadge from "./components/QRCodeBadge";
 import StaffMessages from "./pages/StaffMessages";
 import AdminAcademic from "./pages/AdminAcademic";
 import Activities from "./pages/Activities";
@@ -43,6 +46,7 @@ import AdminNewUser from "./pages/AdminNewUser";
 import AdminDataEntry from "./pages/AdminDataEntry";
 import AdminUsers from "./pages/AdminUsers";
 import AdminDashboard from "./pages/AdminDashboard";
+import BuilderReportEditor from './pages/BuilderReportEditor';
 import BuilderDashboard from "./pages/BuilderDashboard";
 import AuditLogs from "./pages/AuditLogs";
 import ChangePassword from "./pages/ChangePassword";
@@ -102,6 +106,8 @@ export default function App() {
            <Route path="/teacher/calendar" element={<TeacherCalendar />} />
            <Route path="/teacher/classes" element={<TeacherClasses />} />
            <Route path="/teacher/attendance" element={<StaffAttendance />} />
+           <Route path="/teacher/attendance-sheet" element={<AttendanceSheet />} />
+           <Route path="/teacher/scanner" element={<QRScanner />} />
            <Route path="/teacher/lessons" element={<MyLessonPlans />} />
            <Route path="/teacher/messages" element={<PrincipalMessages />} />
            <Route path="/teacher/announcements" element={<Announcements />} />
@@ -130,6 +136,7 @@ export default function App() {
            <Route path="/staff/calendar" element={<StaffCalendar />} />
            <Route path="/staff/attendance" element={<VolunteerAttendance />} />
            <Route path="/staff/availability" element={<StaffAvailability />} />
+           <Route path="/staff/scanner" element={<QRScanner />} />
            <Route path="/staff/messages" element={<StaffMessages />} />
            <Route path="/staff/announcements" element={<Announcements />} />
            <Route path="/staff/new-user" element={<AdminNewUser />} />
@@ -140,11 +147,13 @@ export default function App() {
            <Route path="/volunteer/attendance" element={<VolunteerAttendance />} />
            <Route path="/volunteer/enter-attendance" element={<StaffAttendance />} />
            <Route path="/volunteer/availability" element={<StaffAvailability />} />
+           <Route path="/volunteer/scanner" element={<QRScanner />} />
            <Route path="/volunteer/messages" element={<StaffMessages />} />
            <Route path="/volunteer/announcements" element={<Announcements />} />
 
            {/* Builder (formerly Admin) */}
            <Route path="/builder/dashboard" element={<BuilderDashboard />} />
+           <Route path="/builder/report-editor" element={<BuilderReportEditor />} />
            <Route path="/builder/calendar" element={<AdminCalendar />} />
            <Route path="/builder/messages" element={<PrincipalMessages />} />
            <Route path="/builder/announcements" element={<Announcements />} />

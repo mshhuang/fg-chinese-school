@@ -18,6 +18,7 @@ export default function TeacherNewsletters() {
   const [pdfFile, setPdfFile] = useState<string | null>(null);
   const [pdfFileObj, setPdfFileObj] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState("");
+  const [editingNewsletterId, setEditingNewsletterId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -113,7 +114,19 @@ export default function TeacherNewsletters() {
      }
   };
 
-  const handleCreate = async (status: "Draft" | "Pending Approval") => {
+
+  const handleEditInit = (news: any) => {
+     setEditingNewsletterId(news.id);
+     setTitle(news.title);
+     setAudience(news.audience);
+     setContent(news.content);
+     setPdfName(news.pdfName || "");
+     setPdfFile(news.pdfData || null);
+     setPdfFileObj(null);
+     setShowModal(true);
+  };
+
+  const handleSave = async (status: "Draft" | "Pending Approval") => {
      if (!title.trim()) return alert("Title is required");
      
      let finalPdfData = pdfFile;
@@ -153,7 +166,7 @@ export default function TeacherNewsletters() {
      
      let classId = null;
      if (authorId) {
-         const { data: classData } = await supabase.from('classes').select('class_id').eq('primary_teacher_id', authorId).maybeSingle();
+         const { data: classData } = await supabase.from('classes').select('class_id').or(`primary_teacher_id.eq.${authorId},co_teacher_id.eq.${authorId},co_teachers.cs.{${authorId}}`).limit(1).maybeSingle();
          if (classData) classId = (classData as any).class_id;
      }
 
@@ -169,30 +182,36 @@ export default function TeacherNewsletters() {
      };
 
      try {
-       const { data, error } = await supabase.from('newsletters').insert([{
-           title,
-           author_id: authorId,
-           class_id: classId,
-           content: JSON.stringify(payloadProps)
-       }] as any).select();
-
-       if (error) {
-           if (error.code === '42501') {
-               alert("Database Error: Row-Level Security (RLS) is blocking inserts to the 'newsletters' table. Please check policies.");
+       if (editingNewsletterId) {
+           const { error } = await supabase.from('newsletters').update({
+               title,
+               content: JSON.stringify(payloadProps)
+           }).eq('newsletter_id', editingNewsletterId);
+           if (error) throw error;
+           alert("Newsletter successfully updated!");
+       } else {
+           const { data, error } = await supabase.from('newsletters').insert([{
+               title,
+               author_id: authorId,
+               class_id: classId,
+               content: JSON.stringify(payloadProps)
+           }] as any).select();
+           if (error) {
+               if (error.code === '42501') alert("Database Error: Row-Level Security (RLS) is blocking inserts to the 'newsletters' table. Please check policies.");
+               throw error;
            }
-           throw error;
+           alert("Newsletter successfully saved to database!");
        }
-       alert("Newsletter successfully saved to database!");
        await loadNewsletters();
      } catch (e) {
-       console.error("Failed to create newsletter", e);
-       alert("Failed to create newsletter");
+       console.error("Failed to save newsletter", e);
+       alert("Failed to save newsletter");
      }
      
      setShowModal(false);
+     setEditingNewsletterId(null);
      setTitle(""); setContent(""); setPdfFile(null); setPdfFileObj(null); setPdfName("");
   };
-
   const handleDelete = async (id: string | number) => {
      try {
         // @ts-ignore
@@ -241,7 +260,7 @@ export default function TeacherNewsletters() {
            <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Class Newsletters</h1>
            <p className="font-body text-lg text-on-surface-variant mt-2">Create newsletters and submit them for approval.</p>
          </div>
-         <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label font-bold hover:bg-primary/90 transition-colors shadow-md w-full md:w-auto justify-center">
+         <button onClick={() => { setEditingNewsletterId(null); setTitle(""); setContent(""); setPdfFile(null); setPdfFileObj(null); setPdfName(""); setShowModal(true); }} className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label font-bold hover:bg-primary/90 transition-colors shadow-md w-full md:w-auto justify-center">
             <Plus className="w-5 h-5" /> Create Newsletter
          </button>
        </header>
@@ -304,9 +323,14 @@ export default function TeacherNewsletters() {
                            </button>
                        )}
                        {(news.status === "Draft" || news.status === "Rejected") && (
+                         <>
+                         <button onClick={() => handleEditInit(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="Edit">
+                            <Edit3 className="w-4 h-4" />
+                         </button>
                          <button onClick={() => handleSubmitForApproval(news.id)} className="w-8 h-8 rounded-full hover:bg-tertiary-container/50 hover:text-tertiary flex items-center justify-center text-on-surface-variant transition-colors" title="Submit for Approval">
                             <Send className="w-4 h-4" />
                          </button>
+                         </>
                        )}
                        <button onClick={() => handleDelete(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors">
                           <Trash2 className="w-4 h-4" />
@@ -428,10 +452,10 @@ export default function TeacherNewsletters() {
                 </div>
 
                 <div className="flex items-center gap-3 mt-6 pt-6 border-t border-outline-variant/20">
-                   <button onClick={() => handleCreate("Draft")} className="flex-1 bg-surface-container hover:bg-surface-variant text-on-surface font-bold py-3 px-6 rounded-full transition-colors text-sm">
+                   <button onClick={() => handleSave("Draft")} className="flex-1 bg-surface-container hover:bg-surface-variant text-on-surface font-bold py-3 px-6 rounded-full transition-colors text-sm">
                       Save as Draft
                    </button>
-                   <button onClick={() => handleCreate("Pending Approval")} className="flex-[2] bg-primary hover:bg-primary/90 text-on-primary font-bold py-3 px-6 rounded-full transition-colors text-sm flex items-center justify-center gap-2">
+                   <button onClick={() => handleSave("Pending Approval")} className="flex-[2] bg-primary hover:bg-primary/90 text-on-primary font-bold py-3 px-6 rounded-full transition-colors text-sm flex items-center justify-center gap-2">
                        <Send className="w-4 h-4" />
                        Submit for Approval
                    </button>

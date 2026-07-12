@@ -10,9 +10,9 @@ export async function logSystemActivity(
   try {
     const userStr = localStorage.getItem('user');
     if (!userStr) return;
-    const user = JSON.parse(userStr);
-
+    const user = JSON.parse(userStr) || {};
     let ipAddress = 'Unknown';
+
     try {
        const res = await fetch('https://api.ipify.org?format=json');
        if (res.ok) {
@@ -41,9 +41,9 @@ export async function logSystemActivity(
     }
 
     const payload: any = {
-       user_id: user.id !== 'demo' && user.id !== 'builder_secret' ? user.id : null,
-       user_name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-       user_role: user.role,
+       user_id: user?.id !== 'demo' && user?.id !== 'builder_secret' ? user?.id : null,
+       user_name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'System',
+       user_role: user?.role || 'system',
        page_name: pageName,
        path: path,
        activity: activity,

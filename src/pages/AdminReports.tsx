@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Printer, Download, Users, School, BookOpen, ClipboardList, KeyRound, CheckSquare, Clock } from "lucide-react";
+import { Printer, Download, Users, School, BookOpen, ClipboardList, KeyRound, CheckSquare, Clock, Fingerprint } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatTeacherName } from "../lib/utils";
 import { ReportPrintHeader } from "../components/admin/ReportPrintHeader";
@@ -7,7 +7,7 @@ import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 
 export default function AdminReports() {
-  const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'attendance' | 'credentials' | 'login_history'>('teachers');
+  const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'attendance' | 'credentials' | 'login_history' | 'checkin_history' | 'staff_attendance'>('teachers');
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -17,12 +17,18 @@ export default function AdminReports() {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [loginLogs, setLoginLogs] = useState<any[]>([]);
+  const [checkinLogs, setCheckinLogs] = useState<any[]>([]);
+  const [staffClockLogs, setStaffClockLogs] = useState<any[]>([]);
+  const [staffAttendanceDate, setStaffAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [staffClockLogsLoading, setStaffClockLogsLoading] = useState(false);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [loginDate, setLoginDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [checkinDate, setCheckinDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [loginSortBy, setLoginSortBy] = useState<'time' | 'user'>('time');
   const [attendanceTeacherFilter, setAttendanceTeacherFilter] = useState('all');
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [loginLogsLoading, setLoginLogsLoading] = useState(false);
+  const [checkinLogsLoading, setCheckinLogsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,12 +36,12 @@ export default function AdminReports() {
       setLoading(true);
       try {
         // Fetch all data
-        const { data: usersData } = await supabase.from('users').select('*');
+        const { data: usersData } = await supabase.from('users').select('user_id, first_name, last_name, email');
         const { data: rolesData } = await supabase.from('roles').select('*');
         const { data: userRolesData } = await supabase.from('user_roles').select('*');
         const { data: classData, error: classError } = await supabase.from('classes').select('*');
         if (classError) console.error("Class fetch error:", classError);
-        const { data: enrollmentsData, error: enrollmentsError } = await supabase.from('enrollments').select('*');
+        const { data: enrollmentsData, error: enrollmentsError } = await supabase.from('enrollments').select('enrollment_id, student_id, class_id, status, program_id');
         if (enrollmentsError) console.error("Enrollments fetch error:", enrollmentsError);
         const { data: programsData } = await supabase.from('programs').select('*');
         
@@ -115,11 +121,71 @@ export default function AdminReports() {
     }
   }, [activeTab, loginDate]);
 
+  useEffect(() => {
+    if (activeTab === 'checkin_history') {
+       fetchCheckinLogs();
+    }
+  }, [activeTab, checkinDate]);
+
+  useEffect(() => {
+    if (activeTab === 'staff_attendance') {
+       fetchStaffClockLogs();
+    }
+  }, [activeTab, staffAttendanceDate]);
+
+  async function fetchStaffClockLogs() {
+     setStaffClockLogsLoading(true);
+     const [year, month, day] = staffAttendanceDate.split('-').map(Number);
+     const startOfDay = new Date(year, month - 1, day);
+     startOfDay.setHours(0, 0, 0, 0);
+     const endOfDay = new Date(year, month - 1, day);
+     endOfDay.setHours(23, 59, 59, 999);
+     
+     const { data, error } = await supabase
+       .from('staff_clock_ins')
+       .select('*, users(first_name, last_name, email)')
+       .gte('created_at', startOfDay.toISOString())
+       .lte('created_at', endOfDay.toISOString())
+       .order('created_at', { ascending: false });
+       
+     if (data) {
+       setStaffClockLogs(data);
+     } else if (error) {
+       console.error("Staff clock logs fetch error:", error);
+     }
+     setStaffClockLogsLoading(false);
+  }
+
+  async function fetchCheckinLogs() {
+     setCheckinLogsLoading(true);
+     const [year, month, day] = checkinDate.split('-').map(Number);
+     const startOfDay = new Date(year, month - 1, day);
+     startOfDay.setHours(0, 0, 0, 0);
+     const endOfDay = new Date(year, month - 1, day);
+     endOfDay.setHours(23, 59, 59, 999);
+     
+     const { data, error } = await supabase
+       .from('student_clock_ins')
+       .select('*, users!student_id(first_name, last_name, email)')
+       .gte('created_at', startOfDay.toISOString())
+       .lte('created_at', endOfDay.toISOString())
+       .order('created_at', { ascending: false });
+       
+     if (data) {
+       setCheckinLogs(data);
+     } else if (error) {
+       console.error("Checkin logs fetch error:", error);
+     }
+     setCheckinLogsLoading(false);
+  }
+
+
   async function fetchLoginLogs() {
      setLoginLogsLoading(true);
-     const startOfDay = new Date(loginDate);
+     const [year, month, day] = loginDate.split('-').map(Number);
+     const startOfDay = new Date(year, month - 1, day);
      startOfDay.setHours(0, 0, 0, 0);
-     const endOfDay = new Date(loginDate);
+     const endOfDay = new Date(year, month - 1, day);
      endOfDay.setHours(23, 59, 59, 999);
      
      const { data, error } = await supabase
@@ -234,12 +300,28 @@ export default function AdminReports() {
           <KeyRound className="w-4 h-4" /> Credentials
         </button>
         <button
+          onClick={() => setActiveTab('staff_attendance')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
+            activeTab === 'staff_attendance' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <Clock className="w-4 h-4" /> Staff Attendance
+        </button>
+        <button
           onClick={() => setActiveTab('login_history')}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
             activeTab === 'login_history' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
           <Clock className="w-4 h-4" /> Login History
+        </button>
+        <button
+          onClick={() => setActiveTab('checkin_history')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
+            activeTab === 'checkin_history' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <Fingerprint className="w-4 h-4" /> Building Check-ins
         </button>
       </div>
 
@@ -262,8 +344,8 @@ export default function AdminReports() {
                 </div>
                 <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-surface-container-low">
-                      <tr className="border-b border-outline-variant/50">
+                    <thead className="bg-surface-container-low print:bg-transparent print:border-t print:border-black/20">
+                      <tr className="border-b border-outline-variant/50 print:border-b-black/20">
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Name</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Email</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Classes</th>
@@ -304,8 +386,8 @@ export default function AdminReports() {
                 </div>
                 <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-surface-container-low">
-                      <tr className="border-b border-outline-variant/50">
+                    <thead className="bg-surface-container-low print:bg-transparent print:border-t print:border-black/20">
+                      <tr className="border-b border-outline-variant/50 print:border-b-black/20">
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Name</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Email</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Programs</th>
@@ -357,8 +439,8 @@ export default function AdminReports() {
                 </div>
                 <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-surface-container-low">
-                      <tr className="border-b border-outline-variant/50">
+                    <thead className="bg-surface-container-low print:bg-transparent print:border-t print:border-black/20">
+                      <tr className="border-b border-outline-variant/50 print:border-b-black/20">
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Class Name</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Room</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Primary Teacher</th>
@@ -448,7 +530,7 @@ export default function AdminReports() {
                           });
                           
                           const teacherNameStr = allTeacherNames.length > 0 ? allTeacherNames.join(", ") : 'Unassigned';
-                          const volunteerNameStr = enrolledVolunteers.map((v: any) => v ? formatTeacherName(v.first_name, v.last_name) : '').filter(Boolean).join(", ");
+                          const volunteerNameStr = enrolledVolunteers.map((v: any) => v ? `${v.first_name || ''} ${v.last_name || ''}`.trim() : '').filter(Boolean).join(", ");
 
                           return (
                             <div key={classId} className="mb-6 ml-4">
@@ -461,8 +543,8 @@ export default function AdminReports() {
                               </h4>
                               <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                                 <table className="w-full text-left border-collapse">
-                                  <thead className="bg-surface-container-low">
-                                    <tr className="border-b border-outline-variant/50">
+                                  <thead className="bg-surface-container-low print:bg-transparent print:border-t print:border-black/20">
+                                    <tr className="border-b border-outline-variant/50 print:border-b-black/20">
                                       <th className="py-2 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Student Name</th>
                                       <th className="py-2 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Student Email</th>
                                     </tr>
@@ -534,8 +616,8 @@ export default function AdminReports() {
                 ) : (
                    <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                      <table className="w-full text-left border-collapse">
-                       <thead className="bg-surface-container-low">
-                         <tr className="border-b border-outline-variant/50">
+                       <thead className="bg-surface-container-low print:bg-transparent print:border-t print:border-black/20">
+                         <tr className="border-b border-outline-variant/50 print:border-b-black/20">
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Student</th>
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Class</th>
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Teacher</th>
@@ -561,7 +643,7 @@ export default function AdminReports() {
                                  </td>
                                  <td className="py-3 px-4 font-body text-sm">
                                     <span className={`px-2 py-1 rounded-md font-label text-xs font-bold uppercase ${
-                                       att.status === 'Present' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'
+                                       att.status === 'Present' ? 'bg-primary/10 text-primary' : att.status === 'Late' ? 'bg-yellow-500/10 text-yellow-600' : 'bg-error/10 text-error'
                                     }`}>
                                       {att.status || 'Not Set'}
                                     </span>
@@ -586,40 +668,81 @@ export default function AdminReports() {
             )}
             
             {activeTab === 'credentials' && (
-              <div>
-                <ReportPrintHeader title="User Credentials Report" />
-                <div className="flex flex-col gap-2 mb-6 print:hidden">
-                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
-                       <h2 className="font-display text-2xl font-bold text-on-surface">User Credentials</h2>
-                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
-                   </div>
-                   <p className="text-on-surface-variant">A report displaying all users and their usernames. Passwords are encrypted for security.</p>
-                </div>
+              <div className="space-y-8">
+                {classes.map(cls => {
+                  const classEnrollments = enrollments.filter(e => String(e.class_id) === String(cls.class_id) && e.status === 'Active');
+                  const classStudents = students.filter(s => classEnrollments.some(e => e.student_id === s.user_id));
+                  
+                  if (classStudents.length === 0) return null;
+                  
+                  const primaryTeacher = teachers.find(t => t.user_id === cls.primary_teacher_id);
+                  const coTeacher = teachers.find(t => t.user_id === cls.co_teacher_id);
+                  
+                  return (
+                    <div key={cls.class_id} className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface print:break-inside-avoid">
+                      <div className="bg-surface-container-low p-4 border-b border-outline-variant/30">
+                        <h3 className="font-display text-lg font-bold text-on-surface">{cls.class_name || cls.name}</h3>
+                        <p className="text-sm text-on-surface-variant font-body mt-1">
+                          Teacher: <span className="font-medium text-on-surface">{primaryTeacher ? `${primaryTeacher.first_name} ${primaryTeacher.last_name}` : 'Unassigned'}</span>
+                          {coTeacher && <span> | Co-Teacher: <span className="font-medium text-on-surface">{coTeacher.first_name} {coTeacher.last_name}</span></span>}
+                        </p>
+                      </div>
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-surface-container-lowest print:bg-transparent print:border-t print:border-black/20">
+                          <tr className="border-b border-outline-variant/50 print:border-b-black/20">
+                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Student Name</th>
+                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Username</th>
+                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Email</th>
+                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Password</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {classStudents.map((user, idx) => (
+                            <tr key={user.user_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
+                              <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">{user.first_name} {user.last_name}</td>
+                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{user.user_name || '-'}</td>
+                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{user.email || '-'}</td>
+                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{user.password_hash || 'Not Set'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
                 
-                <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
+                {/* Unassigned Users / Staff Section */}
+                <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface print:break-inside-avoid">
+                  <div className="bg-surface-container-low p-4 border-b border-outline-variant/30">
+                    <h3 className="font-display text-lg font-bold text-on-surface">Staff & Other Users</h3>
+                    <p className="text-sm text-on-surface-variant font-body mt-1">Teachers, Volunteers, and Administrators</p>
+                  </div>
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-surface-container-low">
-                      <tr className="border-b border-outline-variant/50">
+                    <thead className="bg-surface-container-lowest print:bg-transparent print:border-t print:border-black/20">
+                      <tr className="border-b border-outline-variant/50 print:border-b-black/20">
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Name</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Username</th>
                         <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Role</th>
-                        <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Password Status</th>
+                        <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Email</th>
+                        <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Password</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {allUsers.map((user, idx) => {
+                      {allUsers.filter(u => {
+                        const isStudent = students.some(s => s.user_id === u.user_id);
+                        return !isStudent;
+                      }).map((user, idx) => {
                          const isTeacher = teachers.some(t => t.user_id === user.user_id);
-                         const isStudent = students.some(s => s.user_id === user.user_id);
                          const isVolunteer = volunteers.some(v => v.user_id === user.user_id);
-                         const role = isTeacher ? 'Teacher' : isStudent ? 'Student' : isVolunteer ? 'Volunteer' : 'Staff / Other';
+                         const role = isTeacher ? 'Teacher' : isVolunteer ? 'Volunteer' : 'Staff / Other';
+                         
                          return (
                            <tr key={user.user_id || idx} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
                              <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">{user.first_name} {user.last_name}</td>
                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{user.user_name || '-'}</td>
                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{role}</td>
-                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant">
-                               {user.password_hash || 'Not Set'}
-                             </td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{user.email || '-'}</td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant">{user.password_hash || 'Not Set'}</td>
                            </tr>
                          );
                       })}
@@ -629,9 +752,147 @@ export default function AdminReports() {
               </div>
             )}
             
+            {activeTab === 'checkin_history' && (
+              <div>
+                <ReportPrintHeader title={`Building Check-ins - ${checkinDate}`} />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Building Check-ins</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{checkinDate}</span>
+                   </div>
+                   <p className="text-on-surface-variant">A report tracking building check-ins/outs via the QR Scanner.</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4 mb-6 print:hidden">
+                   <div className="flex flex-col gap-2">
+                     <label className="font-label text-sm font-bold text-on-surface-variant">Date</label>
+                     <input
+                        type="date"
+                        value={checkinDate}
+                       onChange={e => setCheckinDate(e.target.value)}
+                       className="px-4 py-2 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
+                     />
+                   </div>
+                </div>
+                
+                {checkinLogsLoading ? (
+                   <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>
+                ) : (
+                   <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
+                     <table className="w-full text-left border-collapse">
+                       <thead className="bg-surface-container-low print:bg-transparent print:border-t print:border-black/20">
+                         <tr>
+                           <th className="py-3 px-4 font-label font-bold text-on-surface-variant">Time</th>
+                           <th className="py-3 px-4 font-label font-bold text-on-surface-variant">Student</th>
+                           <th className="py-3 px-4 font-label font-bold text-on-surface-variant">Action</th>
+                           <th className="py-3 px-4 font-label font-bold text-on-surface-variant">Daily Status</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {checkinLogs.map(log => (
+                           <tr key={log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant whitespace-nowrap">
+                                {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                             </td>
+                             <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
+                                {log.users ? `${log.users.first_name} ${log.users.last_name}` : 'Unknown Student'}
+                             </td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant capitalize">
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${log.action_type.includes('in') ? 'bg-primary-container text-on-primary-container' : 'bg-secondary-container text-on-secondary-container'}`}>
+                                   {log.action_type.replace('school_', '').replace(/_/g, ' ')}
+                                </span>
+                             </td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant capitalize">
+                                <span className="px-2 py-1 rounded text-xs font-bold bg-surface-variant text-on-surface-variant">
+                                   {log.daily_status || 'not arrive yet'}
+                                </span>
+                             </td>
+                           </tr>
+                         ))}
+                         {checkinLogs.length === 0 && (
+                           <tr>
+                             <td colSpan={3} className="py-6 text-center text-on-surface-variant">No check-in records found for this date.</td>
+                           </tr>
+                         )}
+                       </tbody>
+                     </table>
+                   </div>
+                )}
+              </div>
+            )}
+            
+            {activeTab === 'staff_attendance' && (
+              <div>
+                <ReportPrintHeader title={`Staff Attendance Report - ${staffAttendanceDate}`} />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Staff Attendance Report</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{staffAttendanceDate}</span>
+                   </div>
+                   <p className="text-on-surface-variant">A report tracking staff clock-ins and clock-outs.</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4 mb-6 print:hidden">
+                   <div className="flex flex-col gap-2">
+                     <label className="font-label text-sm font-bold text-on-surface-variant">Date</label>
+                     <input
+                        type="date"
+                        value={staffAttendanceDate}
+                       onChange={e => setStaffAttendanceDate(e.target.value)}
+                       className="px-4 py-2 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
+                     />
+                   </div>
+                </div>
+
+                {staffClockLogsLoading ? (
+                   <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div></div>
+                ) : (
+                   <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
+                     <table className="w-full text-left border-collapse">
+                       <thead className="bg-surface-container-low print:bg-transparent print:border-t print:border-black/20">
+                         <tr>
+                           <th className="py-3 px-4 font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">Time</th>
+                           <th className="py-3 px-4 font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">Staff Name</th>
+                           <th className="py-3 px-4 font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">Action</th>
+                           <th className="py-3 px-4 font-label text-xs font-bold uppercase tracking-wider text-on-surface-variant">Daily Status</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-outline-variant/20">
+                         {staffClockLogs.map(log => (
+                           <tr key={log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant whitespace-nowrap">
+                                {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                             </td>
+                             <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
+                                {log.users ? formatTeacherName(log.users.first_name, log.users.last_name, 'Teacher') : 'Unknown Staff'}
+                             </td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant capitalize">
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${log.action_type === 'clock_in' ? 'bg-primary-container text-on-primary-container' : 'bg-secondary-container text-on-secondary-container'}`}>
+                                   {log.action_type.replace('_', ' ')}
+                                </span>
+                             </td>
+                             <td className="py-3 px-4 font-body text-sm text-on-surface-variant capitalize">
+                                <span className="px-2 py-1 rounded text-xs font-bold bg-surface-variant text-on-surface-variant">
+                                   {log.daily_status || 'not arrive yet'}
+                                </span>
+                             </td>
+                           </tr>
+                         ))}
+                         {staffClockLogs.length === 0 && (
+                           <tr>
+                             <td colSpan={3} className="py-6 text-center text-on-surface-variant">No staff attendance records found for this date.</td>
+                           </tr>
+                         )}
+                       </tbody>
+                     </table>
+                   </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'login_history' && (
               <div>
-                <ReportPrintHeader title={`Login History Report - ${loginDate}`} />
+                <ReportPrintHeader title="LOGIN HISTORY REPORT" />
                 <div className="flex flex-col gap-2 mb-6 print:hidden">
                    <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
                        <h2 className="font-display text-2xl font-bold text-on-surface">Login History Report</h2>
@@ -668,8 +929,8 @@ export default function AdminReports() {
                 ) : (
                    <div className="overflow-x-auto print:overflow-visible rounded-xl border border-outline-variant/30 shadow-sm bg-surface">
                      <table className="w-full text-left border-collapse">
-                       <thead className="bg-surface-container-low">
-                         <tr className="border-b border-outline-variant/50">
+                       <thead className="bg-surface-container-low print:bg-transparent print:border-t print:border-black/20">
+                         <tr className="border-b border-outline-variant/50 print:border-b-black/20">
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Time</th>
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Name</th>
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Role</th>

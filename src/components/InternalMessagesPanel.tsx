@@ -65,7 +65,9 @@ export function InternalMessagesPanel() {
   const fetchMessages = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const { data } = await supabase.from("internal_messages").select("*").order("sent_at", { ascending: true });
+      const currentUserId = currentUser?.id || currentUser?.user_id;
+      if (!currentUserId) return;
+      const { data } = await supabase.from("internal_messages").select("*").or(`sender_id.eq.${currentUserId},recipient_id.eq.${currentUserId}`).order("sent_at", { ascending: true });
       if (data) setMessages(data);
     } catch (e) {
       console.error(e);
@@ -80,20 +82,28 @@ export function InternalMessagesPanel() {
     const init = async () => {
       setLoading(true);
       try {
+        let user: any = null;
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          setCurrentUser(session.user);
+          user = session.user;
+          setCurrentUser(user);
         } else {
           // If no session, fallback to local storage user (useful for some mocked flows)
           const localStr = localStorage.getItem('user');
-          if (localStr) setCurrentUser(JSON.parse(localStr));
+          if (localStr) {
+             user = JSON.parse(localStr);
+             setCurrentUser(user);
+          }
         }
+        
+        if (!user) return; // Cannot fetch messages without user
 
         const [usersRes, messagesRes, familiesRes] = await Promise.all([
           supabase.from("users").select("user_id, first_name, last_name, user_roles(roles(role_name))"),
-          supabase.from("internal_messages").select("*").order("sent_at", { ascending: true }),
+          supabase.from("internal_messages").select("*").or(`sender_id.eq.${user.id || user.user_id},recipient_id.eq.${user.id || user.user_id}`).order("sent_at", { ascending: true }),
           supabase.from("parent_child").select("*")
         ]);
+
         if (familiesRes.data) {
            setParentChildRelations(familiesRes.data);
         }
@@ -108,9 +118,9 @@ export function InternalMessagesPanel() {
         if (messagesRes.data) setMessages(messagesRes.data);
 
         // Supabase realtime channel
-        channel = supabase
-          .channel('public:internal_messages_' + Math.random().toString(36).substring(7))
-          .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'internal_messages' }, (payload: any) => {
+        const currentUserId = user.id || user.user_id;
+        
+        const handlePayload = (payload: any) => {
             if (payload.eventType === 'INSERT') {
                setMessages((prev: any[]) => {
                  if (prev.find(m => m.message_id === payload.new.message_id)) return prev;
@@ -121,16 +131,15 @@ export function InternalMessagesPanel() {
             } else if (payload.eventType === 'DELETE') {
                setMessages((prev: any[]) => prev.filter(m => m.message_id !== payload.old.message_id));
             }
-          })
+        };
+
+        channel = supabase
+          .channel('public:internal_messages_' + currentUserId)
+          .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'internal_messages', filter: `recipient_id=eq.${currentUserId}` }, handlePayload)
+          .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'internal_messages', filter: `sender_id=eq.${currentUserId}` }, handlePayload)
           .subscribe();
 
-        // Fallback polling
-        const intervalId = setInterval(async () => {
-           const res = await supabase.from("internal_messages").select("*").order("sent_at", { ascending: true });
-           if (res.data) setMessages(res.data);
-        }, 5000);
-
-        (channel as any)._pollingInterval = intervalId;
+        
 
       } catch (e) {
         console.error(e);
@@ -142,7 +151,7 @@ export function InternalMessagesPanel() {
 
     return () => {
       if (channel) {
-        if ((channel as any)._pollingInterval) clearInterval((channel as any)._pollingInterval);
+        
         supabase.removeChannel(channel);
       }
     };

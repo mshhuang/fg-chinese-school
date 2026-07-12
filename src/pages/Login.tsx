@@ -11,7 +11,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   
   const [loginError, setLoginError] = useState("");
@@ -118,17 +117,22 @@ export default function Login() {
     setIsLoading(true);
 
     try {
+      const cleanEmail = email.trim();
+      const cleanPassword = password.trim();
+      
+
+
       // Manual auth against the 'users' table since we use it to store users
       const { data: userData, error } = await supabase
         .from('users')
         .select('*')
-        .or(`email.eq.${email},user_name.eq.${email}`)
-        .eq('password_hash', password)
+        .or(`email.ilike."${cleanEmail}",user_name.ilike."${cleanEmail}"`)
+        .eq('password_hash', cleanPassword)
         .limit(1)
         .maybeSingle() as any;
 
       if (error || !userData) {
-        await logSystemEvent('warning', 'Failed login attempt', { email });
+        await logSystemEvent('warning', 'Failed login attempt', { email: cleanEmail });
         
         const attempts = failedAttempts + 1;
         setFailedAttempts(attempts);
@@ -185,6 +189,7 @@ export default function Login() {
           // Store current minimal info to localStorage to simulate session
           localStorage.setItem('user', JSON.stringify({
             id: userData.user_id,
+            user_id: userData.user_id,
             first_name: userData.first_name,
             last_name: userData.last_name,
             email: userData.email || email,
@@ -194,13 +199,6 @@ export default function Login() {
             sessionToken
           }));
           
-          supabase.from('user_sessions').insert({
-            // @ts-ignore
-            user_id: userData.user_id,
-            activity_summary: primaryRole,
-            session_token: sessionToken,
-            user_agent: navigator.userAgent
-          }).then();
 
           // Also log the login activity
           let ipAddress = 'Unknown';
@@ -279,7 +277,7 @@ export default function Login() {
       }
     } catch (err) {
       console.error(err);
-      setShowDemo(true);
+      setLoginError("An unexpected error occurred connecting to the database.");
     } finally {
       setIsLoading(false);
     }
@@ -288,13 +286,13 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-surface flex relative isolate overflow-hidden">
       {/* Background Graphic */}
-      <div className="absolute top-0 right-0 w-1/2 h-full bg-primary-fixed/30 -z-10 blur-3xl opacity-60"></div>
+      <div className="absolute inset-0 bg-primary-fixed/20 -z-10 blur-3xl opacity-60"></div>
       
       {/* Left Axis: Login Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 md:px-16 lg:px-24 mx-auto">
+      <div className="w-full flex flex-col justify-center px-8 md:px-16 lg:px-24 mx-auto overflow-y-auto py-12">
         <div className="max-w-md w-full mx-auto">
-          <div className="mb-4">
-            <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-[172px] w-auto object-contain" />
+          <div className="mb-6 lg:mb-8">
+            <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-28 md:h-36 lg:h-[172px] w-auto object-contain" />
           </div>
 
           <div className="flex items-center justify-between mb-3">
@@ -364,6 +362,7 @@ export default function Login() {
               {isLoading ? "Signing in..." : "Sign In"}
               {!isLoading && <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />}
             </button>
+
           </form>
         </div>
       </div>
