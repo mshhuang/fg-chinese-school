@@ -1,15 +1,12 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Add API routes here if needed
+  // API routes FIRST
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });

@@ -40,3 +40,40 @@ CREATE POLICY "Enable all for attendance" ON attendance FOR ALL USING (true) WIT
 
 -- Allow duplicate emails by removing unique constraint on email if it exists
 -- ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
+
+-- Create staff_clock_ins table for teacher clock in/out
+CREATE TABLE IF NOT EXISTS staff_clock_ins (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    action_type TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE staff_clock_ins ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all for staff_clock_ins" ON staff_clock_ins;
+CREATE POLICY "Enable all for staff_clock_ins" ON staff_clock_ins FOR ALL USING (true) WITH CHECK (true);
+
+
+
+-- Add daily_status to staff_clock_ins
+ALTER TABLE staff_clock_ins ADD COLUMN IF NOT EXISTS daily_status TEXT DEFAULT 'not arrive yet';
+
+-- Create student_clock_ins table for student building check in/out and status
+CREATE TABLE IF NOT EXISTS student_clock_ins (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    student_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    action_type TEXT NOT NULL,
+    daily_status TEXT DEFAULT 'not arrive yet',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE student_clock_ins ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all for student_clock_ins" ON student_clock_ins;
+CREATE POLICY "Enable all for student_clock_ins" ON student_clock_ins FOR ALL USING (true) WITH CHECK (true);
+
+-- Allow multiple co-teachers in classes table
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS co_teachers UUID[] DEFAULT '{}';
+
+-- Add multiple co-teachers support to classes
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS co_teachers UUID[] DEFAULT '{}';
+
