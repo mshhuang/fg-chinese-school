@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
+import fs from 'fs';
+const envStr = fs.readFileSync('.env', 'utf-8');
+let url = '', key = '';
+for(let line of envStr.split('\n')) {
+  if (line.startsWith('VITE_SUPABASE_URL=')) url = line.split('=')[1].trim();
+  if (line.startsWith('VITE_SUPABASE_ANON_KEY=')) key = line.split('=')[1].trim();
+}
+const supabase = createClient(url, key);
 async function run() {
-  const { data, error } = await supabase.from('enrollments').select('student_id').eq('class_id', 'e1112fba-52b4-4f2c-b080-99a7b2d0ca0d');
-  console.log(data, error);
+  const { data: e, error } = await supabase.from('enrollments').select('*').limit(3);
+  console.log('enrollments:', e, error);
 }
 run();
