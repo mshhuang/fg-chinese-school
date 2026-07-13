@@ -6,14 +6,15 @@ interface QRCodeBadgeProps {
   studentId: string;
   studentName: string;
   onClose: () => void;
+  title?: string;
 }
 
-export function QRCodeBadge({ studentId, studentName, onClose }: QRCodeBadgeProps) {
+export function QRCodeBadge({ studentId, studentName, onClose, title }: QRCodeBadgeProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-surface-container-lowest rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center p-6 border-b border-outline-variant/30 bg-surface-container-low">
-          <h3 className="font-title text-xl font-bold text-on-surface">Student ID Badge</h3>
+          <h3 className="font-title text-xl font-bold text-on-surface">{title || "Student ID Badge"}</h3>
           <button onClick={onClose} className="p-2 bg-surface-variant hover:bg-outline-variant/30 rounded-full text-on-surface-variant transition-colors">
             <X className="w-5 h-5" />
           </button>

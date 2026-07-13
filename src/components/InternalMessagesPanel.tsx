@@ -134,7 +134,7 @@ export function InternalMessagesPanel() {
         };
 
         channel = supabase
-          .channel('public:internal_messages_' + currentUserId)
+          .channel('public:internal_messages_' + currentUserId + '_' + Math.random().toString(36).substring(7))
           .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'internal_messages', filter: `recipient_id=eq.${currentUserId}` }, handlePayload)
           .on('postgres_changes' as any, { event: '*', schema: 'public', table: 'internal_messages', filter: `sender_id=eq.${currentUserId}` }, handlePayload)
           .subscribe();

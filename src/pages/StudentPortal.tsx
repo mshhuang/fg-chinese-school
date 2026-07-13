@@ -220,7 +220,7 @@ export default function StudentPortal() {
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-4">
             <button onClick={() => setShowQrCode(true)} className="font-caption text-sm bg-primary-container hover:bg-primary-container/80 text-on-primary-container px-4 py-1.5 rounded-full flex items-center gap-2 transition-colors font-bold shadow-sm">
-              <QrCode className="w-4 h-4" /> My ID Badge
+              <QrCode className="w-4 h-4" /> Student ID Badge
             </button>
             <span className={`font-caption text-sm px-4 py-1.5 rounded-full flex items-center gap-2 font-bold ${checkInStatus === 'checked_in' ? 'bg-[#E8F5E9] text-[#2E7D32] border border-[#2E7D32]/30' : checkInStatus === 'checked_out' ? 'bg-[#FFF3E0] text-[#E65100] border border-[#E65100]/30' : 'bg-surface-variant text-on-surface-variant border border-outline-variant/30'}`}>
               <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
@@ -359,6 +359,7 @@ export default function StudentPortal() {
            studentId={userId} 
            studentName={userName} 
            onClose={() => setShowQrCode(false)} 
+           title="Student ID Badge"
         />
      )}
     </div>

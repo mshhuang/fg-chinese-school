@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Flower2, Building2, BookOpen, Users, Settings, GraduationCap, ArrowRight, Database, Eye, EyeOff, ShieldAlert, AlertCircle, X } from "lucide-react";
+import { Flower2, Building2, BookOpen, Users, Settings, GraduationCap, ArrowRight, Database, Eye, EyeOff, ShieldAlert, AlertCircle, X, HelpCircle, KeyRound } from "lucide-react";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 import { logSystemEvent } from "../lib/logSystemEvent";
@@ -123,15 +123,14 @@ export default function Login() {
 
 
       // Manual auth against the 'users' table since we use it to store users
-      const { data: userData, error } = await supabase
+      // Manual auth against the 'users' table since we use it to store users
+      const { data: matchedUsers, error: matchError } = await supabase
         .from('users')
         .select('*')
         .or(`email.ilike."${cleanEmail}",user_name.ilike."${cleanEmail}"`)
-        .eq('password_hash', cleanPassword)
-        .limit(1)
-        .maybeSingle() as any;
+        .eq('password_hash', cleanPassword) as any;
 
-      if (error || !userData) {
+      if (matchError || !matchedUsers || matchedUsers.length === 0) {
         await logSystemEvent('warning', 'Failed login attempt', { email: cleanEmail });
         
         const attempts = failedAttempts + 1;
@@ -151,13 +150,29 @@ export default function Login() {
         return;
       }
       
+      const userData = matchedUsers[0];
+      
+      // Now check if this email belongs to multiple users to determine if they are a parent
+      let isParentByEmail = false;
+      if (userData.email) {
+          const { data: allUsersWithEmail } = await supabase
+            .from('users')
+            .select('user_id')
+            .eq('email', userData.email);
+            
+          if (allUsersWithEmail && allUsersWithEmail.length > 1) {
+              isParentByEmail = true;
+          }
+      }
+
       setFailedAttempts(0);
       setLoginError("");
 
-      // Fetch user roles
+      // Fetch user roles for the matched user
       const { data: roleData } = await supabase
         .from('user_roles')
         .select(`
+          user_id,
           role_id,
           roles (
             role_name
@@ -166,14 +181,31 @@ export default function Login() {
         .eq('user_id', userData.user_id) as any;
 
       let userRoles = roleData?.map((r: any) => r.roles?.role_name?.toLowerCase()).filter(Boolean) || [];
-      
-      const isHHuang = userData.user_name === 'hhuang' || userData.email === 'hhuang@example.com' || userData.email === 'hhuang' || userData.email === 'ms.huey.huang@gmail.com';
+      // Remove duplicates
+      userRoles = [...new Set(userRoles)];
+
+      const isHHuang = matchedUsers.some((u: any) => u.user_name === 'hhuang' || u.email === 'hhuang@example.com' || u.email === 'hhuang' || u.email === 'ms.huey.huang@gmail.com');
+
       if (!isHHuang) {
           userRoles = userRoles.filter((r: string) => r !== 'builder');
       }
 
+      // Block students from logging in with an email
+      if (cleanEmail.includes('@') && userRoles.includes('student') && !userRoles.includes('parent') && !isParentByEmail) {
+          setIsLoading(false);
+          setLoginError("Students must log in using their username, not an email address.");
+          return;
+      }
+
+      // If multiple users share the same email, or user logged in via email, it's a parent login
+      if ((isParentByEmail || cleanEmail.includes('@')) && !userRoles.includes('parent')) {
+          userRoles.push('parent');
+      }
+
       let primaryRole = 'staff';
-      if (userRoles.includes('admin')) {
+      if (cleanEmail.includes('@') || isParentByEmail) {
+         primaryRole = 'parent';
+      } else if (userRoles.includes('admin')) {
          primaryRole = 'admin';
       } else if (userRoles.includes('teacher')) {
          primaryRole = 'teacher';
@@ -181,7 +213,7 @@ export default function Login() {
          primaryRole = 'builder';
       } else if (userRoles.length > 0) {
          primaryRole = userRoles[0];
-      }
+      } 
 
        const finishLogin = async () => {
           const sessionToken = crypto.randomUUID();
@@ -335,9 +367,18 @@ export default function Login() {
             </div>
             
             <div className="flex flex-col gap-2">
-               <div className="flex justify-between items-center">
-                 <label className="font-label text-sm font-bold text-on-surface">Password</label>
-                 <button type="button" onClick={() => navigate('/forgot-password')} className="text-primary font-label text-xs hover:underline cursor-pointer">Forgot password?</button>
+               <div className="flex justify-between items-start">
+                 <label className="font-label text-sm font-bold text-on-surface pt-1">Password</label>
+                 <div className="flex flex-col items-end gap-1.5">
+                   <button type="button" onClick={() => navigate('/forgot-password')} className="flex items-center gap-1.5 text-primary font-label text-xs hover:underline cursor-pointer group">
+                     <HelpCircle className="w-3.5 h-3.5 text-secondary group-hover:scale-110 transition-transform" />
+                     <span className="font-bold">Can't login?</span>
+                   </button>
+                   <button type="button" onClick={() => navigate('/forgot-password')} className="flex items-center gap-1.5 text-primary font-label text-xs hover:underline cursor-pointer group">
+                     <KeyRound className="w-3.5 h-3.5 text-secondary group-hover:scale-110 transition-transform" />
+                     <span className="font-bold">Forgot password?</span>
+                   </button>
+                 </div>
                </div>
                <div className="relative">
                  <input 

@@ -21,26 +21,45 @@ export default function ParentPortal() {
       const u = JSON.parse(userStr);
       if (!u || !u.id || u.id === 'demo') return;
 
-      const { data, error } = await supabase
-        .from('parent_child')
-        .select(`
-          child_id,
-          users:child_id (
-            user_id,
-            first_name,
-            last_name,
-            grade
-          )
-        `)
-        .eq('parent_id', u.id) as any;
+      let mappedChildren = [];
+      const userEmail = u.email;
 
-      if (!error && data) {
-         const mappedChildren = data.map((d: any) => d.users).filter(Boolean);
-         if (mappedChildren.length > 0) {
-            setChildren(mappedChildren);
-            setActiveChild(mappedChildren[0].user_id);
-            fetchCheckInStatus(mappedChildren[0].user_id);
+      if (userEmail) {
+         // Find all users with this email
+         const { data: childrenByEmail, error: emailError } = await supabase
+            .from('users')
+            .select('user_id, first_name, last_name, grade')
+            .eq('email', userEmail);
+
+         if (!emailError && childrenByEmail && childrenByEmail.length > 0) {
+            mappedChildren = childrenByEmail;
          }
+      }
+
+      if (mappedChildren.length === 0) {
+         // Fallback to parent_child
+         const { data, error } = await supabase
+           .from('parent_child')
+           .select(`
+             child_id,
+             users:child_id (
+               user_id,
+               first_name,
+               last_name,
+               grade
+             )
+           `)
+           .eq('parent_id', u.id) as any;
+
+         if (!error && data) {
+            mappedChildren = data.map((d: any) => d.users).filter(Boolean);
+         }
+      }
+
+      if (mappedChildren.length > 0) {
+         setChildren(mappedChildren);
+         setActiveChild(mappedChildren[0].user_id);
+         fetchCheckInStatus(mappedChildren[0].user_id);
       }
       
       const anns = await fetchVisibleAnnouncements(u, localStorage.getItem('current_role') || u.role || 'parent', 1);
@@ -163,7 +182,7 @@ export default function ParentPortal() {
               </h3>
               <div className="flex items-center gap-3">
                  <button onClick={() => setShowQrCode(true)} className="font-caption text-sm bg-primary/10 hover:bg-primary/20 text-primary px-4 py-1.5 rounded-full flex items-center gap-2 transition-colors font-bold">
-                    <QrCode className="w-4 h-4" /> Student ID
+                    <QrCode className="w-4 h-4" /> Student ID Badge
                  </button>
                  <span className={`font-caption text-sm px-4 py-1.5 rounded-full flex items-center gap-2 border font-bold ${checkInStatus === 'checked_in' ? 'bg-[#E8F5E9] text-[#2E7D32] border-[#2E7D32]/30' : checkInStatus === 'checked_out' ? 'bg-[#FFF3E0] text-[#E65100] border-[#E65100]/30' : 'bg-surface-variant text-on-surface-variant border-outline-variant/30'}`}>
                     <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
@@ -286,6 +305,7 @@ export default function ParentPortal() {
             studentId={children.find(c => c.user_id === activeChild)?.user_id || (activeChild === "mei" ? "mei_lin_id" : activeChild === "wei" ? "wei_lin_id" : activeChild)} 
             studentName={children.find(c => c.user_id === activeChild) ? `${children.find(c => c.user_id === activeChild).first_name} ${children.find(c => c.user_id === activeChild).last_name}`.trim() : (activeChild === "mei" ? "Mei Lin" : "Wei Lin")} 
             onClose={() => setShowQrCode(false)} 
+            title="Student ID Badge"
          />
       )}
 

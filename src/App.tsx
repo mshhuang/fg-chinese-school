@@ -5,6 +5,7 @@
 
 import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import ReactGA from "react-ga4";
 import { logSystemEvent } from "./lib/logSystemEvent";
 import Login from "./pages/Login";
 import PrincipalDashboard from "./pages/PrincipalDashboard";
@@ -46,7 +47,6 @@ import AdminNewUser from "./pages/AdminNewUser";
 import AdminDataEntry from "./pages/AdminDataEntry";
 import AdminUsers from "./pages/AdminUsers";
 import AdminDashboard from "./pages/AdminDashboard";
-import BuilderReportEditor from './pages/BuilderReportEditor';
 import BuilderDashboard from "./pages/BuilderDashboard";
 import AuditLogs from "./pages/AuditLogs";
 import ChangePassword from "./pages/ChangePassword";
@@ -66,14 +66,25 @@ import VolunteerCalendar from "./pages/VolunteerCalendar";
 import AdminReports from "./pages/AdminReports";
 import SupportWidget from "./components/SupportWidget";
 
+// Initialize Google Analytics if measurement ID is provided
+const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
+if (GA_MEASUREMENT_ID) {
+  ReactGA.initialize(GA_MEASUREMENT_ID);
+}
+
 function PageTracker() {
   const location = useLocation();
   useEffect(() => {
+    // Log pageview to Google Analytics
+    if (GA_MEASUREMENT_ID) {
+      ReactGA.send({ hitType: "pageview", page: location.pathname + location.search, title: document.title });
+    }
+
     const userStr = localStorage.getItem('user');
     if (userStr && location.pathname !== '/') {
       logSystemEvent('info', `Visited page: ${location.pathname}`, { path: location.pathname });
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
   return null;
 }
 
@@ -153,7 +164,6 @@ export default function App() {
 
            {/* Builder (formerly Admin) */}
            <Route path="/builder/dashboard" element={<BuilderDashboard />} />
-           <Route path="/builder/report-editor" element={<BuilderReportEditor />} />
            <Route path="/builder/calendar" element={<AdminCalendar />} />
            <Route path="/builder/messages" element={<PrincipalMessages />} />
            <Route path="/builder/announcements" element={<Announcements />} />

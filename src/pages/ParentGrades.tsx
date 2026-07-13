@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookOpen, Award, TrendingUp, Calendar, ChevronRight } from "lucide-react";
 import { cn } from "../lib/utils";
+import { supabase } from "../lib/supabase";
 
-const GRADES = {
+const GRADES: Record<string, any> = {
   mei: {
     name: "Mei Lin",
     gpa: "3.8",
@@ -23,8 +24,57 @@ const GRADES = {
 };
 
 export default function ParentGrades() {
-  const [activeChild, setActiveChild] = useState<"mei" | "wei">("mei");
-  const data = GRADES[activeChild];
+  const [activeChild, setActiveChild] = useState<string>("mei");
+  const [children, setChildren] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchChildren() {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return;
+      const u = JSON.parse(userStr);
+      if (!u || !u.id || u.id === 'demo') return;
+
+      let mappedChildren = [];
+      const userEmail = u.email;
+
+      if (userEmail) {
+         const { data: childrenByEmail, error: emailError } = await supabase
+            .from('users')
+            .select('user_id, first_name, last_name, grade')
+            .eq('email', userEmail);
+         if (!emailError && childrenByEmail && childrenByEmail.length > 0) {
+            mappedChildren = childrenByEmail;
+         }
+      }
+
+      if (mappedChildren.length === 0) {
+         const { data, error } = await supabase
+           .from('parent_child')
+           .select(`
+             child_id,
+             users:child_id (
+               user_id,
+               first_name,
+               last_name,
+               grade
+             )
+           `)
+           .eq('parent_id', u.id) as any;
+         if (!error && data) {
+            mappedChildren = data.map((d: any) => d.users).filter(Boolean);
+         }
+      }
+
+      if (mappedChildren.length > 0) {
+         setChildren(mappedChildren);
+         setActiveChild(mappedChildren[0].user_id);
+      }
+    }
+    fetchChildren();
+  }, []);
+
+  const childNameKey = children.find(c => c.user_id === activeChild)?.first_name?.toLowerCase() || 'mei';
+  const data = GRADES[childNameKey] || GRADES['mei'];
 
   return (
     <div className="w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col gap-8 pb-32 md:pb-8">
@@ -36,18 +86,32 @@ export default function ParentGrades() {
          </div>
          
          <div className="flex gap-4 bg-surface-container-low p-2 rounded-full border border-outline-variant/30 shadow-sm w-full md:w-auto overflow-x-auto">
-            <button 
-              onClick={() => setActiveChild("mei")}
-              className={cn("px-6 py-2 rounded-full font-label text-sm transition-all font-bold", activeChild === "mei" ? "bg-primary-container text-on-primary-container shadow-sm" : "text-on-surface-variant hover:bg-surface-variant")}
-            >
-              Mei Lin
-            </button>
-            <button 
-              onClick={() => setActiveChild("wei")}
-              className={cn("px-6 py-2 rounded-full font-label text-sm transition-all font-bold", activeChild === "wei" ? "bg-primary-container text-on-primary-container shadow-sm" : "text-on-surface-variant hover:bg-surface-variant")}
-            >
-              Wei Lin
-            </button>
+            {children.length > 0 ? (
+               children.map(child => (
+                  <button 
+                    key={child.user_id}
+                    onClick={() => setActiveChild(child.user_id)}
+                    className={cn("px-6 py-2 rounded-full font-label text-sm transition-all font-bold", activeChild === child.user_id ? "bg-primary-container text-on-primary-container shadow-sm" : "text-on-surface-variant hover:bg-surface-variant")}
+                  >
+                    {child.first_name} {child.last_name}
+                  </button>
+               ))
+            ) : (
+              <>
+                <button 
+                  onClick={() => setActiveChild("mei")}
+                  className={cn("px-6 py-2 rounded-full font-label text-sm transition-all font-bold", activeChild === "mei" ? "bg-primary-container text-on-primary-container shadow-sm" : "text-on-surface-variant hover:bg-surface-variant")}
+                >
+                  Mei Lin
+                </button>
+                <button 
+                  onClick={() => setActiveChild("wei")}
+                  className={cn("px-6 py-2 rounded-full font-label text-sm transition-all font-bold", activeChild === "wei" ? "bg-primary-container text-on-primary-container shadow-sm" : "text-on-surface-variant hover:bg-surface-variant")}
+                >
+                  Wei Lin
+                </button>
+              </>
+            )}
          </div>
        </header>
 

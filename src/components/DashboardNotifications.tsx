@@ -39,13 +39,18 @@ export function DashboardNotifications() {
       setUnreadMessages(msgCount || 0);
 
       // 2. Announcements
-      const annData = await fetchVisibleAnnouncements({ id: userId }, userRole || '', 100);
+      const annData = await fetchVisibleAnnouncements(
+        { id: userId }, 
+        userRole || '', 
+        100, 
+        'announcement_id, created_by, target_role_ids, target_class_ids, target_user_ids, target_role_id'
+      );
 
       if (annData) {
         const stored = localStorage.getItem(`ann_read_${userId}`);
         const readState = stored ? JSON.parse(stored) : {};
         let annUnread = 0;
-        annData.forEach(ann => {
+        annData.forEach((ann: any) => {
           if (!readState[ann.announcement_id]) {
             annUnread++;
           }
@@ -57,7 +62,7 @@ export function DashboardNotifications() {
       if (['admin', 'builder', 'teacher'].includes(userRole)) {
           const { data: newsData } = await supabase
             .from('newsletters')
-            .select('*')
+            .select('newsletter_id')
             .eq('status', 'Published');
 
           if (newsData) {
@@ -87,7 +92,7 @@ export function DashboardNotifications() {
     fetchNotifications();
 
     const channel = supabase
-      .channel('public:internal_messages_dash_' + userId)
+      .channel('public:internal_messages_dash_' + userId + '_' + Math.random().toString(36).substring(7))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'internal_messages', filter: `recipient_id=eq.${userId}` }, () => {
          debouncedFetchNotifications();
       })

@@ -1,9 +1,9 @@
 import { supabase } from './supabase';
 
-export async function fetchVisibleAnnouncements(user: any, userRole: string, limitCount?: number) {
+export async function fetchVisibleAnnouncements(user: any, userRole: string, limitCount?: number, fields?: string) {
    if (!user) return [];
 
-   const { data: anns } = await supabase.from('announcements').select(`
+   const selectQuery = fields || `
       *,
       users:created_by ( first_name, last_name, email, user_roles ( roles ( role_name ) ) ),
       roles:target_role_id ( role_name ),
@@ -13,7 +13,9 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
         created_at,
         users:user_id ( first_name, last_name, email, user_roles ( roles ( role_name ) ) )
       )
-   `).order('created_at', { ascending: false });
+   `;
+
+   const { data: anns } = await supabase.from('announcements').select(selectQuery).order('created_at', { ascending: false });
 
    let allAnns = anns || [];
 

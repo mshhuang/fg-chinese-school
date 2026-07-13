@@ -22,7 +22,7 @@ export default function LiveErrorLogs() {
     
     // Subscribe to new errors in real-time
     const subscription = supabase
-      .channel('system_errors_channel')
+      .channel('system_errors_channel_' + Math.random().toString(36).substring(7))
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 

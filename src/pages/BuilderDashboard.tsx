@@ -121,8 +121,7 @@ export default function BuilderDashboard() {
     { title: 'Live Error Logs', desc: 'Real-time feed of system warnings and errors.', icon: TerminalSquare, href: '/builder/error-logs', color: 'text-error', bg: 'bg-error-container' },
     { title: 'Audit Logs', desc: 'Comprehensive record of data creation, updates, and deletions.', icon: ShieldAlert, href: '/builder/audit-logs', color: 'text-secondary', bg: 'bg-secondary-container' },
     { title: 'Recent Activities', desc: 'User login events and page interactions.', icon: Activity, href: '/builder/activities', color: 'text-tertiary', bg: 'bg-tertiary-container' },
-    { title: 'Password Reminders', desc: 'View and manage password reset requests.', icon: Unlock, href: '/builder/password-reminders', color: 'text-primary', bg: 'bg-primary-container' },
-    { title: 'Report Editor', desc: 'Create and edit custom system reports.', icon: Server, href: '/builder/report-editor', color: 'text-primary', bg: 'bg-primary-container' }
+    { title: 'Password Reminders', desc: 'View and manage password reset requests.', icon: Unlock, href: '/builder/password-reminders', color: 'text-primary', bg: 'bg-primary-container' }
   ];
 
   return (

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { CheckCircle2, XCircle, Loader2, Camera, UploadCloud, StopCircle, User } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Camera, UploadCloud, StopCircle, User, Activity, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { formatTeacherName } from "../lib/utils";
 
 export default function QRScanner() {
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -10,6 +11,9 @@ export default function QRScanner() {
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isOverriding, setIsOverriding] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const [explanation, setExplanation] = useState("");
+  const [recentActivity, setRecentActivity] = useState<{name: string, action: string, time: string}[]>([]);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isProcessingRef = useRef(false);
@@ -115,20 +119,21 @@ export default function QRScanner() {
       
       if (scannedUser.isStaff) {
           actionType = scannedUser.nextAction === 'check_out' ? 'clock_out' : 'clock_in';
+          const dailyStatus = explanation ? explanation : (actionType === 'clock_out' ? 'classes over' : 'check-in the building');
           await supabase.from('staff_clock_ins').insert({
             user_id: scannedUser.user_id,
             action_type: actionType,
-            daily_status: actionType === 'clock_out' ? 'classes over' : 'check-in the building'
+            daily_status: dailyStatus
           });
           await supabase.from('system_logs').insert({
             user_id: scannedUser.user_id,
             action_type: 'other',
-            activity: `Staff ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toISOString() },
+            activity: `Staff ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toISOString(), explanation },
             user_name: `${scannedUser.first_name} ${scannedUser.last_name}`
           });
       } else {
           actionType = scannedUser.nextAction === 'check_out' ? 'school_check_out' : 'school_check_in';
-          const dailyStatus = scannedUser.nextAction === 'check_out' ? 'classes over' : 'check-in the building';
+          const dailyStatus = explanation ? explanation : (scannedUser.nextAction === 'check_out' ? 'classes over' : 'check-in the building');
           await supabase.from('student_clock_ins').insert({
             student_id: scannedUser.user_id,
             action_type: actionType,
@@ -137,7 +142,7 @@ export default function QRScanner() {
           await supabase.from('system_logs').insert({
             user_id: scannedUser.user_id,
             action_type: actionType,
-            activity: `Student ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toISOString() },
+            activity: `Student ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toISOString(), explanation },
             user_name: `${scannedUser.first_name} ${scannedUser.last_name}`
           });
       }
@@ -165,7 +170,11 @@ export default function QRScanner() {
          }
       }
 
-      setMessage({ type: 'success', text: `Successfully ${actionLabel} ${scannedUser.first_name} ${scannedUser.last_name}!` });
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
+      setMessage({ type: 'success', text: `Successfully ${actionLabel} ${nameStr} at ${timeString}!` });
+      setRecentActivity(prev => [{ name: nameStr, action: actionLabel, time: timeString }, ...prev].slice(0, 5));
       setScannedUser(null);
     } catch (e) {
       console.error(e);
@@ -233,7 +242,11 @@ export default function QRScanner() {
          }
       }
 
-      setMessage({ type: 'success', text: `Status manually set to ${status.replace('school_', '').replace('_', ' ')}!` });
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
+      setMessage({ type: 'success', text: `Status manually set to ${status.replace('school_', '').replace('_', ' ')} at ${timeString}!` });
+      setRecentActivity(prev => [{ name: nameStr, action: `Manual: ${status.replace('school_', '').replace('_', ' ')}`, time: timeString }, ...prev].slice(0, 5));
       setScannedUser(null);
       setIsOverriding(false);
     } catch (e) {
@@ -254,6 +267,8 @@ export default function QRScanner() {
       setScannedUser(null);
       setScanResult(null);
       setMessage(null);
+      setShowExplanation(false);
+      setExplanation('');
   };
 
   const startCamera = async () => {
@@ -352,17 +367,41 @@ export default function QRScanner() {
                   <div className="w-16 h-16 bg-primary-container text-on-primary-container rounded-full flex items-center justify-center text-2xl font-display font-bold mx-auto mb-4 shadow-sm">
                      {scannedUser.first_name?.[0]}{scannedUser.last_name?.[0]}
                   </div>
-                  <h3 className="font-title text-xl font-bold text-on-surface">{scannedUser.first_name} {scannedUser.last_name}</h3>
+                  <h3 className="font-title text-xl font-bold text-on-surface">
+                     {scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`}
+                  </h3>
                   <p className="font-body text-sm text-on-surface-variant capitalize mt-1 flex items-center justify-center gap-1"><User className="w-4 h-4"/> {scannedUser.first_name ? "Scanned" : ""}</p>
                </div>
                
                {!isOverriding ? (
                  <div className="flex flex-col gap-3">
-                   <div className="flex gap-3">
-                      <button onClick={cancelCheckIn} className="flex-1 py-3 bg-surface-variant text-on-surface-variant rounded-xl font-label font-bold hover:bg-outline-variant/30 transition-all active:scale-95">Cancel</button>
-                      <button onClick={confirmAction} className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-label font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95">{scannedUser.nextAction === 'check_out' ? 'Confirm Check-out' : 'Confirm Check-in'}</button>
-                   </div>
-                   {!scannedUser.isStaff && <button onClick={() => setIsOverriding(true)} className="py-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors">Manual Override / Edit Status</button>}
+                   <p className="font-title text-lg font-bold text-on-surface text-center mb-1">
+                     Are you checking {scannedUser.nextAction === 'check_out' ? 'out from' : 'in to'} the school building?
+                   </p>
+                   {!showExplanation ? (
+                     <>
+                       <div className="flex gap-3">
+                          <button onClick={() => setShowExplanation(true)} className="flex-1 py-3 bg-surface-variant text-on-surface-variant rounded-xl font-label font-bold hover:bg-outline-variant/30 transition-all active:scale-95">No</button>
+                          <button onClick={confirmAction} className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-label font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95">Yes, {scannedUser.nextAction === 'check_out' ? 'Confirm Check-out' : 'Confirm Check-in'}</button>
+                       </div>
+                       {!scannedUser.isStaff && <button onClick={() => setIsOverriding(true)} className="py-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors">Manual Override / Edit Status</button>}
+                       <button onClick={cancelCheckIn} className="py-2 text-sm font-bold text-on-surface-variant hover:text-on-surface transition-colors">Cancel Scan</button>
+                     </>
+                   ) : (
+                       <div className="flex flex-col gap-3">
+                           <textarea 
+                             className="w-full bg-surface-container rounded-xl p-3 border border-outline-variant/50 font-body text-sm text-on-surface resize-none focus:outline-none focus:border-primary"
+                             placeholder="Please explain why..."
+                             rows={3}
+                             value={explanation}
+                             onChange={(e) => setExplanation(e.target.value)}
+                           />
+                           <div className="flex gap-2">
+                             <button onClick={() => { setShowExplanation(false); setExplanation(""); }} className="flex-1 py-3 bg-surface-variant text-on-surface-variant rounded-xl font-label font-bold hover:bg-outline-variant/30 transition-all active:scale-95">Back</button>
+                             <button onClick={confirmAction} disabled={!explanation.trim()} className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-label font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Confirm</button>
+                           </div>
+                       </div>
+                   )}
                  </div>
                ) : (
                  <div className="flex flex-col gap-3 p-4 bg-surface-container-low rounded-xl border border-outline-variant/30">
@@ -406,9 +445,31 @@ export default function QRScanner() {
         )}
 
         {message && (
-          <div className={`p-4 rounded-xl flex items-start gap-3 ${message.type === 'success' ? 'bg-primary-container text-on-primary-container' : 'bg-error-container text-on-error-container'}`}>
+          <div className={`p-4 rounded-xl flex items-start gap-3 mb-6 ${message.type === 'success' ? 'bg-primary-container text-on-primary-container' : 'bg-error-container text-on-error-container'}`}>
              {message.type === 'success' ? <CheckCircle2 className="w-6 h-6 shrink-0" /> : <XCircle className="w-6 h-6 shrink-0" />}
              <span className="font-label font-bold">{message.text}</span>
+          </div>
+        )}
+
+        {recentActivity.length > 0 && (
+          <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/30 mt-auto">
+            <h3 className="font-label font-bold text-on-surface mb-3 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-primary" /> Recent Activity
+            </h3>
+            <div className="flex flex-col gap-2">
+              {recentActivity.map((activity, index) => (
+                <div key={index} className="flex justify-between items-center py-2 border-b border-outline-variant/20 last:border-0 last:pb-0">
+                  <div className="flex flex-col">
+                    <span className="font-body text-sm font-medium text-on-surface">{activity.name}</span>
+                    <span className="font-body text-xs text-on-surface-variant capitalize">{activity.action}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-on-surface-variant bg-surface-container py-1 px-2 rounded-lg">
+                    <Clock className="w-3 h-3" />
+                    <span className="font-mono text-xs">{activity.time}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

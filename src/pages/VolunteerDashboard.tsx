@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { DashboardNotifications } from "../components/DashboardNotifications";
 import { QRCodeBadge } from "../components/QRCodeBadge";
 import { QrCode } from "lucide-react";
+import { formatTeacherName } from "../lib/utils";
 
 export default function VolunteerDashboard() {
   const navigate = useNavigate();
@@ -147,7 +148,7 @@ export default function VolunteerDashboard() {
             </button>
             <button onClick={() => setShowQrCode(true)} className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-label font-bold transition-colors shadow-sm bg-primary-container text-on-primary-container hover:bg-primary-container/80">
                <QrCode className="w-5 h-5" /> 
-               My ID Badge
+               Teacher ID Badge
             </button>
         </div>
       </div>
@@ -231,8 +232,9 @@ export default function VolunteerDashboard() {
           {showQrCode && user && (
         <QRCodeBadge 
            studentId={(user?.user_id || user?.id)} 
-           studentName={user.first_name + ' ' + user.last_name} 
+           studentName={formatTeacherName(user?.first_name, user?.last_name, 'Volunteer')} 
            onClose={() => setShowQrCode(false)} 
+           title="Teacher ID Badge"
         />
      )}
     </div>
