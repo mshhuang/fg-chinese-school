@@ -13,8 +13,18 @@ const CACHE_TTL = 30000; // 30 seconds
 export const supabase = createClient<any>(supabaseUrl, supabaseAnonKey, {
   global: {
     fetch: async (url: RequestInfo | URL, options?: RequestInit) => {
-      const isGet = !options?.method || options.method === 'GET';
       const urlStr = url.toString();
+      const method = options?.method || 'GET';
+      
+      // Stop recording/modifying system_logs table as requested
+      if (urlStr.includes('system_logs') && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
+        return new Response(JSON.stringify([]), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const isGet = !options?.method || options.method === 'GET';
       
       let cacheKey = null;
       if (isGet && urlStr.includes('/rest/v1/')) {
@@ -83,6 +93,8 @@ export const supabase = createClient<any>(supabaseUrl, supabaseAnonKey, {
                device_type: 'Frontend Intercept'
             };
 
+            // Stop recording into system_logs table as requested
+            /*
             fetch(`${supabaseUrl}/rest/v1/system_logs`, {
                 method: 'POST',
                 headers: {
@@ -93,6 +105,7 @@ export const supabase = createClient<any>(supabaseUrl, supabaseAnonKey, {
                 },
                 body: JSON.stringify(payload)
             }).catch(() => {});
+            */
           }
         }
       } catch (logErr) {

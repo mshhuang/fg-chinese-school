@@ -311,7 +311,7 @@ export default function Login() {
       {/* Left Axis: Login Form */}
       <div className="w-full flex flex-col justify-center px-8 md:px-16 lg:px-24 mx-auto overflow-y-auto py-12">
         <div className="max-w-md w-full mx-auto">
-          <div className="mb-6 lg:mb-8">
+          <div className="mb-2 md:mb-3">
             <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-28 md:h-36 lg:h-[172px] w-auto object-contain" />
           </div>
 

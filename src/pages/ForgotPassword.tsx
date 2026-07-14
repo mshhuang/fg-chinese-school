@@ -1,13 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft, User, Database } from "lucide-react";
 import { logSystemEvent } from "../lib/logSystemEvent";
 import { LoginProblemIcon } from "../components/LoginProblemIcon";
+import { supabase } from "../lib/supabase";
+import { cn } from "../lib/utils";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
+
+  useEffect(() => {
+    async function checkSupabase() {
+      try {
+        const { error } = await supabase.auth.getSession();
+        if (error) throw error;
+        setDbStatus('connected');
+      } catch (err) {
+        console.error("Supabase connection error:", err);
+        setDbStatus('error');
+      }
+    }
+    checkSupabase();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,58 +42,85 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex w-full min-h-screen bg-surface items-center justify-center p-6" style={{ background: 'linear-gradient(135deg, var(--surface) 0%, var(--surface-container-low) 100%)' }}>
-      <div className="w-full max-w-md bg-surface-container-lowest rounded-3xl px-8 sm:px-12 pb-8 sm:pb-12 pt-4 sm:pt-6 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border border-outline-variant/30 flex flex-col items-center">
-        <img src="/picture1.png" alt="IBPS NY Chinese School" className="w-auto h-28 object-contain mb-2" />
-        
-        <div className="flex items-center justify-center mb-3 text-primary">
-           <LoginProblemIcon className="w-32 h-auto drop-shadow-sm" />
+    <div className="flex w-full min-h-screen bg-surface relative isolate overflow-hidden items-start justify-center p-6 pt-8 sm:pt-12">
+      <div className="absolute inset-0 bg-primary-fixed/20 -z-10 blur-3xl opacity-60"></div>
+      <div className="w-full max-w-[400px] flex flex-col items-center">
+        {/* Logo outside the card */}
+        <div className="mb-8 w-full flex justify-start">
+           <img src="/picture1.png" alt="IBPS NY Chinese School" className="h-[72px] sm:h-[84px] object-contain" />
         </div>
 
-        <h1 className="font-display text-2xl text-on-surface font-bold text-center mb-2 tracking-tight">
-          Having problem with login?
-        </h1>
-        <p className="font-body text-on-surface-variant text-center mb-8">
-          Enter your name or email and we'll email you the login information
-        </p>
-
-        {submitted ? (
-          <div className="w-full bg-green-500/10 text-green-700 p-4 rounded-2xl mb-8 font-body text-center border border-green-500/20">
-            If an account exists for <b className="font-bold">{username}</b>, you will receive password reset instructions.
-          </div>
-        ) : (
-          <form className="w-full flex flex-col gap-5 mb-8" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-2">
-              <label className="font-label text-sm text-on-surface font-bold">Name / Email</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-surface border border-outline-variant/50 rounded-2xl pl-12 pr-4 py-3.5 font-body text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                  placeholder="Enter your name or email"
-                  required
-                />
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant" />
-              </div>
+        {/* Welcome back header */}
+        <div className="w-full flex items-center justify-between mb-6">
+           <h2 className="font-display text-4xl font-bold text-on-surface tracking-tight">
+             Welcome back
+           </h2>
+           <div className={cn(
+               "flex items-center gap-1.5 px-3 py-1.5 rounded-full border shadow-sm transition-opacity bg-[#cbf2d6] text-[#127038] border-[#a8e5b9]",
+               dbStatus === 'checking' ? "opacity-0" : "opacity-100"
+            )}>
+               <Database className="w-3.5 h-3.5" />
+               <span className="font-label text-[13px] font-bold whitespace-nowrap">
+                 {dbStatus === 'connected' ? 'Connected' : 'DB Error'}
+               </span>
             </div>
-            
-            <button 
-              type="submit" 
-              className="w-full bg-primary text-on-primary py-4 rounded-2xl font-label font-bold text-lg hover:bg-primary/95 transition-all shadow-md active:scale-[0.98] mt-2 flex items-center justify-center gap-2"
-            >
-              Reset Password
-            </button>
-          </form>
-        )}
+        </div>
 
-        <button 
-          onClick={() => navigate('/')} 
-          className="flex items-center gap-2 text-primary font-label hover:underline"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Login
-        </button>
+        {/* Card */}
+        <div 
+          className="w-full bg-white rounded-[40px] px-6 sm:px-8 pb-8 pt-8 shadow-sm flex flex-col items-center relative"
+                  >
+          <div className="flex items-center justify-center mb-4">
+             <LoginProblemIcon className="w-[84px] h-auto" />
+          </div>
+
+          <h1 className="font-display text-[22px] sm:text-[24px] text-on-surface font-extrabold text-center mb-2 tracking-tight">
+            Having problem with login?
+          </h1>
+          <p className="font-body text-[#555555] text-[15px] text-center mb-8 px-2 leading-relaxed">
+            Enter your name or email and we'll email you<br/>the login information
+          </p>
+
+          {submitted ? (
+            <div className="w-full bg-green-500/10 text-green-700 p-4 rounded-2xl mb-8 font-body text-center border border-green-500/20">
+              If an account exists for <b className="font-bold">{username}</b>, you will receive password reset instructions.
+            </div>
+          ) : (
+            <form className="w-full flex flex-col gap-5 mb-8" onSubmit={handleSubmit}>
+              <div className="flex flex-col gap-2">
+                <label className="font-label text-sm text-[#111111] font-bold">Name / Email</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-surface border border-outline-variant/50 rounded-[14px] pl-11 pr-4 py-3.5 font-body text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-outline"
+                    placeholder="Enter your name or email"
+                    required
+                  />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#666666]" strokeWidth={2} />
+                </div>
+              </div>
+              
+              <button 
+                type="submit" 
+                className="w-full text-white py-4 rounded-xl font-label font-bold text-[17px] hover:opacity-90 transition-all active:scale-[0.98] mt-2 flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#6B5E0A' }}
+              >
+                Reset Password
+              </button>
+            </form>
+          )}
+
+          <button 
+            onClick={() => navigate('/')} 
+            className="flex items-center justify-center gap-2 font-body hover:underline text-[15px] font-medium"
+            style={{ color: '#6B5E0A' }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Login
+          </button>
+        </div>
       </div>
     </div>
   );

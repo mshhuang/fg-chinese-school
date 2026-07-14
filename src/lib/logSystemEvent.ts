@@ -6,6 +6,8 @@ export async function logSystemEvent(
   details?: any,
   path?: string
 ) {
+  // Disabled recording into system_logs table as requested
+  return;
   try {
     const userStr = localStorage.getItem('user');
     let user: any = {};

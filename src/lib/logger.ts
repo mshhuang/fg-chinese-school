@@ -7,6 +7,8 @@ export async function logSystemActivity(
   actionType: "login" | "create" | "read" | "update" | "delete" | "view" | "other",
   dataChanged: any = null
 ) {
+  // Disabled recording into system_logs table as requested
+  return;
   try {
     const userStr = localStorage.getItem('user');
     if (!userStr) return;

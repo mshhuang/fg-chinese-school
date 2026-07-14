@@ -68,6 +68,7 @@ import BuilderInternalMessages from "./pages/BuilderInternalMessages";
 import SupportWidget from "./components/SupportWidget";
 
 // Initialize Google Analytics if measurement ID is provided
+// @ts-ignore
 const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
 if (GA_MEASUREMENT_ID) {
   ReactGA.initialize(GA_MEASUREMENT_ID);

@@ -117,6 +117,7 @@ export default function BuilderDashboard() {
   };
 
   const cards = [
+    { title: 'Database & API Metrics', desc: 'Monitor database statistics, API usage, and egress metrics.', icon: Database, href: '/builder/database', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'Sessions', desc: 'Monitor active user sessions across the system.', icon: Clock, href: '/builder/sessions', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'Password Reminders', desc: 'View and manage password reset requests.', icon: Unlock, href: '/builder/password-reminders', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'Internal Messages Monitor', desc: 'Monitor internal messages sorted by date.', icon: MessageSquare, href: '/builder/internal-messages', color: 'text-secondary', bg: 'bg-secondary-container' },

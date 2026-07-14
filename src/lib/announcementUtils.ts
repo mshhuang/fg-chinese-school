@@ -17,7 +17,7 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
 
    const { data: anns } = await supabase.from('announcements').select(selectQuery).order('created_at', { ascending: false });
 
-   let allAnns = anns || [];
+   let allAnns: any[] = (anns as any[]) || [];
 
    if (userRole === 'admin' || userRole === 'principal' || userRole === 'builder') {
        return limitCount ? allAnns.slice(0, limitCount) : allAnns;
