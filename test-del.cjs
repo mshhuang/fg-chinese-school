@@ -1,11 +1,10 @@
-require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
-(async () => {
-    const { data: n, error: e1 } = await supabase.from('newsletters').select('*');
-    console.log("Newsletters:", n);
-    if (n && n.length > 0) {
-        const { error } = await supabase.from('newsletters').delete().eq('newsletter_id', n[0].newsletter_id);
-        console.log("Delete result error:", error);
-    }
-})();
+async function test() {
+  const { data: msgs } = await supabase.from('internal_messages').select('*').limit(1);
+  console.log('msg', msgs[0]);
+  const res = await supabase.from('internal_messages').delete().eq('message_id', msgs[0].message_id);
+  console.log('delete err', res.error);
+}
+test();
