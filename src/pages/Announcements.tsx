@@ -788,7 +788,7 @@ export default function Announcements() {
                                {audienceMode === 'users' && (
                                    <div className="flex flex-col">
                                        {(() => {
-                                         const desiredOrder = ['Admin', 'Teacher', 'Student', 'Parent', 'Volunteer', 'Staff', 'Builder'];
+                                         const desiredOrder = ['Admin', 'Teacher', 'Staff', 'Volunteer', 'Parent', 'Student'];
 
                                          const getPrimaryRole = (roles: string[]) => {
                                              if (!roles || roles.length === 0) return 'Others';
@@ -807,7 +807,8 @@ export default function Announcements() {
 
                                          const groupedUsers: Record<string, typeof availableUsers> = {};
                                          availableUsers.forEach(u => {
-                                             const primary = getPrimaryRole(u.role_names || []);
+                                             let primary = getPrimaryRole(u.role_names || []);
+                                             if (primary === 'Builder') primary = 'Teacher';
                                              if (!groupedUsers[primary]) groupedUsers[primary] = [];
                                              groupedUsers[primary].push(u);
                                          });
@@ -826,7 +827,7 @@ export default function Announcements() {
                                              if (!group || group.length === 0) return null;
                                              
                                              const getDisplay = (u: any) => {
-                                                const isTeacher = u.role_names?.includes('Teacher');
+                                                const isTeacher = u.role_names?.includes('Teacher') || u.role_names?.includes('Builder');
                                                 return isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';
                                              };
                                              
@@ -859,7 +860,7 @@ export default function Announcements() {
                                                     </div>
                                                     <div className="flex flex-col gap-2 pl-2">
                                                         {group.map(u => {
-                                                             const isTeacher = u.role_names?.includes('Teacher');
+                                                             const isTeacher = u.role_names?.includes('Teacher') || u.role_names?.includes('Builder');
                                                              const displayName = isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';
                                                              return (
                                                                  <label key={u.user_id} className="flex items-center gap-2 cursor-pointer text-on-surface border-b border-outline-variant/10 pb-2 last:border-0 last:pb-0">

@@ -92,6 +92,38 @@ export default function Diagnostics() {
     }
   };
 
+  const [deleteTimeframe, setDeleteTimeframe] = useState<string>("1-week");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleBulkDeleteLogs = async () => {
+    setIsDeleting(true);
+    try {
+      const now = new Date();
+      if (deleteTimeframe === "1-week") {
+        now.setDate(now.getDate() - 7);
+      } else if (deleteTimeframe === "1-month") {
+        now.setMonth(now.getMonth() - 1);
+      } else if (deleteTimeframe === "all") {
+        now.setFullYear(2000); // delete essentially all
+      }
+
+      const { error } = await supabase
+        .from('system_logs')
+        .delete()
+        .lt('created_at', now.toISOString());
+
+      if (!error) {
+        setLogs(prev => prev.filter(l => new Date(l.created_at) >= now));
+      } else {
+        console.error("Failed to delete logs:", error);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const formatTime = (isoString: string) => {
     if (!isoString) return "";
     const date = new Date(isoString);
@@ -145,6 +177,24 @@ export default function Diagnostics() {
                  <Activity className="w-5 h-5 text-primary" /> System Logs
               </h3>
               <div className="flex items-center gap-4">
+                 <div className="flex items-center gap-2 bg-surface-variant/30 rounded-lg p-1 border border-outline-variant/30">
+                    <select
+                      className="bg-transparent text-sm font-medium text-on-surface outline-none pr-2"
+                      value={deleteTimeframe}
+                      onChange={(e) => setDeleteTimeframe(e.target.value)}
+                    >
+                      <option value="1-week">Older than 1 week</option>
+                      <option value="1-month">Older than 1 month</option>
+                      <option value="all">All logs</option>
+                    </select>
+                    <button
+                      onClick={handleBulkDeleteLogs}
+                      disabled={isDeleting}
+                      className="px-3 py-1.5 bg-error text-on-error rounded-md text-xs font-bold hover:bg-error/90 disabled:opacity-50"
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
+                    </button>
+                 </div>
                  <button 
                     onClick={() => {
                       setLoading(true);

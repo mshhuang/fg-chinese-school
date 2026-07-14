@@ -21,7 +21,7 @@ export default function PasswordReminderRequests() {
   }, []);
 
   const handleDelete = async (logId: string) => {
-    if (!window.confirm("Are you sure you want to delete this password reminder request?")) return;
+    // confirm removed due to iframe sandbox limits
     
     setIsDeleting(logId);
     try {

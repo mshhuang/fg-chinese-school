@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, Filter, Users, Calendar as CalendarIcon, Clock, BookOpen, MoreHorizontal, Plus, Loader2, ImagePlus, X, Upload } from "lucide-react";
+import { Search, Filter, Users, Calendar as CalendarIcon, Clock, BookOpen, MoreHorizontal, Plus, Loader2, ImagePlus, X, Upload, Trash2 } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
@@ -139,6 +139,32 @@ export default function PrincipalClasses() {
     } finally {
       setUploadingSchoolSchedule(false);
     }
+  };
+
+
+  const handleDeleteClassSchedule = async (classId: string) => {
+      // confirm removed due to iframe sandbox limits
+      try {
+          // @ts-ignore
+          const { error } = await supabase.from('classes').update({ schedule_image_url: null }).eq('class_id', classId);
+          if (error) throw error;
+          setClassesData(classesData.map(c => 
+             c.class_id === classId ? { ...c, schedule_image_url: null } : c
+          ));
+      } catch (error: any) {
+          alert("Error removing schedule: " + error.message);
+      }
+  };
+
+  const handleDeleteSchoolSchedule = async () => {
+      // confirm removed due to iframe sandbox limits
+      try {
+          const { error } = await supabase.from('announcements').delete().eq('title', 'SYSTEM_SCHOOL_SCHEDULE_URL');
+          if (error) throw error;
+          setSchoolScheduleUrl(null);
+      } catch (error: any) {
+          alert("Error removing school schedule: " + error.message);
+      }
   };
 
   const handleAddClass = async (e: React.FormEvent) => {
@@ -474,13 +500,19 @@ export default function PrincipalClasses() {
              {/* Right side: Schedule Image */}
              <div className="w-full md:w-3/4 bg-surface-variant/20 p-6 md:p-8 flex items-center justify-center min-h-[400px]">
                 {activeClass?.schedule_image_url ? (
-                   <img 
-                      src={activeClass.schedule_image_url} 
-                      alt="Class Schedule" 
-                      className="max-w-full max-h-[600px] w-full object-contain rounded-2xl shadow-sm border border-outline-variant/20 cursor-pointer hover:scale-[1.01] transition-transform" 
-                      onClick={() => setEnlargedImage(activeClass.schedule_image_url)}
-                      referrerPolicy="no-referrer"
-                   />
+                   <div className="relative group w-full flex justify-center">
+                       <img 
+                          src={activeClass.schedule_image_url} 
+                          alt="Class Schedule" 
+                          className="max-w-full max-h-[600px] object-contain rounded-2xl shadow-sm border border-outline-variant/20 cursor-pointer hover:scale-[1.01] transition-transform" 
+                          onClick={() => setEnlargedImage(activeClass.schedule_image_url)}
+                          referrerPolicy="no-referrer"
+                       />
+                       <button onClick={() => handleDeleteClassSchedule(activeClass.class_id)} className="absolute top-4 right-4 bg-error text-on-error p-2 pr-4 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-error/90 flex items-center gap-2 font-label font-bold text-sm">
+                           <Trash2 className="w-4 h-4" />
+                           Delete
+                       </button>
+                   </div>
                 ) : (
                    <div className="flex flex-col items-center justify-center text-on-surface-variant max-w-sm text-center">
                       <CalendarIcon className="w-16 h-16 mb-4 opacity-50" />
@@ -518,15 +550,22 @@ export default function PrincipalClasses() {
              
              {schoolScheduleUrl ? (
                <div className="flex flex-col gap-6">
-                 <div className="rounded-xl overflow-hidden border border-outline-variant/30 flex items-center justify-center bg-surface-variant/30 relative">
-                    <img src={schoolScheduleUrl} alt="School Schedule" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+                 <div className="rounded-xl overflow-hidden border border-outline-variant/30 flex items-center justify-center bg-surface-variant/30 relative group">
+                    <img src={schoolScheduleUrl} alt="School Schedule" className="w-full h-auto object-contain cursor-pointer" referrerPolicy="no-referrer" onClick={() => window.open(schoolScheduleUrl, '_blank')} />
+                    <a href={schoolScheduleUrl} target="_blank" rel="noopener noreferrer" className="absolute bottom-4 right-4 bg-primary text-on-primary px-4 py-2 rounded-full text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 shadow-lg">
+                      <Search className="w-4 h-4" /> View Full Size
+                    </a>
                  </div>
-                 <div className="flex justify-center">
+                 <div className="flex justify-center gap-4">
                     <label className="cursor-pointer px-6 py-2 rounded-full font-label font-bold text-sm bg-primary-container text-on-primary-container hover:bg-primary-container/80 transition-colors flex items-center gap-2">
                        <Upload className="w-4 h-4" />
                        {uploadingSchoolSchedule ? "Uploading..." : "Update Schedule"}
                        <input type="file" accept="image/*" className="hidden" onChange={handleSchoolScheduleUpload} disabled={uploadingSchoolSchedule} />
                     </label>
+                    <button className="px-6 py-2 rounded-full font-label font-bold text-sm bg-error/10 text-error hover:bg-error/20 transition-colors flex items-center gap-2" onClick={handleDeleteSchoolSchedule}>
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                    </button>
                  </div>
                </div>
              ) : (
@@ -543,7 +582,7 @@ export default function PrincipalClasses() {
            </div>
          </div>
        )}
-\n       {enlargedImage && (
+       {enlargedImage && (
          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setEnlargedImage(null)}>
              <img src={enlargedImage} className="max-w-full max-h-full object-contain rounded-lg" alt="Enlarged schedule" />
              <button className="absolute top-6 right-6 text-white bg-black/50 p-2 rounded-full hover:bg-black/80 transition-colors cursor-pointer" onClick={() => setEnlargedImage(null)}>

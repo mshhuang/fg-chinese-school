@@ -64,6 +64,7 @@ import TeacherCalendar from "./pages/TeacherCalendar";
 import StaffCalendar from "./pages/StaffCalendar";
 import VolunteerCalendar from "./pages/VolunteerCalendar";
 import AdminReports from "./pages/AdminReports";
+import BuilderInternalMessages from "./pages/BuilderInternalMessages";
 import SupportWidget from "./components/SupportWidget";
 
 // Initialize Google Analytics if measurement ID is provided
@@ -168,6 +169,8 @@ export default function App() {
            <Route path="/builder/messages" element={<PrincipalMessages />} />
            <Route path="/builder/announcements" element={<Announcements />} />
            <Route path="/builder/users" element={<AdminUsers />} />
+           <Route path="/builder/management" element={<PrincipalManagement />} />
+           <Route path="/builder/classes" element={<PrincipalClasses />} />
            <Route path="/builder/new-user" element={<AdminNewUser />} />
            <Route path="/builder/settings" element={<div className="p-8"><h1 className="font-display text-3xl">Settings</h1></div>} />
            <Route path="/builder/system-logs" element={<Diagnostics />} />
@@ -178,6 +181,7 @@ export default function App() {
            <Route path="/builder/support-tickets" element={<SupportTickets />} />
            <Route path="/builder/database" element={<BuilderDatabase />} />
            <Route path="/builder/password-reminders" element={<PasswordReminderRequests />} />
+           <Route path="/builder/internal-messages" element={<BuilderInternalMessages />} />
 
            {/* Shared utility routes */}
            <Route path="/change-password" element={<ChangePassword />} />

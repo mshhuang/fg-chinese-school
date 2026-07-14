@@ -255,8 +255,11 @@ export default function TeacherClasses() {
              
              {schoolScheduleUrl ? (
                <div className="flex flex-col gap-6">
-                 <div className="rounded-xl overflow-hidden border border-outline-variant/30 flex items-center justify-center bg-surface-variant/30 relative">
-                    <img src={schoolScheduleUrl} alt="School Schedule" className="w-full h-auto object-contain" referrerPolicy="no-referrer" />
+                 <div className="rounded-xl overflow-hidden border border-outline-variant/30 flex items-center justify-center bg-surface-variant/30 relative group">
+                    <img src={schoolScheduleUrl} alt="School Schedule" className="w-full h-auto object-contain cursor-pointer" referrerPolicy="no-referrer" onClick={() => window.open(schoolScheduleUrl, '_blank')} />
+                    <a href={schoolScheduleUrl} target="_blank" rel="noopener noreferrer" className="absolute bottom-4 right-4 bg-primary text-on-primary px-4 py-2 rounded-full text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 shadow-lg">
+                      <Search className="w-4 h-4" /> View Full Size
+                    </a>
                  </div>
                </div>
              ) : (

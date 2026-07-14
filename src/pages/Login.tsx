@@ -123,11 +123,10 @@ export default function Login() {
 
 
       // Manual auth against the 'users' table since we use it to store users
-      // Manual auth against the 'users' table since we use it to store users
       const { data: matchedUsers, error: matchError } = await supabase
         .from('users')
         .select('*')
-        .or(`email.ilike."${cleanEmail}",user_name.ilike."${cleanEmail}"`)
+        .ilike('user_name', cleanEmail)
         .eq('password_hash', cleanPassword) as any;
 
       if (matchError || !matchedUsers || matchedUsers.length === 0) {
@@ -152,19 +151,6 @@ export default function Login() {
       
       const userData = matchedUsers[0];
       
-      // Now check if this email belongs to multiple users to determine if they are a parent
-      let isParentByEmail = false;
-      if (userData.email) {
-          const { data: allUsersWithEmail } = await supabase
-            .from('users')
-            .select('user_id')
-            .eq('email', userData.email);
-            
-          if (allUsersWithEmail && allUsersWithEmail.length > 1) {
-              isParentByEmail = true;
-          }
-      }
-
       setFailedAttempts(0);
       setLoginError("");
 
@@ -190,27 +176,29 @@ export default function Login() {
           userRoles = userRoles.filter((r: string) => r !== 'builder');
       }
 
-      // Block students from logging in with an email
-      if (cleanEmail.includes('@') && userRoles.includes('student') && !userRoles.includes('parent') && !isParentByEmail) {
-          setIsLoading(false);
-          setLoginError("Students must log in using their username, not an email address.");
-          return;
-      }
+      const expectedStudentUsername = userData.first_name && userData.last_name 
+         ? (userData.first_name.charAt(0) + userData.last_name).toLowerCase().replace(/\s/g, '')
+         : '';
 
-      // If multiple users share the same email, or user logged in via email, it's a parent login
-      if ((isParentByEmail || cleanEmail.includes('@')) && !userRoles.includes('parent')) {
-          userRoles.push('parent');
-      }
+      // Define student username condition
+      const isStudentUsername = cleanEmail.toLowerCase() === expectedStudentUsername;
 
       let primaryRole = 'staff';
-      if (cleanEmail.includes('@') || isParentByEmail) {
-         primaryRole = 'parent';
-      } else if (userRoles.includes('admin')) {
+
+      // If user logs in with 1st letter of firstname + lastname, they act as a student
+      if (isStudentUsername) {
+          primaryRole = 'student';
+          if (!userRoles.includes('student')) userRoles.push('student');
+      } 
+      // Otherwise fallback to their other assigned roles
+      else if (userRoles.includes('admin')) {
          primaryRole = 'admin';
       } else if (userRoles.includes('teacher')) {
          primaryRole = 'teacher';
       } else if (userRoles.includes('builder')) {
          primaryRole = 'builder';
+      } else if (userRoles.includes('student')) {
+         primaryRole = 'student';
       } else if (userRoles.length > 0) {
          primaryRole = userRoles[0];
       } 

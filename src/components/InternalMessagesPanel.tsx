@@ -272,7 +272,7 @@ export function InternalMessagesPanel() {
   const isPrivileged = isAdmin || isBuilder || isTeacherRole || isStaffRole;
 
   // Filter allowed users to chat with
-  let allowedUsers = allUsers.filter(u => u.user_id !== currentUserId);
+  let allowedUsers = allUsers; // Allow self-messaging (useful for Support Tickets fallback)
   
   if (!isPrivileged) {
      const isStudent = currentUserRoles.includes('Student');
@@ -283,7 +283,7 @@ export function InternalMessagesPanel() {
        const roles = u.role_names || [];
        
        // Allow communication with privileged roles
-       if (roles.includes('Teacher') || roles.includes('Admin') || roles.includes('Staff')) {
+       if (roles.includes('Teacher') || roles.includes('Admin') || roles.includes('Staff') || roles.includes('Builder')) {
            return true;
        }
 
@@ -307,14 +307,7 @@ export function InternalMessagesPanel() {
        // - Users with no roles from talking to non-privileged users
        return false;
      });
-  }
 
-  if (!isAdmin && !isBuilder) {
-     allowedUsers = allowedUsers.filter(u => {
-       const roles = u.role_names || [];
-       if (roles.includes('Builder') && roles.length === 1) return false;
-       return true;
-     });
   }
 
   // Derive conversations from messages
@@ -615,7 +608,7 @@ export function InternalMessagesPanel() {
                   >
                     <option value="" disabled>Choose a user...</option>
                     {(() => {
-                      const desiredOrder = ['Admin', 'Teacher', 'Student', 'Parent', 'Volunteer', 'Staff', 'Builder'];
+                      const desiredOrder = ['Admin', 'Teacher', 'Staff', 'Volunteer', 'Parent', 'Student'];
                       
                       const getPrimaryRole = (roles: string[]) => {
                           if (!roles || roles.length === 0) return 'Others';
@@ -634,7 +627,8 @@ export function InternalMessagesPanel() {
 
                       const groupedUsers: Record<string, typeof allowedUsers> = {};
                       allowedUsers.forEach(u => {
-                          const primary = getPrimaryRole(u.role_names || []);
+                          let primary = getPrimaryRole(u.role_names || []);
+                          if (primary === 'Builder') primary = 'Teacher';
                           if (!groupedUsers[primary]) groupedUsers[primary] = [];
                           groupedUsers[primary].push(u);
                       });
@@ -654,7 +648,7 @@ export function InternalMessagesPanel() {
                           
                           // Sort group with Mr. first, then Ms./Mrs., then alphabetically by display name
                           const getDisplay = (u) => {
-                             const isTeacher = u.role_names?.includes('Teacher');
+                             const isTeacher = u.role_names?.includes('Teacher') || u.role_names?.includes('Builder');
                              return isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';
                           };
                           
@@ -681,7 +675,7 @@ export function InternalMessagesPanel() {
                           return (
                             <optgroup key={r} label={(r === "Others" ? "Unassigned" : (r === "Admin" ? "School Admins" : (r === "Teacher" ? "Teachers" : (r === "Student" ? "Students" : (r === "Parent" ? "Parents" : (r === "Staff" ? "Staff" : r + "s")))))) + ` (${group.length})`}>
                                 {group.map(u => {
-                                  const isTeacher = u.role_names?.includes('Teacher');
+                                  const isTeacher = u.role_names?.includes('Teacher') || u.role_names?.includes('Builder');
                                   const displayName = isTeacher ? formatTeacherName(u.first_name, u.last_name) : `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Unknown';
                                   return (
                                     <option key={u.user_id} value={u.user_id}>

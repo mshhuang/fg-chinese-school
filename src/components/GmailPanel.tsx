@@ -303,8 +303,7 @@ function GmailComposeModal({ onClose, onSent }: { onClose: () => void; onSent: (
 
   const handleSend = async () => {
     if (!to || !content) return;
-    const confirmed = window.confirm(`Are you sure you want to send this email to ${to}?`);
-    if (!confirmed) return;
+    // confirm removed due to iframe sandbox limits
 
     setLoading(true);
     try {

@@ -237,6 +237,7 @@ export default function Activities() {
              <div>
                   {Object.entries(groupedLogs)
                     .filter(([userName]) => selectedUser === "All Users" || userName === selectedUser)
+                    .sort((a, b) => new Date(b[1][0].created_at).getTime() - new Date(a[1][0].created_at).getTime())
                     .map(([userName, userLogs]: [string, any[]]) => (
                       <div key={userName} className="mb-6 bg-surface border border-outline-variant rounded-2xl overflow-hidden shadow-sm">
                         <div className="p-4 bg-surface-container-low border-b border-outline-variant/30 flex items-center gap-3">
