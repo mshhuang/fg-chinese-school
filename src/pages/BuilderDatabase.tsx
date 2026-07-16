@@ -81,8 +81,9 @@ export default function BuilderDatabase() {
   };
 
   useEffect(() => {
-    fetchStats();
-    fetchUsage();
+    // Stopped pulling info from supabase to reduce egress
+    setLoading(false);
+    setFetchingUsage(false);
   }, []);
 
   

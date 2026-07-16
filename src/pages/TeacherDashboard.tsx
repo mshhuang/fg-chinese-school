@@ -164,7 +164,7 @@ export default function TeacherDashboard() {
          }
       }
       
-      let query = supabase.from('newsletters').select('*').order('newsletter_id', { ascending: false }).limit(3);
+      let query = supabase.from('newsletters').select('newsletter_id, title, content, created_at, is_published, author_id').order('newsletter_id', { ascending: false }).limit(3);
       if (authorId) {
           query = query.eq('author_id', authorId);
       }

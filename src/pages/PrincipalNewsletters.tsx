@@ -18,7 +18,7 @@ export default function PrincipalNewsletters() {
   const loadNewsletters = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.from('newsletters').select('*').order('newsletter_id', { ascending: false });
+      const { data, error } = await supabase.from('newsletters').select('newsletter_id, title, content, created_at, is_published, author_id, class_id').order('newsletter_id', { ascending: false });
       
       if (error) {
         if (error.code === '42501') {
@@ -43,7 +43,7 @@ export default function PrincipalNewsletters() {
              const readState = readStateStr ? JSON.parse(readStateStr) : {};
              let updated = false;
              data.forEach(item => {
-                 if (item.status === 'Published' && !readState[item.newsletter_id]) {
+                 if (item.is_published === true && !readState[item.newsletter_id]) {
                      readState[item.newsletter_id] = true;
                      updated = true;
                  }

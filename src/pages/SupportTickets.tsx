@@ -30,6 +30,23 @@ export default function SupportTickets() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from('error_logs')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setTickets(tickets.filter(t => t.id !== id));
+      if (selectedTicket?.id === id) setSelectedTicket(null);
+    } catch (err) {
+      console.error('Error deleting ticket:', err);
+      alert('Failed to delete ticket.');
+    }
+  };
+
   const handleResolve = async (id: number) => {
     try {
       const { error } = await supabase
@@ -130,12 +147,20 @@ export default function SupportTickets() {
                     <span>Path: <code className="bg-surface-variant px-1 rounded">{selectedTicket.path}</code></span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleResolve(selectedTicket.id)}
-                  className="px-4 py-2 bg-primary text-on-primary rounded-xl font-label font-bold text-sm hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" /> Resolve Ticket
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleDelete(selectedTicket.id)}
+                    className="px-4 py-2 bg-error text-on-error rounded-xl font-label font-bold text-sm hover:bg-error/90 transition-colors shadow-sm flex items-center gap-2"
+                  >
+                    Delete Ticket
+                  </button>
+                  <button
+                    onClick={() => handleResolve(selectedTicket.id)}
+                    className="px-4 py-2 bg-primary text-on-primary rounded-xl font-label font-bold text-sm hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Resolve Ticket
+                  </button>
+                </div>
               </div>
               
               <div className="flex-1 overflow-y-auto p-6 space-y-8">

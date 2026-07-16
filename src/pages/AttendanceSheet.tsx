@@ -32,7 +32,7 @@ export default function AttendanceSheet() {
           const parsedUser = JSON.parse(userStr);
           setUser(parsedUser);
           
-          let query = supabase.from('classes').select('*').order('class_name');
+          let query = supabase.from('classes').select('class_id, class_name').order('class_name');
           
           const { data: roles } = await supabase.from('user_roles')
             .select('roles(role_name)')

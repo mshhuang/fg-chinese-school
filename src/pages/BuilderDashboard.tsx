@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Server, TerminalSquare, ShieldAlert, Activity, ArrowRight, Users, Power, AlertTriangle, Download, Upload, Database, CheckCircle, XCircle, Unlock, Clock, MessageSquare, Settings, School } from 'lucide-react';
+import { Server, TerminalSquare, ShieldAlert, Activity, ArrowRight, Users, Power, AlertTriangle, Download, Upload, Database, CheckCircle, XCircle, Unlock, Clock, MessageSquare, Settings, School, Github } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
@@ -123,6 +123,7 @@ export default function BuilderDashboard() {
     { title: 'Internal Messages Monitor', desc: 'Monitor internal messages sorted by date.', icon: MessageSquare, href: '/builder/internal-messages', color: 'text-secondary', bg: 'bg-secondary-container' },
     { title: 'Management', desc: 'System management and settings.', icon: Settings, href: '/builder/management', color: 'text-tertiary', bg: 'bg-tertiary-container' },
     { title: 'Classes', desc: 'Manage system classes and schedules.', icon: School, href: '/builder/classes', color: 'text-primary', bg: 'bg-primary-container' },
+        { title: 'GitHub Sync', desc: 'Sync files to GitHub repository.', icon: Github, href: '/builder/github-sync', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'System Logs', desc: 'General system logs, lifecycle, and operations.', icon: Server, href: '/builder/system-logs', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'Live Error Logs', desc: 'Real-time feed of system warnings and errors.', icon: TerminalSquare, href: '/builder/error-logs', color: 'text-error', bg: 'bg-error-container' },
     { title: 'Audit Logs', desc: 'Comprehensive record of data creation, updates, and deletions.', icon: ShieldAlert, href: '/builder/audit-logs', color: 'text-secondary', bg: 'bg-secondary-container' },

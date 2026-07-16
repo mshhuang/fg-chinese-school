@@ -76,7 +76,7 @@ export default function PrincipalDashboard() {
       if (annData) setAnnouncements(annData);
 
       // Load Programs
-      const { data: progData } = await supabase.from('programs').select('*').order('program_name', { ascending: true });
+      const { data: progData } = await supabase.from('programs').select('program_id, program_name').order('program_name', { ascending: true });
       if (progData) setPrograms(progData);
     }
     loadData();

@@ -110,7 +110,7 @@ export default function AdminUsers() {
   }
 
   async function fetchFamilies() {
-    const { data, error } = await supabase.from('parent_child').select('*');
+    const { data, error } = await supabase.from('parent_child').select('parent_id, child_id, relationship_type');
     if (error) {
        console.error("Error fetching families:", error.message);
     }
@@ -119,7 +119,7 @@ export default function AdminUsers() {
 
   async function fetchRoles() {
     setLoading(true);
-    const { data, error } = await supabase.from('roles').select('*').order('role_id', { ascending: false });
+    const { data, error } = await supabase.from('roles').select('role_id, role_name, icon_name').order('role_id', { ascending: false });
     if (data) {
         const u = localStorage.getItem("user");
         let isBuilder = false;
@@ -142,10 +142,10 @@ export default function AdminUsers() {
 
   async function fetchUsers() {
     setLoading(true);
-    const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('users').select('user_id, first_name, last_name, email, phone1, status, user_name, created_at').order('created_at', { ascending: false });
     if (data) setUsers(data);
     
-    const { data: mappings, error: mapErr } = await supabase.from('user_roles').select('*');
+    const { data: mappings, error: mapErr } = await supabase.from('user_roles').select('user_id, role_id');
     if (mapErr) {
        setErrorMsg("Failed to load user roles: " + mapErr.message);
     }

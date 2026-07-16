@@ -11,10 +11,10 @@ export default function StaffAvailability() {
   }, []);
 
   const fetchRooms = async () => {
-    const { data, error } = await supabase.from('rooms').select('*').order('room_number');
+    const { data, error } = await supabase.from('rooms').select('room_id, room_number, capacity').order('room_number');
     if (!error && data) {
        const formattedRooms = data.map(r => ({
-          room: `Room ${r.room_number}${r.building ? ` (${r.building})` : ''}`,
+          room: `Room ${r.room_number}${(r as any).building ? ` (${(r as any).building})` : ''}`,
           status: "Free",
           time: "Available",
           type: "secondary"

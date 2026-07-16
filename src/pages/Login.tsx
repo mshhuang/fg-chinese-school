@@ -31,6 +31,9 @@ export default function Login() {
   };
 
   useEffect(() => {
+    // Clear any stale user session when hitting the login page
+    localStorage.removeItem('user');
+    
     async function checkSupabase() {
       try {
         const { error } = await supabase.auth.getSession();
@@ -249,17 +252,8 @@ export default function Login() {
              device = "Laptop/Desktop";
           }
 
-          await supabase.from('system_logs').insert({
-             // @ts-ignore
-             user_id: userData.user_id,
-             user_name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
-             user_role: primaryRole,
-             page_name: "Login",
-             path: "/login",
-             activity: "Logged into the system",
-             action_type: "login",
-             data_changed: null,
-             browser: browser,
+          await logSystemEvent('info', 'Logged into the system', {
+             browser,
              ip_address: ipAddress,
              device_type: device
           });
@@ -415,14 +409,14 @@ export default function Login() {
                  <p className="text-sm font-body text-on-surface-variant">Enter the passcode to access the builder view.</p>
               </div>
 
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                   e.preventDefault();
                   if (passcodeVal === '4465') {
                      setShowPasscodeModal(false);
                      setPasscodeVal('');
                      setPasscodeError('');
                      if (pendingActionRef.current) {
-                         pendingActionRef.current();
+                         await pendingActionRef.current();
                      }
                   } else {
                      logSystemEvent('warning', 'Invalid builder passcode attempt');

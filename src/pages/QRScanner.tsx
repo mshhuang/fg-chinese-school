@@ -10,6 +10,7 @@ export default function QRScanner() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
   const [isOverriding, setIsOverriding] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanation, setExplanation] = useState("");
@@ -39,6 +40,7 @@ export default function QRScanner() {
              if (scannerRef.current && scannerRef.current.isScanning) {
                  await scannerRef.current.stop().catch(console.error);
                  setIsScanning(false);
+                 setIsCameraStarting(false);
              }
         }, 100);
     }
@@ -277,6 +279,7 @@ export default function QRScanner() {
             setMessage(null);
             isProcessingRef.current = false;
             setIsScanning(true);
+            setIsCameraStarting(true);
             await new Promise(resolve => setTimeout(resolve, 100));
             // Try to get available cameras
             const devices = await Html5Qrcode.getCameras();
@@ -300,6 +303,7 @@ export default function QRScanner() {
                     // console.log("QR Scan Error: ", errorMessage); // This can be noisy
                 }
             );
+            setIsCameraStarting(false);
         } catch (err) {
             console.error(err);
             // Fallback for laptops where getCameras might have issues
@@ -310,8 +314,10 @@ export default function QRScanner() {
                     handleScanSuccess,
                     () => {}
                 );
+                setIsCameraStarting(false);
             } catch (fallbackErr) {
                  setIsScanning(false);
+                 setIsCameraStarting(false);
                  console.error(fallbackErr);
                  setMessage({ type: 'error', text: 'Could not start camera. Please check permissions.' });
             }
@@ -324,6 +330,7 @@ export default function QRScanner() {
           try {
               await scannerRef.current.stop();
               setIsScanning(false);
+              setIsCameraStarting(false);
           } catch(err) {
               console.error(err);
           }
@@ -359,7 +366,15 @@ export default function QRScanner() {
       </p>
 
       <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-sm max-w-md mx-auto">
-        <div id="qr-reader-custom" className={`w-full overflow-hidden rounded-xl ${isScanning ? 'mb-6 border-2 border-outline-variant/50' : 'hidden'}`}></div>
+        <div className="relative">
+          <div id="qr-reader-custom" className={`w-full overflow-hidden rounded-xl ${isScanning ? 'mb-6 border-2 border-outline-variant/50' : 'hidden'}`}></div>
+          {isCameraStarting && (
+            <div className="absolute top-0 left-0 right-0 bottom-6 z-10 flex flex-col items-center justify-center bg-surface-container-lowest/80 backdrop-blur-sm rounded-xl border-2 border-outline-variant/50">
+               <Loader2 className="w-10 h-10 animate-spin text-primary mb-3" />
+               <p className="text-sm font-label font-bold text-primary">Starting camera...</p>
+            </div>
+          )}
+        </div>
         
         {scannedUser && !loading && !message && (
             <div className="flex flex-col gap-4 mb-6 animate-in fade-in zoom-in-95 duration-200">

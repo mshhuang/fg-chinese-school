@@ -56,7 +56,7 @@ export default function AdminAcademic() {
   }, [activeTab]);
 
   async function fetchPrograms() {
-    const { data } = await supabase.from('programs').select('*').order('program_name', { ascending: true });
+    const { data } = await supabase.from('programs').select('program_id, program_name').order('program_name', { ascending: true });
     if (data) setProgramsList(data);
   }
 

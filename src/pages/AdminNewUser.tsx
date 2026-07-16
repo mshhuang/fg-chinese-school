@@ -18,7 +18,7 @@ const AdminNewUser = () => {
 
   useEffect(() => {
     async function fetchData() {
-      const { data: roleData } = await supabase.from('roles').select('*').order('role_name');
+      const { data: roleData } = await supabase.from('roles').select('role_id, role_name').order('role_name');
       if (roleData) setRoles((roleData as any[]));
       
       const { data: userData } = await supabase.from('users').select('user_id, first_name, last_name').order('first_name');

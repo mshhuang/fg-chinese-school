@@ -1,9 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
 import dotenv from 'dotenv';
-dotenv.config();
-const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY);
-async function run() {
-  const { data, error } = await supabase.from('users').select('user_id, first_name, last_name, avatar_url').limit(1);
-  console.log(data, error);
+
+const env = dotenv.parse(fs.readFileSync('.env.example', 'utf8'));
+
+const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+async function test() {
+  const { error } = await supabase.from('system_logs').insert({
+    activity: "Test log",
+    action_type: "login"
+  });
+  console.log("Insert error:", error);
 }
-run();
+test();

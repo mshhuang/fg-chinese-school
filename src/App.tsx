@@ -48,6 +48,7 @@ import AdminDataEntry from "./pages/AdminDataEntry";
 import AdminUsers from "./pages/AdminUsers";
 import AdminDashboard from "./pages/AdminDashboard";
 import BuilderDashboard from "./pages/BuilderDashboard";
+import BuilderGitHubSync from "./pages/BuilderGitHubSync";
 import AuditLogs from "./pages/AuditLogs";
 import ChangePassword from "./pages/ChangePassword";
 import LiveErrorLogs from "./pages/LiveErrorLogs";
@@ -166,6 +167,7 @@ export default function App() {
 
            {/* Builder (formerly Admin) */}
            <Route path="/builder/dashboard" element={<BuilderDashboard />} />
+           <Route path="/builder/github-sync" element={<BuilderGitHubSync />} />
            <Route path="/builder/calendar" element={<AdminCalendar />} />
            <Route path="/builder/messages" element={<PrincipalMessages />} />
            <Route path="/builder/announcements" element={<Announcements />} />

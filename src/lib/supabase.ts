@@ -16,12 +16,21 @@ export const supabase = createClient<any>(supabaseUrl, supabaseAnonKey, {
       const urlStr = url.toString();
       const method = options?.method || 'GET';
       
-      // Stop recording/modifying system_logs table as requested
-      if (urlStr.includes('system_logs') && ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
-        return new Response(JSON.stringify([]), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json' }
-        });
+      // Stop recording/modifying system_logs table as requested, except for password reminder requests, logins, errors, and page visits
+      if (urlStr.includes('system_logs') && ['POST', 'PATCH', 'PUT'].includes(method)) {
+        const bodyStr = options?.body ? options.body.toString() : '';
+        const lowerBody = bodyStr.toLowerCase();
+        const isPasswordRequest = lowerBody.includes('password reminder');
+        const isLogin = lowerBody.includes('login') || lowerBody.includes('logged into');
+        const isPageVisit = lowerBody.includes('page visit') || lowerBody.includes('visited page');
+        const isError = bodyStr.includes('[ERROR]');
+        
+        if (!isPasswordRequest && !isLogin && !isPageVisit && !isError) {
+          return new Response(JSON.stringify([]), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
       }
 
       const isGet = !options?.method || options.method === 'GET';

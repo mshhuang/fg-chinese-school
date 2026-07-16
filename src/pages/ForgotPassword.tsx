@@ -13,6 +13,9 @@ export default function ForgotPassword() {
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
   useEffect(() => {
+    // Clear any stale user session when hitting the forgot password page
+    localStorage.removeItem('user');
+    
     async function checkSupabase() {
       try {
         const { error } = await supabase.auth.getSession();
@@ -38,6 +41,16 @@ export default function ForgotPassword() {
         { username: username }, 
         "/forgot-password"
       );
+
+      // Also notify builder via internal messages
+      const BUILDER_USER_ID = 'ec13df7f-1a4f-422e-abd8-05732ca798d2';
+      await supabase.from('internal_messages').insert({
+        sender_id: BUILDER_USER_ID,
+        recipient_id: BUILDER_USER_ID,
+        subject: `[Password Request] Reminder for ${username}`,
+        body: `A user requested a password reminder for the account/email: ${username}`,
+        read_at: null
+      });
     }
   };
 

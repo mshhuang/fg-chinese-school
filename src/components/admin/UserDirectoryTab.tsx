@@ -31,7 +31,7 @@ export default function UserDirectoryTab() {
   }, []);
 
   async function fetchRoles() {
-    const { data } = await supabase.from('roles').select('*');
+    const { data } = await supabase.from('roles').select('role_id, role_name');
     if (data) {
       setRoles(data);
     }
@@ -42,7 +42,7 @@ export default function UserDirectoryTab() {
     
     const [usersRes, mappingsRes, rolesRes] = await Promise.all([
       supabase.from('users').select('user_id, first_name, last_name, email, phone1, status, user_name').order('created_at', { ascending: false }),
-      supabase.from('user_roles').select('*'),
+      supabase.from('user_roles').select('user_id, role_id'),
       supabase.from('roles').select('*')
     ]);
 

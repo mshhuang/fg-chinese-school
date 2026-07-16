@@ -1,7 +1,8 @@
+import { toJpeg } from 'html-to-image';
 import React, { useState } from 'react';
 import { MessageSquare, X, Camera, Send, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { toJpeg } from 'html-to-image';
+
 
 const BUILDER_USER_ID = 'ec13df7f-1a4f-422e-abd8-05732ca798d2';
 
@@ -29,7 +30,28 @@ export default function SupportWidget() {
     let originalMarginTop = '';
     let originalScrollTop = 0;
 
+    // Temporarily remove stylesheets that cause DOMException
+    const badStyles: Element[] = [];
+    const badParents: (ParentNode | null)[] = [];
+    const badSiblings: (ChildNode | null)[] = [];
+
     try {
+      for (let i = 0; i < document.styleSheets.length; i++) {
+        try {
+          // Accessing cssRules on a cross-origin stylesheet will throw a DOMException
+          const rules = document.styleSheets[i].cssRules;
+        } catch (e) {
+          const owner = document.styleSheets[i].ownerNode;
+          if (owner) {
+            badStyles.push(owner as Element);
+            badParents.push(owner.parentNode);
+            badSiblings.push(owner.nextSibling);
+          }
+        }
+      }
+      
+      badStyles.forEach(node => node.remove());
+
       scrollContainer = document.getElementById('main-scroll-container');
       innerContent = document.getElementById('main-scroll-inner');
       
@@ -44,9 +66,20 @@ export default function SupportWidget() {
       // Allow DOM to update
       await new Promise(resolve => setTimeout(resolve, 150));
 
+      
       const dataUrl = await toJpeg(document.body, {
         quality: 0.5,
+        filter: (node) => {
+          if (node.tagName === 'LINK') {
+            const href = (node as HTMLLinkElement).href;
+            if (href && !href.startsWith(window.location.origin) && !href.startsWith('/')) {
+              return false; // exclude remote stylesheets which crash cssRules
+            }
+          }
+          return true;
+        }
       });
+      
       setScreenshotData(dataUrl);
     } catch (err) {
       console.error('Failed to take screenshot', err);
@@ -59,6 +92,13 @@ export default function SupportWidget() {
         innerContent.style.marginTop = originalMarginTop;
         scrollContainer.scrollTop = originalScrollTop;
       }
+
+      // Restore bad stylesheets
+      badStyles.forEach((node, i) => {
+        if (badParents[i]) {
+          badParents[i]?.insertBefore(node, badSiblings[i]);
+        }
+      });
       
       setIsTakingScreenshot(false);
     }
@@ -96,6 +136,17 @@ export default function SupportWidget() {
         subject: `[Support Ticket] Issue on ${window.location.pathname}`,
         body: messageBody,
         read_at: null
+      });
+
+      // Insert into error_logs as well so it shows on the Support Tickets dashboard page
+      await supabase.from('error_logs').insert({
+        type: 'support_ticket',
+        message: `Feedback/Issue Report from ${userName}`,
+        path: window.location.pathname,
+        details: {
+          description: description,
+          screenshot: screenshotData
+        }
       });
 
       setIsSuccess(true);

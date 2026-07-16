@@ -152,44 +152,57 @@ export default function Announcements() {
       }
   };
 
-  const fetchData = async () => {
-    const userStr = localStorage.getItem('user');
-    let currentUserId = null;
-    let currentUserRole = "student";
-    
-    if (userStr) {
-      try {
-        const u = JSON.parse(userStr);
-        setUser(u);
-        currentUserId = u.id;
-        currentUserRole = localStorage.getItem('current_role') || u.role;
-        setSelectedPostingRole(u.role);
-      } catch (e) {}
-    }
+    const fetchData = async () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      let currentUserId = null;
+      let currentUserRole = "student";
+      let u = null;
+      
+      if (userStr) {
+        try {
+          u = JSON.parse(userStr);
+          setUser(u);
+          currentUserId = u.id;
+          currentUserRole = localStorage.getItem('current_role') || u.role || 'student';
+          setSelectedPostingRole(u.role || 'student');
+        } catch (e) {
+          console.error('JSON parse error', e);
+        }
+      }
 
-    // Load roles, classes, users for the compose dropdown
-    const [rolesRes, classesRes, usersRes] = await Promise.all([
-      supabase.from('roles').select('*'),
-      supabase.from('classes').select('*'),
-      supabase.from('users').select('user_id, first_name, last_name, email, user_roles(roles(role_name))')
-    ]);
-    
-    if (rolesRes.data) {
-      setRoles(rolesRes.data);
-    }
-    if (classesRes.data) setClasses(classesRes.data);
-    if (usersRes.data) {
-      const formattedUsers = usersRes.data.map(u => ({
-        ...u,
-        role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
-      })).filter((u: any) => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
-      setAvailableUsers(formattedUsers);
-    }
+      // Load roles, classes, users for the compose dropdown
+      const [rolesRes, classesRes, usersRes] = await Promise.all([
+        supabase.from('roles').select('*'),
+        supabase.from('classes').select('*'),
+        supabase.from('users').select('user_id, first_name, last_name, email, user_roles(roles(role_name))')
+      ]);
+      
+      if (rolesRes.error) console.error('rolesRes err', rolesRes.error);
+      if (classesRes.error) console.error('classesRes err', classesRes.error);
+      if (usersRes.error) console.error('usersRes err', usersRes.error);
 
-    // Load announcements and their replies
-    const finalAnns = await fetchVisibleAnnouncements(userStr ? JSON.parse(userStr) : user, currentUserRole);
-    setAnnouncements(finalAnns);
-    setLoading(false);
+      if (rolesRes.data) {
+        setRoles(rolesRes.data);
+      }
+      if (classesRes.data) setClasses(classesRes.data);
+      if (usersRes.data) {
+        const formattedUsers = usersRes.data.map(u => ({
+          ...u,
+          role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
+        })).filter((u: any) => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
+        setAvailableUsers(formattedUsers);
+      }
+
+      // Load announcements and their replies
+      const parsedUser = userStr ? JSON.parse(userStr) : user;
+      const finalAnns = await fetchVisibleAnnouncements(parsedUser, currentUserRole);
+      setAnnouncements(finalAnns || []);
+    } catch(err) {
+      console.error('Error fetching announcements:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleMultiSelect = (setter: React.Dispatch<React.SetStateAction<any[]>>, val: any) => {

@@ -173,7 +173,7 @@ export default function PrincipalClasses() {
     setIsSubmitting(true);
     
     // @ts-ignore
-    const { data, error } = await supabase.from('classes').insert([{ class_name: newClassName.trim() }]).select('*').single();
+    const { data, error } = await supabase.from('classes').insert([{ class_name: newClassName.trim() }]).select('class_id, class_name').single();
     if (error) {
        alert("Error adding class: " + error.message);
        setIsSubmitting(false);
@@ -207,7 +207,7 @@ export default function PrincipalClasses() {
        }
 
        // Fetch programs
-       const { data: progData } = await supabase.from('programs').select('*').order('program_name', { ascending: true });
+       const { data: progData } = await supabase.from('programs').select('program_id, program_name').order('program_name', { ascending: true });
        if (progData) {
          setPrograms(progData);
        }

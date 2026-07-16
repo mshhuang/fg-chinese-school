@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import { formatTeacherName } from "../lib/utils";
 import { ReportPrintHeader } from "../components/admin/ReportPrintHeader";
 import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+
 
 export default function AdminReports() {
   const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'attendance' | 'credentials' | 'login_history' | 'checkin_history' | 'staff_attendance'>('teachers');
@@ -37,13 +37,13 @@ export default function AdminReports() {
       try {
         // Fetch all data
         const { data: usersData } = await supabase.from('users').select('user_id, first_name, last_name, email');
-        const { data: rolesData } = await supabase.from('roles').select('*');
-        const { data: userRolesData } = await supabase.from('user_roles').select('*');
-        const { data: classData, error: classError } = await supabase.from('classes').select('*');
+        const { data: rolesData } = await supabase.from('roles').select('role_id, role_name');
+        const { data: userRolesData } = await supabase.from('user_roles').select('user_id, role_id');
+        const { data: classData, error: classError } = await supabase.from('classes').select('class_id, class_name, program_id');
         if (classError) console.error("Class fetch error:", classError);
         const { data: enrollmentsData, error: enrollmentsError } = await supabase.from('enrollments').select('enrollment_id, student_id, class_id, status, program_id');
         if (enrollmentsError) console.error("Enrollments fetch error:", enrollmentsError);
-        const { data: programsData } = await supabase.from('programs').select('*');
+        const { data: programsData } = await supabase.from('programs').select('program_id, program_name');
         
         if (enrollmentsData) {
           setEnrollments(enrollmentsData);

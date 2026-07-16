@@ -342,25 +342,6 @@ export default function Diagnostics() {
              ) : (
                 <div className="text-center p-8 text-on-surface-variant font-body">
                    <p className="mb-4">No system logs found.</p>
-                   <div className="inline-block bg-surface-container text-left p-4 rounded-xl text-xs md:text-sm border border-outline-variant/30">
-                      <p className="font-bold mb-2">To complete this diagnostic feature, please run this block in your Supabase SQL Editor:</p>
-                      <pre className="font-mono text-[10px] text-on-surface overflow-x-auto whitespace-pre rounded bg-surface-lowest">
-{`CREATE TABLE system_logs (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id uuid REFERENCES users(user_id),
-  type text NOT NULL,
-  message text NOT NULL,
-  details text,
-  path text,
-  created_at timestamp with time zone default now()
-);
-
--- Turn on RLS and add basic policy
-ALTER TABLE system_logs ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "system_logs_policy" ON system_logs; CREATE POLICY "system_logs_policy" ON system_logs FOR ALL USING (true) WITH CHECK (true);
-`}
-                      </pre>
-                   </div>
                 </div>
              )}
            </div>

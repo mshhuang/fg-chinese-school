@@ -88,7 +88,7 @@ export default function TeacherAssignmentBoard() {
        const u = JSON.parse(uStr);
        teacherId = u.id;
     }
-    const { data } = await supabase.from('classes').select('*').order('class_name');
+    const { data } = await supabase.from('classes').select('class_id, class_name').order('class_name');
     if (data) {
        setClasses(data);
        if (teacherId) {
