@@ -111,6 +111,7 @@ export default function QRScanner() {
 
 
   const confirmAction = async () => {
+    if (loading) return;
     if (!scannedUser) return;
     setLoading(true);
     setMessage(null);
@@ -192,6 +193,7 @@ export default function QRScanner() {
   };
   
   const handleOverride = async (status: string) => {
+    if (loading) return;
     if (!scannedUser) return;
     setLoading(true);
     setMessage(null);

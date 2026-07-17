@@ -76,6 +76,7 @@ export default function VolunteerDashboard() {
   };
 
   const handleClockInOut = async () => {
+    if (clockStatus === 'loading') return;
     if (!user || (user?.user_id || user?.id) === 'demo') return;
     const newStatus = clockStatus === 'clocked_in' ? 'clocked_out' : 'clocked_in';
     setClockStatus('loading');

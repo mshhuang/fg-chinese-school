@@ -80,6 +80,7 @@ export default function TeacherDashboard() {
   };
 
   const processClockIn = async (reason: string) => {
+    if (clockStatus === 'loading') return;
     setClockStatus('loading');
     const { error } = await supabase.from('staff_clock_ins').insert({
        user_id: (user?.user_id || user?.id),
@@ -92,6 +93,7 @@ export default function TeacherDashboard() {
   };
 
   const processClockOut = async (reason: string) => {
+    if (clockStatus === 'loading') return;
     setClockStatus('loading');
     const { error } = await supabase.from('staff_clock_ins').insert({
        user_id: (user?.user_id || user?.id),
