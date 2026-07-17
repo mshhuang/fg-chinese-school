@@ -43,7 +43,7 @@ export default function ParentSchedule() {
             .select('user_id, first_name, last_name, grade')
             .eq('email', userEmail);
          if (!emailError && childrenByEmail && childrenByEmail.length > 0) {
-            mappedChildren = childrenByEmail;
+            mappedChildren = childrenByEmail.filter((c: any) => c.user_id !== u.id);
          }
       }
 

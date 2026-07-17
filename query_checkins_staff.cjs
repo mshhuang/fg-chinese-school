@@ -1,13 +1,12 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
-
 async function run() {
   const { data, error } = await supabase
-    .from('users')
-    .select('first_name, last_name, email')
-    .eq('user_id', 'ec13df7f-1a4f-422e-abd8-05732ca798d2');
-
-  console.log("User:", data, error);
+    .from('staff_clock_ins')
+    .select('*, users(first_name, last_name)')
+    .order('created_at', {ascending: false})
+    .limit(10);
+  console.log("Staff history:", data, error);
 }
 run();

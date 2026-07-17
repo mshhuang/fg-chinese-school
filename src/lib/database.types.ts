@@ -153,6 +153,9 @@ export type Database = {
           content: string | null;
           class_id: string | null;
           author_id: string | null;
+          created_at?: string;
+          is_published?: boolean;
+          status?: string;
         };
         Insert: Omit<Database['public']['Tables']['newsletters']['Row'], 'newsletter_id'>;
         Update: Partial<Database['public']['Tables']['newsletters']['Row']>;

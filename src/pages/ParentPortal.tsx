@@ -32,7 +32,7 @@ export default function ParentPortal() {
             .eq('email', userEmail);
 
          if (!emailError && childrenByEmail && childrenByEmail.length > 0) {
-            mappedChildren = childrenByEmail;
+            mappedChildren = childrenByEmail.filter((c: any) => c.user_id !== u.id);
          }
       }
 

@@ -4,10 +4,10 @@ const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SU
 
 async function run() {
   const { data, error } = await supabase
-    .from('users')
-    .select('first_name, last_name, email')
-    .eq('user_id', 'ec13df7f-1a4f-422e-abd8-05732ca798d2');
+    .from('attendance')
+    .select('attendance_id')
+    .limit(1);
 
-  console.log("User:", data, error);
+  console.log("attendance:", data, error);
 }
 run();

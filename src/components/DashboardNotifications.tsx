@@ -5,6 +5,43 @@ import { supabase } from "../lib/supabase";
 import { MessageSquare, Megaphone, Newspaper, X } from "lucide-react";
 import { cn } from "../lib/utils";
 
+
+const NotificationBanner = ({ type, count, icon: Icon, title, onClick, dismissed, onDismiss }: any) => {
+  if (count === 0 || dismissed.includes(type)) return null;
+  return (
+    <div 
+       className={cn(
+        "flex items-center justify-between p-4 mb-4 rounded-xl shadow-sm border cursor-pointer hover:shadow-md transition-all animate-in fade-in slide-in-from-top-4",
+        type === 'messages' ? "bg-primary-container/20 border-primary/20" : "",
+        type === 'announcements' ? "bg-secondary-container/20 border-secondary/20" : "",
+        type === 'newsletters' ? "bg-tertiary-container/20 border-tertiary/20" : ""
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-4">
+        <div className={cn(
+          "p-3 rounded-full flex items-center justify-center",
+          type === 'messages' ? "bg-primary text-on-primary" : "",
+          type === 'announcements' ? "bg-secondary text-on-secondary" : "",
+          type === 'newsletters' ? "bg-tertiary text-on-tertiary" : ""
+        )}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <div>
+          <h4 className="font-label font-bold text-on-surface">You have {count} unread {count === 1 ? title.slice(0, -1) : title}</h4>
+          <p className="font-caption text-sm text-on-surface-variant">Click to view your {title.toLowerCase()}.</p>
+        </div>
+      </div>
+      <button 
+        onClick={(e) => { e.stopPropagation(); onDismiss(type); }}
+        className="p-2 hover:bg-surface-variant/30 rounded-full transition-colors"
+      >
+        <X className="w-5 h-5 text-on-surface-variant" />
+      </button>
+    </div>
+  );
+};
+
 export function DashboardNotifications() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string | null>(null);
@@ -113,42 +150,6 @@ export function DashboardNotifications() {
     setDismissed(prev => [...prev, type]);
   };
 
-  const NotificationBanner = ({ type, count, icon: Icon, title, onClick }: any) => {
-    if (count === 0 || dismissed.includes(type)) return null;
-
-    return (
-      <div 
-        className={cn(
-          "flex items-center justify-between p-4 mb-4 rounded-xl shadow-sm border cursor-pointer hover:shadow-md transition-all animate-in fade-in slide-in-from-top-4",
-          type === 'messages' ? "bg-primary-container/20 border-primary/20" : "",
-          type === 'announcements' ? "bg-secondary-container/20 border-secondary/20" : "",
-          type === 'newsletters' ? "bg-tertiary-container/20 border-tertiary/20" : ""
-        )}
-        onClick={onClick}
-      >
-        <div className="flex items-center gap-4">
-          <div className={cn(
-            "p-3 rounded-full flex items-center justify-center",
-            type === 'messages' ? "bg-primary text-on-primary" : "",
-            type === 'announcements' ? "bg-secondary text-on-secondary" : "",
-            type === 'newsletters' ? "bg-tertiary text-on-tertiary" : ""
-          )}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div>
-            <h4 className="font-label font-bold text-on-surface">You have {count} unread {count === 1 ? title.slice(0, -1) : title}</h4>
-            <p className="font-caption text-sm text-on-surface-variant">Click to view your {title.toLowerCase()}.</p>
-          </div>
-        </div>
-        <button 
-          onClick={(e) => { e.stopPropagation(); handleDismiss(type); }}
-          className="p-2 hover:bg-surface-variant/30 rounded-full transition-colors"
-        >
-          <X className="w-5 h-5 text-on-surface-variant" />
-        </button>
-      </div>
-    );
-  };
 
   const getRolePrefix = () => {
     if (userRole === 'admin' || userRole === 'builder') return '/admin';
@@ -164,21 +165,21 @@ export function DashboardNotifications() {
 
   return (
     <div className="w-full flex flex-col">
-      <NotificationBanner 
+      <NotificationBanner dismissed={dismissed} onDismiss={handleDismiss} 
         type="messages" 
         count={unreadMessages} 
         icon={MessageSquare} 
         title="Messages" 
         onClick={() => navigate(`${rolePrefix}/messages`)}
       />
-      <NotificationBanner 
+      <NotificationBanner dismissed={dismissed} onDismiss={handleDismiss} 
         type="announcements" 
         count={unreadAnnouncements} 
         icon={Megaphone} 
         title="Announcements" 
         onClick={() => navigate(`${rolePrefix}/announcements`)}
       />
-      <NotificationBanner 
+      <NotificationBanner dismissed={dismissed} onDismiss={handleDismiss} 
         type="newsletters" 
         count={unreadNewsletters} 
         icon={Newspaper} 
