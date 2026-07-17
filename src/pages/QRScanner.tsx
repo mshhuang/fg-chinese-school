@@ -154,7 +154,7 @@ export default function QRScanner() {
       if (isCheckIn) {
          const { data: enrolls } = await supabase.from('enrollments').select('class_id').eq('student_id', scannedUser.user_id).eq('status', 'Active');
          if (enrolls && enrolls.length > 0) {
-            const today = new Date().toLocaleDateString('en-CA');
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
             for (const enroll of enrolls) {
                const { data: existing } = await supabase.from('attendance').select('attendance_id').eq('student_id', scannedUser.user_id).eq('class_id', enroll.class_id).eq('attendance_date', today);
                const newStatus = 'Present';
@@ -173,7 +173,7 @@ export default function QRScanner() {
       }
 
       const now = new Date();
-      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeString = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' });
       const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
       setMessage({ type: 'success', text: `Successfully ${actionLabel} ${nameStr} at ${timeString}!` });
       setRecentActivity(prev => [{ name: nameStr, action: actionLabel, time: timeString }, ...prev].slice(0, 5));
@@ -223,7 +223,7 @@ export default function QRScanner() {
       if (isCheckInStatus) {
          const { data: enrolls } = await supabase.from('enrollments').select('class_id').eq('student_id', scannedUser.user_id).eq('status', 'Active');
          if (enrolls && enrolls.length > 0) {
-            const today = new Date().toLocaleDateString('en-CA');
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
             for (const enroll of enrolls) {
                const { data: existing } = await supabase.from('attendance').select('attendance_id').eq('student_id', scannedUser.user_id).eq('class_id', enroll.class_id).eq('attendance_date', today);
                let newStatus = 'Present';
@@ -245,7 +245,7 @@ export default function QRScanner() {
       }
 
       const now = new Date();
-      const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeString = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' });
       const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
       setMessage({ type: 'success', text: `Status manually set to ${status.replace('school_', '').replace('_', ' ')} at ${timeString}!` });
       setRecentActivity(prev => [{ name: nameStr, action: `Manual: ${status.replace('school_', '').replace('_', ' ')}`, time: timeString }, ...prev].slice(0, 5));

@@ -517,7 +517,7 @@ export default function Announcements() {
                                            {isNew && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary text-on-primary font-bold uppercase tracking-wider"><Sparkles className="w-3 h-3 animate-pulse"/> New</span>}
                                            {!isNew && hasNewReplies && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-secondary text-on-secondary font-bold uppercase tracking-wider"><Sparkles className="w-3 h-3 animate-pulse"/> New Replies</span>}
                                         </h3>
-                                        <p className="text-xs text-on-surface-variant font-medium mt-0.5">{new Date(ann.created_at || Date.now()).toLocaleDateString()} • <Users className="w-3 h-3 inline ml-1 mr-0.5"/> To: {audienceInfo}</p>
+                                        <p className="text-xs text-on-surface-variant font-medium mt-0.5">{new Date(ann.created_at || Date.now()).toLocaleDateString('en-US', { timeZone: 'America/New_York' })} • <Users className="w-3 h-3 inline ml-1 mr-0.5"/> To: {audienceInfo}</p>
                                      </div>
                                  </div>
                                  {(user?.role === 'builder' || ann.created_by === user?.id) && (
@@ -610,7 +610,7 @@ export default function Announcements() {
                                                                       return r.users ? (isReplyTeacher ? formatTeacherName(r.users.first_name, r.users.last_name) : `${r.users.first_name} ${r.users.last_name}`) : "Unknown";
                                                                    })()}
                                                                    <span className="font-normal text-xs text-on-surface-variant group-hover:text-on-surface-variant/70 transition-colors">
-                                                                       {new Date(r.created_at).toLocaleDateString()}
+                                                                       {new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
                                                                    </span>
                                                                </p>
                                                            </div>

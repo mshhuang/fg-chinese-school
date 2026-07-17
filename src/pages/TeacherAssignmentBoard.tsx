@@ -498,7 +498,7 @@ export default function TeacherAssignmentBoard() {
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-outline-variant/20">
                     <div className="flex items-center gap-1.5 text-on-surface-variant text-sm font-label">
                       <Calendar className="w-4 h-4" />
-                      {a.due_date ? new Date(a.due_date).toLocaleString() : 'No due date'}
+                      {a.due_date ? new Date(a.due_date).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'No due date'}
                     </div>
                     <button 
                       onClick={() => setExpandedAssignId(expandedAssignId === a.assignment_id ? null : a.assignment_id)}

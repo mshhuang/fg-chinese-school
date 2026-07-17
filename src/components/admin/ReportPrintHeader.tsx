@@ -8,8 +8,8 @@ export function ReportPrintHeader({ title }: ReportPrintHeaderProps) {
   const currentYear = new Date().getFullYear();
   const schoolYear = `${currentYear}-${currentYear + 1}`;
   const now = new Date();
-  const formattedDate = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  const formattedTime = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const formattedDate = now.toLocaleDateString('en-US', { timeZone: 'America/New_York',  month: 'long', day: 'numeric', year: 'numeric' });
+  const formattedTime = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
 
   return (
     <div className="hidden print:flex flex-col items-center w-full mb-8">

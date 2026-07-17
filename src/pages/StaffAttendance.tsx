@@ -19,7 +19,7 @@ export default function StaffAttendance() {
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(9);
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }));
   const [coTeachersMap, setCoTeachersMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
@@ -345,7 +345,7 @@ export default function StaffAttendance() {
                                  if (status === 'Present') {
                                     if (clockInTimes[student.student_id]) {
                                        const d = new Date(clockInTimes[student.student_id]);
-                                       const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                       const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
                                        const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
                                        displayStatus = `${student.first_name} arrived at school at ${timeStr} on ${dateStr}`;
                                     } else {

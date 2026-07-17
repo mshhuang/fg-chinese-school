@@ -19,11 +19,11 @@ export default function AdminReports() {
   const [loginLogs, setLoginLogs] = useState<any[]>([]);
   const [checkinLogs, setCheckinLogs] = useState<any[]>([]);
   const [staffClockLogs, setStaffClockLogs] = useState<any[]>([]);
-  const [staffAttendanceDate, setStaffAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [staffAttendanceDate, setStaffAttendanceDate] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }));
   const [staffClockLogsLoading, setStaffClockLogsLoading] = useState(false);
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
-  const [loginDate, setLoginDate] = useState(new Date().toLocaleDateString('en-CA'));
-  const [checkinDate, setCheckinDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }));
+  const [loginDate, setLoginDate] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }));
+  const [checkinDate, setCheckinDate] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }));
   const [loginSortBy, setLoginSortBy] = useState<'time' | 'user'>('time');
   const [attendanceTeacherFilter, setAttendanceTeacherFilter] = useState('all');
   const [attendanceLoading, setAttendanceLoading] = useState(false);
@@ -338,7 +338,7 @@ export default function AdminReports() {
                 <div className="flex flex-col gap-2 mb-6 print:hidden">
                    <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
                        <h2 className="font-display text-2xl font-bold text-on-surface">Teachers Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' })}</span>
                    </div>
                    <p className="text-on-surface-variant">A comprehensive list of all teachers currently active in the system, including contact details.</p>
                 </div>
@@ -380,7 +380,7 @@ export default function AdminReports() {
                 <div className="flex flex-col gap-2 mb-6 print:hidden">
                    <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
                        <h2 className="font-display text-2xl font-bold text-on-surface">Students Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' })}</span>
                    </div>
                    <p className="text-on-surface-variant">A complete directory of all enrolled students, detailing grade levels and contact information.</p>
                 </div>
@@ -433,7 +433,7 @@ export default function AdminReports() {
                 <div className="flex flex-col gap-2 mb-6 print:hidden">
                    <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
                        <h2 className="font-display text-2xl font-bold text-on-surface">Classes Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' })}</span>
                    </div>
                    <p className="text-on-surface-variant">An overview of all active classes, showing assigned teachers, locations, and schedules.</p>
                 </div>
@@ -477,7 +477,7 @@ export default function AdminReports() {
                 <div className="flex flex-col gap-2 mb-6 print:hidden">
                    <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
                        <h2 className="font-display text-2xl font-bold text-on-surface">Enrollments Report</h2>
-                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString()}</span>
+                       <span className="font-mono text-sm text-on-surface-variant">{new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' })}</span>
                    </div>
                    <p className="text-on-surface-variant">A detailed breakdown of student enrollments grouped by class, including unassigned students.</p>
                 </div>
@@ -813,7 +813,7 @@ export default function AdminReports() {
                          {checkinLogs.map(log => (
                            <tr key={log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant whitespace-nowrap">
-                                {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' })}
                              </td>
                              <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
                                 {log.users ? `${log.users.first_name} ${log.users.last_name}` : 'Unknown Student'}
@@ -882,7 +882,7 @@ export default function AdminReports() {
                          {staffClockLogs.map(log => (
                            <tr key={log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant whitespace-nowrap">
-                                {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' })}
                              </td>
                              <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
                                 {log.users ? formatTeacherName(log.users.first_name, log.users.last_name, 'Teacher') : 'Unknown Staff'}
@@ -973,7 +973,7 @@ export default function AdminReports() {
                              return (
                                <tr key={log.log_id || log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
                                  <td className="py-3 px-4 font-body text-sm text-on-surface">
-                                    {new Date(log.created_at).toLocaleTimeString()}
+                                    {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}
                                  </td>
                                  <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
                                     {log.user_name || 'Unknown User'}

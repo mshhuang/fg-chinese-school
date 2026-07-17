@@ -189,7 +189,7 @@ export default function ParentPortal() {
                        const cName = children.find(c => c.user_id === activeChild)?.first_name || (activeChild === 'mei' ? 'Mei' : activeChild === 'wei' ? 'Wei' : 'Student');
                        if (!checkInTime) return `${cName} is in the school`;
                        const d = new Date(checkInTime);
-                       const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                       const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
                        const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
                        return `${cName} arrived at school at ${timeStr} on ${dateStr}`;
                     })() : checkInStatus === 'checked_out' ? `${children.find(c => c.user_id === activeChild)?.first_name || (activeChild === 'mei' ? 'Mei' : activeChild === 'wei' ? 'Wei' : 'Student')} is ready to go home` : 'Not Checked In'}

@@ -182,7 +182,7 @@ DROP POLICY IF EXISTS "error_logs_policy" ON error_logs; CREATE POLICY "error_lo
                          <span className="font-mono text-on-surface font-bold break-all">{log.path || 'Unknown Path'}</span>
                          <div className="flex items-center gap-1 text-on-surface-variant ml-auto shrink-0">
                             <Calendar className="w-3.5 h-3.5" />
-                            <span className="text-xs">{new Date(log.created_at).toLocaleString()}</span>
+                            <span className="text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
                          </div>
                       </div>
                       

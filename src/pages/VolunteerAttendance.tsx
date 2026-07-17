@@ -29,7 +29,7 @@ export default function VolunteerAttendance() {
 
   const fetchReport = async () => {
     setLoading(true);
-    const today = new Date().toLocaleDateString('en-CA');
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
     
     // Fetch all attendance for today
     const { data: attData, error: attError } = await supabase.from('attendance')
@@ -110,7 +110,7 @@ export default function VolunteerAttendance() {
       if (adminUsers && adminUsers.length > 0) {
         const adminId = adminUsers[0].user_id;
       
-      const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      const todayStr = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York',  weekday: 'long', month: 'long', day: 'numeric' });
       const reportBody = `Attendance Report for ${todayStr}:\n\nTotal Present: ${totals.present}\nTotal Absent: ${totals.absent}\n\n` + 
          report.map(r => `${r.className}: ${r.present} Present, ${r.absent} Absent`).join('\n');
          
@@ -162,7 +162,7 @@ export default function VolunteerAttendance() {
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-primary' : ''}`} />
                </button>
                <div className="font-label text-sm text-on-surface-variant bg-surface-container py-1.5 px-3 rounded-lg border border-outline-variant/20 whitespace-nowrap">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                  {new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York',  weekday: 'long', month: 'short', day: 'numeric' })}
                </div>
             </div>
          </div>

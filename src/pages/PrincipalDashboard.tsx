@@ -51,7 +51,7 @@ export default function PrincipalDashboard() {
       }
       
       // Load Absences Today
-      const today = new Date().toLocaleDateString('en-CA');
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
       
       const { data: attData } = await supabase.from('attendance')
         .select('class_id, status, student_id')

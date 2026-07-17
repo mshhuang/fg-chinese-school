@@ -130,7 +130,7 @@ export default function Activities() {
   const formatTime = (isoString: string) => {
     if (!isoString) return "";
     const date = new Date(isoString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' });
   };
 
   const handleDeleteAll = async () => {
@@ -270,7 +270,7 @@ export default function Activities() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   {(() => {
-                                     const timeStr = new Date(log.created_at).toLocaleString([], { year: '2-digit', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+                                     const timeStr = new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York',  year: '2-digit', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
                                      let actionText = log.activity || 'performed an unknown action';
                                      actionText = actionText.replace(/\[(INFO|ERROR|SUCCESS|WARNING)\]\s+/g, '');
                                      if (actionText.startsWith('Visited page: ')) {
@@ -324,7 +324,7 @@ export default function Activities() {
                                       </div>
                                       <div>
                                         <h4 className="text-xs font-label uppercase tracking-wider text-on-surface-variant mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Timestamp</h4>
-                                        <p className="font-mono text-xs">{new Date(log.created_at).toLocaleString()}</p>
+                                        <p className="font-mono text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
                                       </div>
                                     </div>
         

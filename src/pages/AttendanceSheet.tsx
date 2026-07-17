@@ -21,7 +21,7 @@ export default function AttendanceSheet() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
   const [user, setUser] = useState<any>(null);
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }));
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
@@ -338,7 +338,7 @@ export default function AttendanceSheet() {
                                            ? (() => {
                                                 if (!clockInTimes[s.student_id]) return `${s.first_name} is in the school`;
                                                 const d = new Date(clockInTimes[s.student_id]);
-                                                const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
                                                 const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
                                                 return `${s.first_name} arrived at school at ${timeStr} on ${dateStr}`;
                                              })()

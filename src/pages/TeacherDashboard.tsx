@@ -308,7 +308,7 @@ export default function TeacherDashboard() {
                        Today's Schedule
                     </h3>
                     <span className="font-caption text-sm text-on-surface-variant font-bold">
-                       {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                       {new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York',  weekday: 'long', month: 'short', day: 'numeric' })}
                     </span>
                  </div>
                  

@@ -122,7 +122,7 @@ export default function AdminDashboard() {
                <div className="flex justify-between items-end">
                  <div>
                     <p className="font-label text-sm uppercase tracking-wider text-on-surface-variant font-bold mb-1">Total Table Records</p>
-                    <h2 className="font-display text-4xl font-bold text-on-surface">{stats.totalRecords.toLocaleString()}</h2>
+                    <h2 className="font-display text-4xl font-bold text-on-surface">{stats.totalRecords.toLocaleString('en-US', { timeZone: 'America/New_York' })}</h2>
                  </div>
                  <div className="text-right">
                     <p className="font-label text-sm uppercase tracking-wider text-on-surface-variant font-bold mb-1">Storage Equivalent</p>

@@ -247,7 +247,7 @@ export default function StudentAssignments() {
                          <div className="flex flex-col">
                            <span className="font-caption text-[10px] uppercase text-on-surface-variant font-bold tracking-wider">Due Date</span>
                            <span className={cn("font-label text-sm font-bold", isLate ? "text-error" : "text-on-surface")}>
-                              {assignData?.due_date ? new Date(assignData.due_date).toLocaleString() : 'No Due Date'}
+                              {assignData?.due_date ? new Date(assignData.due_date).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'No Due Date'}
                            </span>
                          </div>
                          <Link to={`/student/assignments/${a.assignment_student_id}`} className="bg-primary text-on-primary hover:bg-primary/90 px-6 py-2 rounded-xl text-sm font-label font-bold transition-colors">

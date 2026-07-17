@@ -1,5 +1,8 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
 import App from './App.tsx';
 import { ErrorDisplay } from './ErrorDisplay';
 import './index.css';
@@ -58,7 +61,9 @@ console.warn = (...args) => {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <ErrorDisplay><App /></ErrorDisplay>
+      <QueryClientProvider client={queryClient}>
+        <ErrorDisplay><App /></ErrorDisplay>
+      </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,
 );

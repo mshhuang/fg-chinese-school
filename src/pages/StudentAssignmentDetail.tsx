@@ -204,7 +204,7 @@ export default function StudentAssignmentDetail() {
             )}
             <span className="text-outline-variant">•</span>
             <span className={cn("flex items-center gap-1.5 font-bold", isLate ? "text-error" : "text-on-surface")}>
-               <Clock className="w-4 h-4" /> Due: {assignData?.due_date ? new Date(assignData.due_date).toLocaleString() : 'No Due Date'}
+               <Clock className="w-4 h-4" /> Due: {assignData?.due_date ? new Date(assignData.due_date).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'No Due Date'}
             </span>
           </p>
           

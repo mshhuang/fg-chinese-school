@@ -127,7 +127,7 @@ export default function Diagnostics() {
   const formatTime = (isoString: string) => {
     if (!isoString) return "";
     const date = new Date(isoString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -312,7 +312,7 @@ export default function Diagnostics() {
                                        </div>
                                        <div>
                                          <h4 className="text-xs font-label uppercase tracking-wider text-on-surface-variant mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Timestamp</h4>
-                                         <p className="font-mono text-xs">{new Date(log.created_at).toLocaleString()}</p>
+                                         <p className="font-mono text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
                                        </div>
                                      </div>
 

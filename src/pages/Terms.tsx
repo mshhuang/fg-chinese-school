@@ -4,7 +4,7 @@ export default function TermsOfService() {
   return (
     <div className="max-w-4xl mx-auto p-8 font-body space-y-6">
       <h1 className="font-display text-4xl font-bold text-on-surface">Terms of Service</h1>
-      <p className="text-on-surface-variant">Last updated: {new Date().toLocaleDateString()}</p>
+      <p className="text-on-surface-variant">Last updated: {new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' })}</p>
       
       <section className="space-y-4">
         <h2 className="font-display text-2xl font-bold text-on-surface">1. Acceptance of Terms</h2>

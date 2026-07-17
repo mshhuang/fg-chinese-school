@@ -174,7 +174,7 @@ export default function TeacherNewsletters() {
         content,
         audience,
         status,
-        date: new Date().toLocaleDateString(),
+        date: new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' }),
         author: authorName, 
         pdfData: finalPdfData,
         pdfName,

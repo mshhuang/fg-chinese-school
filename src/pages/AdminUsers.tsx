@@ -119,7 +119,7 @@ export default function AdminUsers() {
 
   async function fetchRoles() {
     setLoading(true);
-    const { data, error } = await supabase.from('roles').select('role_id, role_name, icon_name').order('role_id', { ascending: false });
+    const { data, error } = await supabase.from('roles').select('role_id, role_name').order('role_id', { ascending: false });
     if (data) {
         const u = localStorage.getItem("user");
         let isBuilder = false;

@@ -226,7 +226,7 @@ export default function StudentPortal() {
               <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
                 if (!checkInTime) return `${userName} is in the school`;
                 const d = new Date(checkInTime);
-                const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
                 const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
                 return `${userName} arrived at school at ${timeStr} on ${dateStr}`;
               })() : checkInStatus === 'checked_out' ? `${userName} is ready to go home` : 'Not Checked In'}
@@ -291,7 +291,7 @@ export default function StudentPortal() {
                     <button className="w-8 h-8 rounded-full border-2 border-outline flex items-center justify-center group-hover:border-primary transition-colors shrink-0"></button>
                     <div className="flex-1 min-w-0">
                        <h3 className="font-body text-lg font-bold text-on-surface truncate">{a.assignments?.title}</h3>
-                       <p className="font-caption text-sm text-on-surface-variant mt-1.5">{a.assignments?.classes?.class_name} • {a.assignments?.due_date ? `Due ${new Date(a.assignments.due_date).toLocaleDateString()}` : 'No due date'}</p>
+                       <p className="font-caption text-sm text-on-surface-variant mt-1.5">{a.assignments?.classes?.class_name} • {a.assignments?.due_date ? `Due ${new Date(a.assignments.due_date).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}` : 'No due date'}</p>
                     </div>
                     <ChevronRight className="text-outline-variant group-hover:text-primary transition-colors w-6 h-6 shrink-0" />
                  </Link>

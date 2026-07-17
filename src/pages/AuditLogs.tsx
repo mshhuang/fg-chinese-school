@@ -249,7 +249,7 @@ $$);`}
                                    <span className="font-mono text-on-surface font-bold text-xs">{log.id}</span>
                                    <div className="flex items-center gap-1 text-on-surface-variant ml-auto">
                                       <Calendar className="w-3.5 h-3.5" />
-                                      <span className="text-xs">{new Date(log.created_at).toLocaleString()}</span>
+                                      <span className="text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
                                    </div>
                                    <button
                                       onClick={() => handleDeleteLog(log.id)}
