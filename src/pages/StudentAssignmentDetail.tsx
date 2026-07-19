@@ -12,6 +12,7 @@ export default function StudentAssignmentDetail() {
   const [loading, setLoading] = useState(true);
   const [attachmentsByTask, setAttachmentsByTask] = useState<Record<number, {name: string, url: string}[]>>({});
   const [textByTask, setTextByTask] = useState<Record<number, string>>({});
+  const [showBlankConfirm, setShowBlankConfirm] = useState<{show: boolean, id: number | null}>({show: false, id: null});
 
   const handleFileUpload = (assignmentStudentId: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,14 +96,22 @@ export default function StudentAssignmentDetail() {
 
 
 
-  const handleSubmitAssignment = async (assignmentStudentId: number) => {
+  const handleSubmitAssignment = (assignmentStudentId: number) => {
     const atts = attachmentsByTask[assignmentStudentId] || [];
     let feedback = textByTask[assignmentStudentId] || '';
 
-    if (atts.length === 0 && !feedback.trim()) {
-        const confirmBlank = window.confirm("You are about to submit a blank assignment without any text or attachments. Are you sure you want to continue?");
-        if (!confirmBlank) return;
+    const cleanText = feedback.replace(/<[^>]*>?/gm, '').trim();
+    if (atts.length === 0 && !cleanText) {
+        setShowBlankConfirm({show: true, id: assignmentStudentId});
+        return;
     }
+
+    executeSubmitAssignment(assignmentStudentId);
+  };
+
+  const executeSubmitAssignment = async (assignmentStudentId: number) => {
+    const atts = attachmentsByTask[assignmentStudentId] || [];
+    let feedback = textByTask[assignmentStudentId] || '';
 
     if (atts.length > 0) {
        feedback += '\n\n---SUBMISSION_ATTACHMENTS---\n' + JSON.stringify(atts);
@@ -115,6 +124,7 @@ export default function StudentAssignmentDetail() {
        return;
     }
 
+    setShowBlankConfirm({show: false, id: null});
     setAssignment({ ...assignment, status: 'submitted', feedback });
     
     setAttachmentsByTask(prev => {
@@ -261,9 +271,11 @@ export default function StudentAssignmentDetail() {
                      feedbackText = a.feedback || '';
                  }
                  
+                 const cleanFeedbackText = feedbackText ? feedbackText.replace(/<[^>]*>?/gm, '').trim() : '';
+
                  return (
                      <div className="flex flex-col gap-6 bg-primary-container/10 p-6 rounded-3xl border border-primary/20">
-                         {feedbackText && (
+                         {cleanFeedbackText && (
                              <div className="flex flex-col gap-2">
                                  <span className="font-label text-sm font-bold text-on-surface-variant">Your Report / Answers:</span>
                                  <div className="tiptap-editor prose prose-sm max-w-none font-body text-base text-on-surface px-0 py-0 break-normal" dangerouslySetInnerHTML={{ __html: feedbackText }} />
@@ -282,7 +294,7 @@ export default function StudentAssignmentDetail() {
                                  </div>
                              </div>
                          )}
-                         {!feedbackText && subAtts.length === 0 && (
+                         {!cleanFeedbackText && subAtts.length === 0 && (
                              <p className="font-body text-on-surface-variant italic">You submitted this assignment without any text or attachments.</p>
                          )}
                          {a.status === 'submitted' && (
@@ -343,6 +355,28 @@ export default function StudentAssignmentDetail() {
              )}
           </div>
        </div>
+
+       {showBlankConfirm.show && showBlankConfirm.id !== null && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-xl flex flex-col">
+               <div className="flex items-center gap-3 mb-4 text-warning">
+                  <AlertCircle className="w-8 h-8" />
+                  <h2 className="text-xl font-display font-bold text-on-surface">Blank Submission</h2>
+               </div>
+               <p className="text-on-surface-variant font-body mb-8">
+                  You are about to submit a blank assignment without any text or attachments. Are you sure you want to continue?
+               </p>
+               <div className="flex gap-3 justify-end">
+                  <button onClick={() => setShowBlankConfirm({show: false, id: null})} className="px-5 py-2.5 font-label font-bold text-on-surface hover:bg-surface-variant rounded-full transition-colors">
+                     Cancel
+                  </button>
+                  <button onClick={() => executeSubmitAssignment(showBlankConfirm.id!)} className="px-5 py-2.5 font-label font-bold bg-primary text-on-primary hover:bg-primary/90 rounded-full transition-colors shadow-sm">
+                     Submit Anyway
+                  </button>
+               </div>
+            </div>
+         </div>
+       )}
     </div>
   );
 }

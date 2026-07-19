@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Underline } from '@tiptap/extension-underline';
@@ -26,6 +26,33 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ value, onChange, placeholder = 'Type here...', className }: RichTextEditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const timeoutRef = useRef<any>(null);
+  const [promptState, setPromptState] = useState<{ type: 'link' | 'youtube' | 'table' | null; val1: string; val2: string }>({ type: null, val1: '', val2: '' });
+
+  const processFile = (file: File, editorView: any, event: Event) => {
+    if (!file.type.startsWith('image/')) return false;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const src = e.target?.result as string;
+      
+      // If we have coordinates from a drop event, insert there
+      if (event && (event as any).clientX !== undefined && editorView) {
+          const coordinates = editorView.posAtCoords({ left: (event as any).clientX, top: (event as any).clientY });
+          if (coordinates) {
+              editorView.dispatch(editorView.state.tr.insert(coordinates.pos, editorView.state.schema.nodes.image.create({ src })));
+              return;
+          }
+      }
+      
+      // Otherwise just insert at cursor
+      editor?.chain().focus().setImage({ src }).run();
+    };
+    reader.readAsDataURL(file);
+    return true;
+  };
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -34,7 +61,10 @@ export function RichTextEditor({ value, onChange, placeholder = 'Type here...', 
         openOnClick: false,
         autolink: true,
       }),
-      Image,
+      Image.configure({
+        inline: true,
+        allowBase64: true,
+      }),
       Youtube.configure({
         inline: false,
       }),
@@ -50,16 +80,47 @@ export function RichTextEditor({ value, onChange, placeholder = 'Type here...', 
     ],
     content: value,
     onUpdate: ({ editor }) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        onChange(editor.getHTML());
+      }, 300);
+    },
+    onBlur: ({ editor }) => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
       onChange(editor.getHTML());
     },
     editorProps: {
+      handleDrop: function(view, event, slice, moved) {
+        if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+          let handled = false;
+          Array.from(event.dataTransfer.files).forEach(file => {
+             if (processFile(file, view, event)) {
+                 handled = true;
+             }
+          });
+          return handled;
+        }
+        return false;
+      },
+      handlePaste: function(view, event, slice) {
+        if (event.clipboardData && event.clipboardData.files && event.clipboardData.files[0]) {
+          let handled = false;
+          Array.from(event.clipboardData.files).forEach(file => {
+             if (processFile(file, view, event)) {
+                 handled = true;
+             }
+          });
+          return handled;
+        }
+        return false;
+      },
       attributes: {
         class: cn(
           'prose prose-sm sm:prose-base max-w-none focus:outline-none min-h-[150px] p-4',
           '[&_p]:m-0 [&_p]:mb-2 [&_p:last-child]:mb-0',
           '[&_a]:text-primary [&_a]:underline cursor-text',
           '[&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-2xl [&_iframe]:my-4',
-          '[&_img]:rounded-2xl [&_img]:my-4 [&_img]:max-h-[600px] [&_img]:w-auto',
+          '[&_img]:rounded-2xl [&_img]:my-4 [&_img]:max-h-[600px] [&_img]:w-auto [&_img]:inline-block',
           '[&_table]:w-full [&_table]:border-collapse [&_table]:border [&_table]:border-outline-variant/50',
           '[&_td]:border [&_td]:border-outline-variant/50 [&_td]:p-2',
           '[&_th]:border [&_th]:border-outline-variant/50 [&_th]:p-2 [&_th]:bg-surface-variant/30',
@@ -71,11 +132,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Type here...', 
 
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      const currentSelection = editor.state.selection;
+      if (editor.isFocused) return; // Prevent overwriting content and cursor jumping while the user is actively typing
       editor.commands.setContent(value, { emitUpdate: false }); // false to not emit update
-      // We don't restore selection here as this is mostly for external updates
-      // Tiptap handles controlled input nicely but it's tricky. The current standard is uncontrolled with initial content, 
-      // but if we need controlled, we only update if content actually differs.
     }
   }, [value, editor]);
 
@@ -84,40 +142,53 @@ export function RichTextEditor({ value, onChange, placeholder = 'Type here...', 
   }
 
   const addImage = () => {
-    const url = window.prompt('Image URL');
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
+    fileInputRef.current?.click();
   };
 
-  const addYoutube = () => {
-    const url = window.prompt('YouTube URL');
-    if (url) {
-      editor.commands.setYoutubeVideo({ src: url });
-    }
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files) return;
+      Array.from(files).forEach(file => {
+          processFile(file, null, e as any);
+      });
+      if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+      }
   };
 
-  const setLink = () => {
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
+  const addYoutube = () => { setPromptState({ type: 'youtube', val1: '', val2: '' }); };
 
-    if (url === null) {
-      return;
+  const setLink = () => { const previousUrl = editor.getAttributes('link').href; setPromptState({ type: 'link', val1: previousUrl || '', val2: '' }); };
+
+  const insertTable = () => { setPromptState({ type: 'table', val1: '3', val2: '3' }); };
+
+  const handlePromptSubmit = () => {
+    if (promptState.type === 'link') {
+      if (promptState.val1 === '') {
+        editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      } else {
+        editor.chain().focus().extendMarkRange('link').setLink({ href: promptState.val1 }).run();
+      }
+    } else if (promptState.type === 'youtube') {
+      if (promptState.val1) {
+        editor.chain().focus().setYoutubeVideo({ src: promptState.val1 }).run();
+      }
+    } else if (promptState.type === 'table') {
+      const rows = parseInt(promptState.val1, 10);
+      const cols = parseInt(promptState.val2, 10);
+      if (rows && cols) {
+        editor.chain().focus().insertTable({ rows, cols, withHeaderRow: true }).run();
+      }
     }
-
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    setPromptState({ type: null, val1: '', val2: '' });
   };
 
-  const insertTable = () => {
-    const rows = window.prompt('Rows', '3');
-    const cols = window.prompt('Columns', '3');
-    if (rows && cols) {
-      editor.chain().focus().insertTable({ rows: parseInt(rows, 10), cols: parseInt(cols, 10), withHeaderRow: true }).run();
+  const handlePromptKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handlePromptSubmit();
+    } else if (e.key === 'Escape') {
+      setPromptState({ type: null, val1: '', val2: '' });
     }
   };
 
@@ -125,6 +196,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Type here...', 
     <button
       type="button"
       onClick={onClick}
+      onMouseDown={(e) => e.preventDefault()} // Prevent editor focus loss when clicking toolbar buttons
       disabled={disabled}
       title={title}
       className={cn(
@@ -162,6 +234,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Type here...', 
 
         <ToolbarButton onClick={setLink} isActive={editor.isActive('link')} icon={LinkIcon} title="Link" />
         <ToolbarButton onClick={addImage} isActive={false} icon={ImageIcon} title="Image" />
+        <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileUpload} />
         <ToolbarButton onClick={addYoutube} isActive={editor.isActive('youtube')} icon={YoutubeIcon} title="YouTube Video" />
         <ToolbarButton onClick={insertTable} isActive={editor.isActive('table')} icon={TableIcon} title="Table" />
         
@@ -170,6 +243,63 @@ export function RichTextEditor({ value, onChange, placeholder = 'Type here...', 
         <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} icon={Undo} title="Undo" />
         <ToolbarButton onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} icon={Redo} title="Redo" />
       </div>
+      {promptState.type && (
+        <div className="p-2 border-b border-outline-variant/30 bg-surface-variant/20 flex gap-2 items-center">
+          {promptState.type === 'link' && (
+            <>
+              <span className="text-xs font-bold text-on-surface-variant">URL:</span>
+              <input 
+                type="text" 
+                className="flex-1 px-2 py-1 text-sm rounded bg-surface border border-outline-variant/50 focus:border-primary outline-none" 
+                value={promptState.val1} 
+                onChange={e => setPromptState(prev => ({...prev, val1: e.target.value}))}
+                onKeyDown={handlePromptKeyDown}
+                placeholder="https://..."
+                autoFocus
+              />
+            </>
+          )}
+          {promptState.type === 'youtube' && (
+            <>
+              <span className="text-xs font-bold text-on-surface-variant">YouTube URL:</span>
+              <input 
+                type="text" 
+                className="flex-1 px-2 py-1 text-sm rounded bg-surface border border-outline-variant/50 focus:border-primary outline-none" 
+                value={promptState.val1} 
+                onChange={e => setPromptState(prev => ({...prev, val1: e.target.value}))}
+                onKeyDown={handlePromptKeyDown}
+                placeholder="https://youtube.com/..."
+                autoFocus
+              />
+            </>
+          )}
+          {promptState.type === 'table' && (
+            <>
+              <span className="text-xs font-bold text-on-surface-variant">Rows:</span>
+              <input 
+                type="number" 
+                className="w-16 px-2 py-1 text-sm rounded bg-surface border border-outline-variant/50 focus:border-primary outline-none" 
+                value={promptState.val1} 
+                onChange={e => setPromptState(prev => ({...prev, val1: e.target.value}))}
+                onKeyDown={handlePromptKeyDown}
+                min="1"
+                autoFocus
+              />
+              <span className="text-xs font-bold text-on-surface-variant">Cols:</span>
+              <input 
+                type="number" 
+                className="w-16 px-2 py-1 text-sm rounded bg-surface border border-outline-variant/50 focus:border-primary outline-none" 
+                value={promptState.val2} 
+                onChange={e => setPromptState(prev => ({...prev, val2: e.target.value}))}
+                onKeyDown={handlePromptKeyDown}
+                min="1"
+              />
+            </>
+          )}
+          <button type="button" onClick={handlePromptSubmit} className="px-3 py-1 bg-primary text-on-primary rounded text-xs font-bold">Apply</button>
+          <button type="button" onClick={() => setPromptState({ type: null, val1: '', val2: '' })} className="px-3 py-1 bg-surface-variant text-on-surface-variant rounded text-xs font-bold">Cancel</button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto min-h-0 relative">
         <EditorContent editor={editor} className="h-full" />

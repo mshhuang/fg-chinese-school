@@ -547,14 +547,16 @@ export default function TeacherAssignmentBoard() {
                                          }
                                      }
                                      
-                                     if (subAtts.length > 0 || rawText || isSubmitted) {
+                                     const cleanRawText = rawText ? rawText.replace(/<[^>]*>?/gm, '').trim() : '';
+                                     
+                                     if (subAtts.length > 0 || cleanRawText || isSubmitted) {
                                          return (
                                              <div className="flex flex-col gap-2 pt-3 mt-1 border-t border-outline-variant/20">
                                                  <span className="font-label text-xs font-bold text-on-surface-variant uppercase tracking-wider">Student Submission</span>
-                                                 {rawText && (
+                                                 {cleanRawText && (
                                                      <div className="tiptap-editor prose prose-sm sm:prose-base max-w-none font-body text-sm text-on-surface bg-surface p-2 rounded border border-outline-variant/30 px-3 py-2 min-h-[50px] break-normal" dangerouslySetInnerHTML={{ __html: rawText }} />
                                                  )}
-                                                 {!rawText && subAtts.length === 0 && (
+                                                 {!cleanRawText && subAtts.length === 0 && (
                                                      <div className="font-body text-sm text-on-surface-variant italic bg-surface p-2 rounded border border-outline-variant/30 px-3 py-2">
                                                          Blank submission (no text or attachments provided).
                                                      </div>
