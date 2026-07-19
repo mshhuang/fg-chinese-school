@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-import { Users, Plus, Trash2, Mail, Phone, Globe, FileText, Pencil, Filter, Wand2, Eye, EyeOff } from "lucide-react";
+import { Users, Plus, Trash2, Mail, Phone, Globe, FileText, Pencil, Filter, Wand2, Eye, EyeOff, X } from "lucide-react";
 
 export default function UserDirectoryTab() {
   const [users, setUsers] = useState<any[]>([]);
@@ -166,12 +166,49 @@ export default function UserDirectoryTab() {
     const currentRoleIds = userRoles.filter(ur => ur.user_id === user.user_id).map(ur => ur.role_id);
     setSelectedRoleIds(currentRoleIds);
     setShowAdd(true);
+    
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure?")) return;
-    await supabase.from('users').delete().eq('user_id', id);
-    fetchUsers();
+    if (!confirm("Are you sure? This will delete all associated records (enrollments, messages, logs, etc) and cannot be undone.")) return;
+    
+    // First fetch if the user is a teacher of any class
+    const { data: classData } = await supabase.from('classes').select('class_id').or(`primary_teacher_id.eq.${id},co_teacher_id.eq.${id},co_teachers.cs.{${id}}`);
+    if (classData && classData.length > 0) {
+      alert("Cannot delete this user because they are assigned to a class as a primary or co-teacher. Please reassign their classes first.");
+      return;
+    }
+
+    try {
+      await supabase.from('attendance').update({ marked_by: null }).eq('marked_by', id);
+      await supabase.from('school_events').update({ created_by: null }).eq('created_by', id);
+
+      await supabase.from('enrollments').delete().eq('student_id', id);
+      await supabase.from('assignment_students').delete().eq('student_id', id);
+      await supabase.from('attendance').delete().eq('student_id', id);
+      await supabase.from('parent_child').delete().eq('parent_id', id);
+      await supabase.from('parent_child').delete().eq('child_id', id);
+      await supabase.from('student_clock_ins').delete().eq('student_id', id);
+      await supabase.from('staff_clock_ins').delete().eq('user_id', id);
+      await supabase.from('internal_messages').delete().eq('sender_id', id);
+      await supabase.from('internal_messages').delete().eq('recipient_id', id);
+      await supabase.from('newsletters').delete().eq('author_id', id);
+      await supabase.from('announcements').delete().eq('author_id', id);
+      await supabase.from('announcements').delete().eq('created_by', id);
+      await supabase.from('announcement_replies').delete().eq('author_id', id);
+      await supabase.from('assignments').delete().eq('teacher_id', id);
+      await supabase.from('system_logs').delete().eq('user_id', id);
+      await supabase.from('error_logs').delete().eq('user_id', id);
+      await supabase.from('audit_logs').delete().eq('user_id', id);
+      await supabase.from('user_sessions').delete().eq('user_id', id);
+      await supabase.from('user_roles').delete().eq('user_id', id);
+
+      const { error } = await supabase.from('users').delete().eq('user_id', id);
+      if (error) throw error;
+      fetchUsers();
+    } catch (err: any) {
+      alert("Error deleting user: " + err.message);
+    }
   }
 
   const filteredUsers = users.filter(user => {
@@ -248,8 +285,12 @@ export default function UserDirectoryTab() {
          </div>
       )}
       {showAdd && (
-         <div className="bg-surface-container-low p-6 md:p-8 rounded-3xl border border-outline-variant/40 shadow-sm relative overflow-hidden">
-            <h3 className="font-title text-xl font-bold text-on-surface mb-6">{editingUserId ? 'Edit User' : 'Create New User'}</h3>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest p-6 md:p-8 border-l border-outline-variant/40 shadow-2xl relative overflow-y-auto w-full max-w-2xl h-full transition-transform transform translate-x-0">
+           <div className="flex justify-between items-center mb-6">
+             <h3 className="font-title text-xl font-bold text-on-surface">{editingUserId ? 'Edit User' : 'Create New User'}</h3>
+             <button type="button" onClick={() => setShowAdd(false)} className="text-on-surface-variant hover:text-on-surface"><X className="w-6 h-6" /></button>
+           </div>
             <form onSubmit={handleAddSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <div className="flex flex-col gap-2">
                  <label className="font-label text-sm font-bold text-on-surface-variant">First Name</label>
@@ -375,7 +416,8 @@ export default function UserDirectoryTab() {
                   <button type="button" onClick={() => setShowAdd(false)} className="border border-outline-variant px-8 py-3 rounded-full font-label font-bold text-on-surface-variant hover:bg-surface-variant transition-colors">Cancel</button>
                </div>
             </form>
-         </div>
+          </div>
+        </div>
       )}
 
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-3xl overflow-hidden shadow-sm">

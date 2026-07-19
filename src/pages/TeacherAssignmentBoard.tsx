@@ -498,7 +498,7 @@ export default function TeacherAssignmentBoard() {
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-outline-variant/20">
                     <div className="flex items-center gap-1.5 text-on-surface-variant text-sm font-label">
                       <Calendar className="w-4 h-4" />
-                      {a.due_date ? new Date(a.due_date).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'No due date'}
+                      {a.due_date ? new Date(a.due_date).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'}) : 'No due date'}
                     </div>
                     <button 
                       onClick={() => setExpandedAssignId(expandedAssignId === a.assignment_id ? null : a.assignment_id)}
@@ -547,12 +547,17 @@ export default function TeacherAssignmentBoard() {
                                          }
                                      }
                                      
-                                     if (subAtts.length > 0 || rawText) {
+                                     if (subAtts.length > 0 || rawText || isSubmitted) {
                                          return (
                                              <div className="flex flex-col gap-2 pt-3 mt-1 border-t border-outline-variant/20">
                                                  <span className="font-label text-xs font-bold text-on-surface-variant uppercase tracking-wider">Student Submission</span>
                                                  {rawText && (
-                                                     <p className="font-body text-sm text-on-surface whitespace-pre-wrap bg-surface p-2 rounded border border-outline-variant/30">{rawText}</p>
+                                                     <div className="tiptap-editor prose prose-sm sm:prose-base max-w-none font-body text-sm text-on-surface bg-surface p-2 rounded border border-outline-variant/30 px-3 py-2 min-h-[50px] break-normal" dangerouslySetInnerHTML={{ __html: rawText }} />
+                                                 )}
+                                                 {!rawText && subAtts.length === 0 && (
+                                                     <div className="font-body text-sm text-on-surface-variant italic bg-surface p-2 rounded border border-outline-variant/30 px-3 py-2">
+                                                         Blank submission (no text or attachments provided).
+                                                     </div>
                                                  )}
                                                  {subAtts.length > 0 && (
                                                      <div className="flex flex-wrap gap-2">

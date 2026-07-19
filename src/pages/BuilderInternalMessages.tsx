@@ -154,7 +154,7 @@ export default function BuilderInternalMessages() {
                       <td className="py-4 px-6 align-top">
                         <div className="flex items-center gap-2 text-sm text-on-surface-variant whitespace-nowrap">
                           <Calendar className="w-4 h-4" />
-                          {new Date(msg.sent_at).toLocaleString('en-US', { timeZone: 'America/New_York',  year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          {new Date(msg.sent_at).toLocaleString('en-US', { timeZone: 'America/New_York',  year: '2-digit', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' , timeZoneName: 'short'})}
                         </div>
                       </td>
                       <td className="py-4 px-6 align-top">

@@ -80,7 +80,7 @@ export default function PasswordReminderRequests() {
                            {passwordRequests.map((req) => (
                                <tr key={req.log_id || Math.random()} className="hover:bg-surface/50 transition-colors">
                                    <td className="py-3 text-sm text-on-surface">
-                                       {new Date(req.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}
+                                       {new Date(req.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'})}
                                    </td>
                                    <td className="py-3 text-sm font-bold text-on-surface">
                                        {req.data_changed?.username || req.user_name || "Unknown"}

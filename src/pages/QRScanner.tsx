@@ -131,7 +131,7 @@ export default function QRScanner() {
           await supabase.from('system_logs').insert({
             user_id: scannedUser.user_id,
             action_type: 'other',
-            activity: `Staff ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toISOString(), explanation },
+            activity: `Staff ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'}), explanation },
             user_name: `${scannedUser.first_name} ${scannedUser.last_name}`
           });
       } else {
@@ -145,7 +145,7 @@ export default function QRScanner() {
           await supabase.from('system_logs').insert({
             user_id: scannedUser.user_id,
             action_type: actionType,
-            activity: `Student ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toISOString(), explanation },
+            activity: `Student ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'}), explanation },
             user_name: `${scannedUser.first_name} ${scannedUser.last_name}`
           });
       }
@@ -174,7 +174,7 @@ export default function QRScanner() {
       }
 
       const now = new Date();
-      const timeString = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' });
+      const timeString = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' , timeZoneName: 'short'});
       const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
       setMessage({ type: 'success', text: `Successfully ${actionLabel} ${nameStr} at ${timeString}!` });
       setRecentActivity(prev => [{ name: nameStr, action: actionLabel, time: timeString }, ...prev].slice(0, 5));
@@ -201,7 +201,7 @@ export default function QRScanner() {
       await supabase.from('system_logs').insert({
         user_id: scannedUser.user_id,
         action_type: status,
-        activity: `User manually set to ${status}`, page_name: 'QR Scanner', data_changed: { time: new Date().toISOString(), manual_override: true },
+        activity: `User manually set to ${status}`, page_name: 'QR Scanner', data_changed: { time: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'}), manual_override: true },
         user_name: `${scannedUser.first_name} ${scannedUser.last_name}`
       });
 
@@ -247,7 +247,7 @@ export default function QRScanner() {
       }
 
       const now = new Date();
-      const timeString = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' });
+      const timeString = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' , timeZoneName: 'short'});
       const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
       setMessage({ type: 'success', text: `Status manually set to ${status.replace('school_', '').replace('_', ' ')} at ${timeString}!` });
       setRecentActivity(prev => [{ name: nameStr, action: `Manual: ${status.replace('school_', '').replace('_', ' ')}`, time: timeString }, ...prev].slice(0, 5));

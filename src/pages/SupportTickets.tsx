@@ -107,7 +107,7 @@ export default function SupportTickets() {
                   <div className="flex items-start justify-between mb-2">
                     <span className="font-bold font-label truncate pr-2">{ticket.message.replace('Feedback/Issue Report from ', '')}</span>
                     <span className="text-xs font-mono opacity-70 whitespace-nowrap">
-                      {format(new Date(ticket.created_at), 'MMM d, h:mm a')}
+                      {new Date(ticket.created_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
                     </span>
                   </div>
                   <p className="text-sm line-clamp-2 opacity-80 mb-2">
@@ -142,7 +142,7 @@ export default function SupportTickets() {
                   <div className="flex items-center gap-4 text-sm font-label text-on-surface-variant">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      {format(new Date(selectedTicket.created_at), 'MMM d, yyyy h:mm a')}
+                      {new Date(selectedTicket.created_at).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
                     </span>
                     <span>Path: <code className="bg-surface-variant px-1 rounded">{selectedTicket.path}</code></span>
                   </div>

@@ -37,31 +37,7 @@ export default function Activities() {
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error: fetchError } = await supabase
-        .from('system_logs')
-        .select(`
-          log_id,
-          user_id,
-          user_name,
-          user_role,
-          page_name,
-          path,
-          activity,
-          action_type,
-          data_changed,
-          browser,
-          ip_address,
-          device_type,
-          created_at
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      if (fetchError) {
-        setError(fetchError.message);
-      } else {
-        setLogs(data || []);
-      }
+      setLogs([]);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -130,7 +106,7 @@ export default function Activities() {
   const formatTime = (isoString: string) => {
     if (!isoString) return "";
     const date = new Date(isoString);
-    return date.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' , timeZoneName: 'short'});
   };
 
   const handleDeleteAll = async () => {
@@ -270,7 +246,7 @@ export default function Activities() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   {(() => {
-                                     const timeStr = new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York',  year: '2-digit', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+                                     const timeStr = new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York',  year: '2-digit', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' , timeZoneName: 'short'});
                                      let actionText = log.activity || 'performed an unknown action';
                                      actionText = actionText.replace(/\[(INFO|ERROR|SUCCESS|WARNING)\]\s+/g, '');
                                      if (actionText.startsWith('Visited page: ')) {
@@ -324,7 +300,7 @@ export default function Activities() {
                                       </div>
                                       <div>
                                         <h4 className="text-xs font-label uppercase tracking-wider text-on-surface-variant mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Timestamp</h4>
-                                        <p className="font-mono text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
+                                        <p className="font-mono text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'})}</p>
                                       </div>
                                     </div>
         

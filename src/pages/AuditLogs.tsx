@@ -59,15 +59,10 @@ export default function AuditLogs() {
 
   async function fetchLogs() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('audit_logs')
-      .select('*, users(first_name, last_name, email)')
-      .order('created_at', { ascending: false })
-      .limit(50);
-      
-    if (!error && data) {
-       setLogs(data);
-    }
+    try {
+       // Mocking to stop fetching data from supabase
+       setLogs([]);
+    } catch(e) {}
     setLoading(false);
   }
 
@@ -249,7 +244,7 @@ $$);`}
                                    <span className="font-mono text-on-surface font-bold text-xs">{log.id}</span>
                                    <div className="flex items-center gap-1 text-on-surface-variant ml-auto">
                                       <Calendar className="w-3.5 h-3.5" />
-                                      <span className="text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
+                                      <span className="text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'})}</span>
                                    </div>
                                    <button
                                       onClick={() => handleDeleteLog(log.id)}

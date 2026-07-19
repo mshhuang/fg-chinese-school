@@ -134,7 +134,7 @@ export default function StudentSchedule() {
                         const isEven = index % 2 === 0;
                         const badgeColors = ["#ff3385", "#4db8ff", "#e6ff00", "#85e6a3"];
                         const badgeColor = badgeColors[index % badgeColors.length];
-                        const dateText = event.date ? format(parse(event.date, 'yyyy-MM-dd', new Date()), 'M/d') : '';
+                        const dateText = event.date ? format(parse(event.date, 'yyyy-MM-dd', new Date()), 'd/M') : '';
                         const dayText = event.date ? format(parse(event.date, 'yyyy-MM-dd', new Date()), 'EEE.') : '';
                         
                         return (

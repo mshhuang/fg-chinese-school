@@ -22,7 +22,7 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
      
      if (anns && !fields) {
          const userIds = new Set<string>();
-         anns.forEach(a => {
+         (anns as any[]).forEach(a => {
              if (a.created_by) userIds.add(a.created_by);
              a.announcement_replies?.forEach((r: any) => {
                  if (r.user_id) userIds.add(r.user_id);
@@ -38,7 +38,7 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
                  roleMap[ur.user_id].push(ur);
              });
              
-             anns.forEach(a => {
+             (anns as any[]).forEach(a => {
                  if (a.users) (a.users as any).user_roles = roleMap[a.created_by] || [];
                  a.announcement_replies?.forEach((r: any) => {
                      if (r.users) (r.users as any).user_roles = roleMap[r.user_id] || [];

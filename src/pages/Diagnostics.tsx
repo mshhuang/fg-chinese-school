@@ -12,7 +12,6 @@ export default function Diagnostics() {
 
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [activeSessions, setActiveSessions] = useState<number>(0);
-  const [serverLoad, setServerLoad] = useState<string>("24%");
 
   useEffect(() => {
     async function checkSupabaseAndLoadLogs() {
@@ -60,12 +59,6 @@ export default function Diagnostics() {
     }
     checkSupabaseAndLoadLogs();
 
-    // Simulate real server load
-    const loadInterval = setInterval(() => {
-        setServerLoad(`${Math.floor(Math.random() * 15) + 15}%`);
-    }, 5000);
-
-    return () => clearInterval(loadInterval);
   }, []);
 
   const groupedLogs = useMemo(() => {
@@ -127,7 +120,7 @@ export default function Diagnostics() {
   const formatTime = (isoString: string) => {
     if (!isoString) return "";
     const date = new Date(isoString);
-    return date.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' , timeZoneName: 'short'});
   };
 
   return (
@@ -161,10 +154,9 @@ export default function Diagnostics() {
       </section>
 
       {/* Primary Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
          <MetricCard title="Total Users" value={totalUsers.toString()} change="Real-time count" icon={Users} trend="neutral" />
          <MetricCard title="Active Sessions" value={activeSessions.toString()} change="Live sessions" icon={Activity} trend="neutral" />
-         <MetricCard title="Server Load" value={serverLoad} change="Live monitoring" icon={Server} trend="neutral" />
          <MetricCard title="Pending Updates" value="0" change="Up to date" icon={RefreshCcw} trend="neutral" />
       </div>
 
@@ -312,7 +304,7 @@ export default function Diagnostics() {
                                        </div>
                                        <div>
                                          <h4 className="text-xs font-label uppercase tracking-wider text-on-surface-variant mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Timestamp</h4>
-                                         <p className="font-mono text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
+                                         <p className="font-mono text-xs">{new Date(log.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'})}</p>
                                        </div>
                                      </div>
 

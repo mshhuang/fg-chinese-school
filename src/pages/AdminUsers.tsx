@@ -27,7 +27,7 @@ import RoleIconsTab from '../components/admin/RoleIconsTab';
 
 export default function AdminUsers() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [roles, setRoles] = useState<{ role_id: number; role_name: string }[]>([]);
   const [userRoles, setUserRoles] = useState<{ user_id: string; role_id: number }[]>([]);
@@ -214,11 +214,7 @@ export default function AdminUsers() {
         setShowAdd(false);
         setEditingUserId(null);
         setSelectedRoleIds([]);
-        setFormData({
-          email: '', first_name: '', last_name: '', phone1: '', phone2: '',
-          school: '', grade: '', dob: '', user_name: '', address: '',
-          emergency_contact: '', medical_condition: '', status: 'Active'
-        });
+        setFormData({ email: '', first_name: '', last_name: '', phone1: '', phone2: '', school: '', grade: '', dob: '', user_name: '', password_hash: '', address: '', emergency_contact: '', medical_condition: '', status: 'Active' });
         fetchUsers();
       } else {
         if (error.code === '23505' || error.message?.toLowerCase().includes('duplicate')) {
@@ -292,6 +288,8 @@ export default function AdminUsers() {
     const currentRoleIds = userRoles.filter(ur => ur.user_id === user.user_id).map(ur => ur.role_id);
     setSelectedRoleIds(currentRoleIds);
     setShowAdd(true);
+    
+    
   }
 
   function cancelAdd() {
@@ -306,19 +304,56 @@ export default function AdminUsers() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure?")) return;
-    const userToDel = users.find(u => u.user_id === id);
-    await supabase.from('users').delete().eq('user_id', id);
-    if (userToDel) {
-       logSystemActivity(
-         "Admin Users",
-         "/admin/users",
-         `Deleted user ${userToDel.first_name} ${userToDel.last_name}`,
-         "delete",
-         { user_id: id }
-       );
+    if (!confirm("Are you sure? This will delete all associated records (enrollments, messages, logs, etc) and cannot be undone.")) return;
+    
+    // First fetch if the user is a teacher of any class
+    const { data: classData } = await supabase.from('classes').select('class_id').or(`primary_teacher_id.eq.${id},co_teacher_id.eq.${id},co_teachers.cs.{${id}}`);
+    if (classData && classData.length > 0) {
+      alert("Cannot delete this user because they are assigned to a class as a primary or co-teacher. Please reassign their classes first.");
+      return;
     }
-    fetchUsers();
+
+    try {
+      await supabase.from('attendance').update({ marked_by: null }).eq('marked_by', id);
+      await supabase.from('school_events').update({ created_by: null }).eq('created_by', id);
+      
+      await supabase.from('enrollments').delete().eq('student_id', id);
+      await supabase.from('assignment_students').delete().eq('student_id', id);
+      await supabase.from('attendance').delete().eq('student_id', id);
+      await supabase.from('parent_child').delete().eq('parent_id', id);
+      await supabase.from('parent_child').delete().eq('child_id', id);
+      await supabase.from('student_clock_ins').delete().eq('student_id', id);
+      await supabase.from('staff_clock_ins').delete().eq('user_id', id);
+      await supabase.from('internal_messages').delete().eq('sender_id', id);
+      await supabase.from('internal_messages').delete().eq('recipient_id', id);
+      await supabase.from('newsletters').delete().eq('author_id', id);
+      await supabase.from('announcements').delete().eq('author_id', id);
+      await supabase.from('announcements').delete().eq('created_by', id);
+      await supabase.from('announcement_replies').delete().eq('author_id', id);
+      await supabase.from('assignments').delete().eq('teacher_id', id);
+      await supabase.from('system_logs').delete().eq('user_id', id);
+      await supabase.from('error_logs').delete().eq('user_id', id);
+      await supabase.from('audit_logs').delete().eq('user_id', id);
+      await supabase.from('user_sessions').delete().eq('user_id', id);
+      await supabase.from('user_roles').delete().eq('user_id', id);
+
+      const userToDel = users.find((u: any) => u.user_id === id);
+      const { error } = await supabase.from('users').delete().eq('user_id', id);
+      if (error) throw error;
+
+      if (userToDel) {
+         logSystemActivity(
+           "Admin Users",
+           "/admin/users",
+           `Deleted user ${userToDel.first_name} ${userToDel.last_name}`,
+           "delete",
+           { user_id: id }
+         );
+      }
+      fetchUsers();
+    } catch (err: any) {
+      alert("Error deleting user: " + err.message);
+    }
   }
 
   async function handleAddRoleSubmit(e: React.FormEvent) {
@@ -363,6 +398,7 @@ export default function AdminUsers() {
     setEditingRoleId(role.role_id);
     setRoleName(role.role_name);
     setShowAddRole(true);
+    
   }
 
   async function handleDeleteRole(id: number) {

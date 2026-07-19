@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { BookOpen, Clock, CheckCircle2, ChevronRight, AlertCircle, FileText, Upload, X, ArrowLeft } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
+import { RichTextEditor } from "../components/RichTextEditor";
 
 export default function StudentAssignmentDetail() {
   const { id } = useParams();
@@ -97,6 +98,12 @@ export default function StudentAssignmentDetail() {
   const handleSubmitAssignment = async (assignmentStudentId: number) => {
     const atts = attachmentsByTask[assignmentStudentId] || [];
     let feedback = textByTask[assignmentStudentId] || '';
+
+    if (atts.length === 0 && !feedback.trim()) {
+        const confirmBlank = window.confirm("You are about to submit a blank assignment without any text or attachments. Are you sure you want to continue?");
+        if (!confirmBlank) return;
+    }
+
     if (atts.length > 0) {
        feedback += '\n\n---SUBMISSION_ATTACHMENTS---\n' + JSON.stringify(atts);
     }
@@ -204,7 +211,7 @@ export default function StudentAssignmentDetail() {
             )}
             <span className="text-outline-variant">•</span>
             <span className={cn("flex items-center gap-1.5 font-bold", isLate ? "text-error" : "text-on-surface")}>
-               <Clock className="w-4 h-4" /> Due: {assignData?.due_date ? new Date(assignData.due_date).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'No Due Date'}
+               <Clock className="w-4 h-4" /> Due: {assignData?.due_date ? new Date(assignData.due_date).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'}) : 'No Due Date'}
             </span>
           </p>
           
@@ -259,7 +266,7 @@ export default function StudentAssignmentDetail() {
                          {feedbackText && (
                              <div className="flex flex-col gap-2">
                                  <span className="font-label text-sm font-bold text-on-surface-variant">Your Report / Answers:</span>
-                                 <p className="font-body text-base text-on-surface whitespace-pre-wrap">{feedbackText}</p>
+                                 <div className="tiptap-editor prose prose-sm max-w-none font-body text-base text-on-surface px-0 py-0 break-normal" dangerouslySetInnerHTML={{ __html: feedbackText }} />
                              </div>
                          )}
                          {subAtts.length > 0 && (
@@ -293,11 +300,11 @@ export default function StudentAssignmentDetail() {
                  <div className="flex flex-col gap-6 bg-surface-container-low p-6 md:p-8 rounded-3xl border border-outline-variant/30">
                      <div className="flex flex-col gap-3">
                          <label className="font-label text-sm font-bold text-on-surface">Your Report / Answers</label>
-                         <textarea
+                         <RichTextEditor
                              value={textByTask[a.assignment_student_id] || ''}
-                             onChange={(e) => setTextByTask(prev => ({ ...prev, [a.assignment_student_id]: e.target.value }))}
+                             onChange={(content) => setTextByTask(prev => ({ ...prev, [a.assignment_student_id]: content }))}
                              placeholder="Type your response here..."
-                             className="w-full px-5 py-4 rounded-2xl border border-outline-variant/50 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none font-body bg-surface text-on-surface min-h-[150px] resize-y transition-all text-base"
+                             className="bg-surface rounded-2xl border border-outline-variant/50 transition-all font-body text-base min-h-[150px]"
                          />
                      </div>
                      <div className="flex flex-col gap-3">

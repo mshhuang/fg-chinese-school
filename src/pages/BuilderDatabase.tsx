@@ -317,7 +317,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}
                           Total REST Requests <ChevronRight className="w-4 h-4" />
                        </div>
                        <div className="mt-1 font-mono text-[13px] text-on-surface">
-                          {usageData?.total_rest_requests?.toLocaleString('en-US', { timeZone: 'America/New_York' }) || '0'} / 500,000 (<span className="text-on-surface-variant">&lt;1%</span>)
+                          {usageData?.total_rest_requests?.toLocaleString('en-US') || '0'} / 500,000 (<span className="text-on-surface-variant">&lt;1%</span>)
                        </div>
                     </div>
                     <svg className="w-6 h-6 -rotate-90 transform" viewBox="0 0 36 36">
@@ -333,7 +333,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}
                           Total Auth Requests <ChevronRight className="w-4 h-4" />
                        </div>
                        <div className="mt-1 font-mono text-[13px] text-on-surface">
-                          {usageData?.total_auth_requests?.toLocaleString('en-US', { timeZone: 'America/New_York' }) || '0'} / 50,000 (<span className="text-on-surface-variant">&lt;1%</span>)
+                          {usageData?.total_auth_requests?.toLocaleString('en-US') || '0'} / 50,000 (<span className="text-on-surface-variant">&lt;1%</span>)
                        </div>
                     </div>
                     <svg className="w-6 h-6 -rotate-90 transform" viewBox="0 0 36 36">
@@ -365,7 +365,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}
                           Total Storage Requests <ChevronRight className="w-4 h-4" />
                        </div>
                        <div className="mt-1 font-mono text-[13px] text-on-surface">
-                          {usageData?.total_storage_requests?.toLocaleString('en-US', { timeZone: 'America/New_York' }) || '0'} / 10,000 (<span className="text-on-surface-variant">&lt;1%</span>)
+                          {usageData?.total_storage_requests?.toLocaleString('en-US') || '0'} / 10,000 (<span className="text-on-surface-variant">&lt;1%</span>)
                        </div>
                     </div>
                     <svg className="w-6 h-6 -rotate-90 transform" viewBox="0 0 36 36">
@@ -381,7 +381,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}
                           Total Realtime Requests <ChevronRight className="w-4 h-4" />
                        </div>
                        <div className="mt-1 font-mono text-[13px] text-on-surface">
-                          {usageData?.total_realtime_requests?.toLocaleString('en-US', { timeZone: 'America/New_York' }) || '0'} / 2,000,000 (<span className="text-on-surface-variant">&lt;1%</span>)
+                          {usageData?.total_realtime_requests?.toLocaleString('en-US') || '0'} / 2,000,000 (<span className="text-on-surface-variant">&lt;1%</span>)
                        </div>
                     </div>
                     <svg className="w-6 h-6 -rotate-90 transform" viewBox="0 0 36 36">
@@ -549,7 +549,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}
                              </div>
                           </td>
                           <td className="px-6 py-4 font-mono text-sm text-on-surface-variant">
-                             {stat.count.toLocaleString('en-US', { timeZone: 'America/New_York' })}
+                             {stat.count.toLocaleString('en-US')}
                           </td>
                           <td className="px-6 py-4 font-mono text-sm text-on-surface-variant">
                              {stat.total_size || 'N/A'}

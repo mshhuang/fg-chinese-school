@@ -813,7 +813,7 @@ export default function AdminReports() {
                          {checkinLogs.map(log => (
                            <tr key={log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant whitespace-nowrap">
-                                {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' })}
+                                {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' , timeZoneName: 'short'})}
                              </td>
                              <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
                                 {log.users ? `${log.users.first_name} ${log.users.last_name}` : 'Unknown Student'}
@@ -882,7 +882,7 @@ export default function AdminReports() {
                          {staffClockLogs.map(log => (
                            <tr key={log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
                              <td className="py-3 px-4 font-body text-sm text-on-surface-variant whitespace-nowrap">
-                                {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' })}
+                                {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' , timeZoneName: 'short'})}
                              </td>
                              <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
                                 {log.users ? formatTeacherName(log.users.first_name, log.users.last_name, 'Teacher') : 'Unknown Staff'}
@@ -973,7 +973,7 @@ export default function AdminReports() {
                              return (
                                <tr key={log.log_id || log.id} className="border-b border-outline-variant/20 hover:bg-surface-variant/30 print:border-b-black/20 print:break-inside-avoid">
                                  <td className="py-3 px-4 font-body text-sm text-on-surface">
-                                    {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York' })}
+                                    {new Date(log.created_at).toLocaleTimeString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'})}
                                  </td>
                                  <td className="py-3 px-4 font-body text-sm font-medium text-on-surface">
                                     {log.user_name || 'Unknown User'}

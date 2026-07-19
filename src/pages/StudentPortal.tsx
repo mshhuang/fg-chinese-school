@@ -226,8 +226,8 @@ export default function StudentPortal() {
               <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
                 if (!checkInTime) return `${userName} is in the school`;
                 const d = new Date(checkInTime);
-                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
-                const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' , timeZoneName: 'short'});
+                const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
                 return `${userName} arrived at school at ${timeStr} on ${dateStr}`;
               })() : checkInStatus === 'checked_out' ? `${userName} is ready to go home` : 'Not Checked In'}
             </span>

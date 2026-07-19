@@ -5,6 +5,10 @@ export function ErrorDisplay({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleErr = (e: ErrorEvent) => {
+      const msg = e.message || '';
+      if (msg.includes('WebSocket closed') || msg.includes('failed to connect to websocket')) {
+          return;
+      }
       setError(e.message + "\n" + e.error?.stack);
     };
 

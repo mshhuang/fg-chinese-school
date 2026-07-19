@@ -9,7 +9,6 @@ export default function BuilderDashboard() {
   const navigate = useNavigate();
   const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
   const [totalUsersCount, setTotalUsersCount] = useState<number>(0);
-  const [serverLoad, setServerLoad] = useState<string>("24%");
   const [isMaintenance, setIsMaintenance] = useState(localStorage.getItem('system_maintenance') === 'true');
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -94,15 +93,6 @@ export default function BuilderDashboard() {
     
     
     
-    // Simulate server load
-    const loadInterval = setInterval(() => {
-        setServerLoad(`${Math.floor(Math.random() * 15) + 15}%`);
-    }, 5000);
-
-    return () => {
-      
-      clearInterval(loadInterval);
-    };
   }, []);
 
   const toggleMaintenance = () => {
@@ -190,18 +180,6 @@ export default function BuilderDashboard() {
              </div>
           </div>
 
-          {/* Server Load KPI */}
-          <div className="bg-surface-container-low rounded-3xl p-6 border border-outline-variant/30 shadow-sm flex items-center gap-4">
-             <div className="w-12 h-12 bg-secondary-container text-secondary rounded-xl flex items-center justify-center shrink-0">
-                 <Server className="w-6 h-6" />
-             </div>
-             <div>
-                <p className="text-sm font-label font-bold text-on-surface-variant uppercase tracking-wider mb-1">Server Load</p>
-                <div className="flex items-center gap-2">
-                   <h2 className="font-title text-3xl font-bold text-on-surface">{serverLoad}</h2>
-                </div>
-             </div>
-          </div>
 
           {/* System Online Status KPI */}
           <div className="bg-surface-container-low rounded-3xl p-6 border border-outline-variant/30 shadow-sm flex items-center gap-4">

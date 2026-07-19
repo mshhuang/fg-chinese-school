@@ -5,38 +5,8 @@ import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { BuilderIconCustom, AdminIconCustom, StaffIconCustom, VolunteerIconCustom, TeacherIconCustom, StudentIconCustom } from "../components/icons";
 import { logSystemActivity } from "../lib/logger";
-import { Video, Link as LinkIcon, Image as ImageIcon } from "lucide-react";
-import ReactQuill, { Quill } from 'react-quill-new';
-import 'react-quill-new/dist/quill.snow.css';
-import MagicUrl from 'quill-magic-url';
-
-Quill.register('modules/magicUrl', MagicUrl);
-
-const modules = {
-  toolbar: {
-    container: [
-      [{ 'header': [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-      [{'list': 'ordered'}, {'list': 'bullet'}, {'indent': '-1'}, {'indent': '+1'}],
-      ['link', 'image', 'video'],
-      ['clean']
-    ],
-    handlers: {
-      video: function() {
-        document.dispatchEvent(new CustomEvent('open-quill-modal', { detail: { type: 'video', quill: this.quill } }));
-      },
-      link: function(value: any) {
-        if (value) {
-            document.dispatchEvent(new CustomEvent('open-quill-modal', { detail: { type: 'link', quill: this.quill } }));
-        } else {
-            // @ts-ignore
-            this.quill.format('link', false);
-        }
-      }
-    }
-  },
-  magicUrl: true
-};
+import { Video, Link as LinkIcon, Image as ImageIcon, Smile } from "lucide-react";
+import { RichTextEditor } from "../components/RichTextEditor";
 
 export default function Announcements() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -56,12 +26,12 @@ export default function Announcements() {
   const [composeAttachments, setComposeAttachments] = useState<{name: string, url: string}[]>([]);
   const [audienceMode, setAudienceMode] = useState("all"); // 'all', 'roles', 'classes', 'users'
   const [targetRoleIds, setTargetRoleIds] = useState<number[]>([]);
-  const [quillModal, setQuillModal] = useState<{ isOpen: boolean, type: 'video' | 'link', quill: any, url: string }>({ isOpen: false, type: 'video', quill: null, url: '' });
-  const [targetClassIds, setTargetClassIds] = useState<string[]>([]);
+      const [targetClassIds, setTargetClassIds] = useState<string[]>([]);
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPostingRole, setSelectedPostingRole] = useState<string>("");
 
+  
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -98,11 +68,6 @@ export default function Announcements() {
 
   useEffect(() => {
     fetchData();
-    const handleQuillModal = (e: any) => {
-        setQuillModal({ isOpen: true, type: e.detail.type, quill: e.detail.quill, url: '' });
-    };
-    document.addEventListener('open-quill-modal', handleQuillModal);
-    return () => document.removeEventListener('open-quill-modal', handleQuillModal);
   }, []);
 
   useEffect(() => {
@@ -209,49 +174,7 @@ export default function Announcements() {
       setter(prev => prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]);
   };
 
-  const handleQuillModalSubmit = () => {
-    if (!quillModal.url.trim()) return;
-    
-    let finalUrl = quillModal.url;
-    try {
-        const urlWithProto = finalUrl.startsWith('http') ? finalUrl : `https://${finalUrl}`;
-        if (quillModal.type === 'video') {
-            const urlObj = new URL(urlWithProto);
-            if (urlObj.hostname.includes('youtube.com') && urlObj.searchParams.has('v')) {
-                finalUrl = `https://www.youtube.com/embed/${urlObj.searchParams.get('v')}`;
-            } else if (urlObj.hostname.includes('youtu.be')) {
-                finalUrl = `https://www.youtube.com/embed/${urlObj.pathname.slice(1)}`;
-            } else if (urlObj.hostname.includes('vimeo.com')) {
-                finalUrl = `https://player.vimeo.com/video/${urlObj.pathname.split('/')[1]}`;
-            } else {
-                finalUrl = urlWithProto;
-            }
-        } else {
-            finalUrl = urlWithProto;
-        }
-    } catch (e) {
-        console.error("Error parsing URL", e);
-        finalUrl = quillModal.url;
-    }
-
-    const quill = quillModal.quill;
-    if (quill) {
-        const range = quill.getSelection(true) || { index: 0, length: 0 };
-        if (quillModal.type === 'video') {
-            quill.insertEmbed(range.index, 'video', finalUrl);
-            quill.setSelection(range.index + 1);
-        } else {
-            if (range.length > 0) {
-                quill.format('link', finalUrl);
-            } else {
-                quill.insertText(range.index, finalUrl, 'link', finalUrl);
-                quill.setSelection(range.index + finalUrl.length);
-            }
-        }
-    }
-    setQuillModal({ isOpen: false, type: 'video', quill: null, url: '' });
-  };
-
+  
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -468,7 +391,7 @@ export default function Announcements() {
                <Loader2 className="w-8 h-8 animate-spin text-primary" />
            </div>
        ) : (
-           <div className="max-w-4xl flex flex-col gap-6">
+           <div className="max-w-6xl flex flex-col gap-6 w-full">
               {filteredAnnouncements.map(ann => {
                   const isTeacher = ann.users?.user_roles?.some((ur: any) => ur.roles?.role_name === 'Teacher');
                   const authorName = ann.users ? (isTeacher ? formatTeacherName(ann.users.first_name, ann.users.last_name) : `${ann.users.first_name} ${ann.users.last_name}`) : "System / Unknown";
@@ -558,13 +481,7 @@ export default function Announcements() {
                                          value={editAnnTitleStr} onChange={(e) => setEditAnnTitleStr(e.target.value)}
                                      />
                                      <div className="bg-surface rounded-xl border border-outline-variant/50 ">
-                                       <ReactQuill 
-                                         theme="snow"
-                                         value={editAnnContentStr}
-                                         onChange={setEditAnnContentStr}
-                                         modules={modules}
-                                         className="bg-surface text-base h-64 pb-10"
-                                       />
+                                       <RichTextEditor value={editAnnContentStr} onChange={setEditAnnContentStr} className="h-[400px]" />
                                      </div>
                                      <div className="flex gap-2 justify-end mt-2">
                                          <button onClick={() => setEditingAnnId(null)} className="px-4 py-2 rounded-full font-label text-sm hover:bg-surface-variant">Cancel</button>
@@ -575,7 +492,7 @@ export default function Announcements() {
                                  <>
                                      {ann.title && <h4 className="font-display text-2xl font-bold text-on-surface mb-3">{ann.title}</h4>}
                                      <div className="ql-snow">
-                                         <div className="ql-editor font-body text-lg text-on-surface-variant mb-2 leading-relaxed prose prose-sm sm:prose-base max-w-none [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-2xl [&_iframe]:my-4 [&_img]:rounded-2xl [&_img]:my-4 [&_img]:max-h-[600px] [&_img]:w-auto px-0 py-0" dangerouslySetInnerHTML={{ __html: displayContent }} />
+                                         <div className="tiptap-editor font-body text-lg text-on-surface-variant mb-2 leading-relaxed prose prose-sm sm:prose-base max-w-none [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-2xl [&_iframe]:my-4 [&_img]:rounded-2xl [&_img]:my-4 [&_img]:max-h-[600px] [&_img]:w-auto px-0 py-0 break-normal" dangerouslySetInnerHTML={{ __html: displayContent }} />
                                      </div>
                                      {attachments.length > 0 && (
                                         <div className="flex flex-wrap gap-2 mt-4">
@@ -707,7 +624,7 @@ export default function Announcements() {
        {/* Compose Dialog */}
        {showCompose && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-               <div className="bg-surface-container-lowest w-full max-w-2xl rounded-3xl shadow-2xl  flex flex-col max-h-[90vh]">
+               <div className="bg-surface-container-lowest w-full max-w-7xl rounded-3xl shadow-2xl  flex flex-col max-h-[90vh]">
                    <div className="px-6 py-4 border-b border-outline-variant/20 flex justify-between items-center bg-surface shrink-0">
                        <h2 className="font-title text-xl font-bold text-on-surface flex items-center gap-2"><Plus className="w-5 h-5 text-primary"/> Compose Announcement</h2>
                        <button onClick={() => setShowCompose(false)} className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors"><X className="w-5 h-5" /></button>
@@ -911,13 +828,7 @@ export default function Announcements() {
                        <div className="flex-1 flex flex-col">
                            <label className="block font-label text-sm uppercase tracking-wider font-bold text-on-surface-variant mb-2">Message</label>
                            <div className="bg-surface rounded-xl border border-outline-variant/50 ">
-                               <ReactQuill 
-                                 theme="snow"
-                                 value={composeContent} 
-                                 onChange={setComposeContent}
-                                 modules={modules}
-                                 className="h-[300px] pb-10"
-                               />
+                               <RichTextEditor value={composeContent} onChange={setComposeContent} className="h-[500px]" />
                            </div>
                            
                            <div className="mt-4">
@@ -955,43 +866,6 @@ export default function Announcements() {
           </div>
        )}
 
-       {/* Quill Modal */}
-       {quillModal.isOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-               <div className="bg-surface-container-lowest w-full max-w-md rounded-3xl shadow-2xl flex flex-col overflow-hidden">
-                   <div className="px-6 py-4 border-b border-outline-variant/20 flex justify-between items-center bg-surface shrink-0">
-                       <h2 className="font-title text-xl font-bold text-on-surface flex items-center gap-2">
-                           {quillModal.type === 'video' ? <Video className="w-5 h-5 text-primary"/> : <LinkIcon className="w-5 h-5 text-primary"/>} 
-                           {quillModal.type === 'video' ? 'Insert Video URL' : 'Insert Link URL'}
-                       </h2>
-                       <button onClick={() => setQuillModal(prev => ({...prev, isOpen: false}))} className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors"><X className="w-5 h-5" /></button>
-                   </div>
-                   <div className="p-6 flex flex-col gap-4">
-                       <p className="font-body text-sm text-on-surface-variant">
-                           {quillModal.type === 'video' ? "Paste a link from YouTube or Vimeo. It will be automatically converted to an embedded video." : "Paste the website URL you want to link to."}
-                       </p>
-                       <input
-                           autoFocus
-                           type="text"
-                           placeholder={quillModal.type === 'video' ? "https://www.youtube.com/watch?v=..." : "https://example.com"}
-                           className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary font-body outline-none"
-                           value={quillModal.url}
-                           onChange={(e) => setQuillModal(prev => ({...prev, url: e.target.value}))}
-                           onKeyDown={(e) => {
-                               if (e.key === 'Enter') {
-                                   e.preventDefault();
-                                   handleQuillModalSubmit();
-                               }
-                           }}
-                       />
-                       <div className="flex gap-3 justify-end mt-2">
-                           <button onClick={() => setQuillModal(prev => ({...prev, isOpen: false}))} className="px-6 py-2.5 rounded-full font-label text-sm hover:bg-surface-variant font-bold">Cancel</button>
-                           <button onClick={handleQuillModalSubmit} className="bg-primary text-on-primary px-6 py-2.5 rounded-full font-label font-bold text-sm hover:bg-primary/90 shadow-sm">Insert {quillModal.type === 'video' ? 'Video' : 'Link'}</button>
-                       </div>
-                   </div>
-               </div>
-          </div>
-       )}
     </div>
   );
 }

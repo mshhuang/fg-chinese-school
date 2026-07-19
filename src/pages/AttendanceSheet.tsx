@@ -338,8 +338,8 @@ export default function AttendanceSheet() {
                                            ? (() => {
                                                 if (!clockInTimes[s.student_id]) return `${s.first_name} is in the school`;
                                                 const d = new Date(clockInTimes[s.student_id]);
-                                                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
-                                                const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+                                                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' , timeZoneName: 'short'});
+                                                const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
                                                 return `${s.first_name} arrived at school at ${timeStr} on ${dateStr}`;
                                              })()
                                            : clockIns[s.student_id] === 'checked_out' ? `${s.first_name} is ready to go home` : 'Not Arrived'}

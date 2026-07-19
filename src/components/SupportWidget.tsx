@@ -123,6 +123,7 @@ export default function SupportWidget() {
         } catch(e) {}
       }
 
+      const finalUserId = (userId && userId !== 'demo' && userId !== 'builder_secret') ? userId : BUILDER_USER_ID;
       
       // Also notify builder via internal messages
       let messageBody = `**Issue Report from ${userName}**\n\n**Page:** ${window.location.pathname}\n\n**Description:**\n${description}`;
@@ -131,7 +132,7 @@ export default function SupportWidget() {
       }
 
       await supabase.from('internal_messages').insert({
-        sender_id: userId || BUILDER_USER_ID, // fallback to builder if anonymous so it doesn't fail foreign key
+        sender_id: finalUserId, // fallback to builder if anonymous or demo so it doesn't fail foreign key
         recipient_id: BUILDER_USER_ID,
         subject: `[Support Ticket] Issue on ${window.location.pathname}`,
         body: messageBody,

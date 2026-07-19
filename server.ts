@@ -68,6 +68,32 @@ async function getAllLocalFiles(dir, fileList = [], baseDir = dir) {
     return fileList;
 }
 
+  app.post('/api/gemini/generate', express.json(), async (req, res) => {
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+      const { prompt } = req.body;
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: "You are a helpful AI assistant for parents using the school portal. Answer questions politely and concisely.",
+        }
+      });
+      res.json({ text: response.text });
+    } catch (error: any) {
+      console.error('Gemini error:', error);
+      res.status(500).json({ error: error.message || 'Error communicating with Gemini' });
+    }
+  });
+
   app.post('/api/github/sync', express.json({limit: '50mb'}), async (req, res) => {
     const { pat, owner, repo, branch = 'main', syncAll, message = 'Sync from AI Studio' } = req.body;
     if (!pat || !owner || !repo) return res.status(400).json({ error: 'Missing pat, owner, or repo' });

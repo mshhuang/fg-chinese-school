@@ -1,3 +1,4 @@
+
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -11,6 +12,10 @@ import { logSystemEvent } from './lib/logSystemEvent';
 
 // Global error handlers
 window.addEventListener('error', (event) => {
+  const msg = event.message || '';
+  if (msg.includes('WebSocket closed') || msg.includes('failed to connect to websocket')) {
+      return;
+  }
   logSystemEvent('error', `Global Error: ${event.message}`, event.error?.stack, window.location.pathname);
 });
 window.addEventListener('unhandledrejection', (event) => {

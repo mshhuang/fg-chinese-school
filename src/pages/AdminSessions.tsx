@@ -179,10 +179,10 @@ DROP POLICY IF EXISTS "user_sessions_policy" ON user_sessions; CREATE POLICY "us
                              </span>
                           </td>
                           <td className="p-4 text-on-surface-variant">
-                             {new Date(s.login_time).toLocaleString('en-US', { timeZone: 'America/New_York' })}
+                             {new Date(s.login_time).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'})}
                           </td>
                           <td className="p-4 text-on-surface-variant">
-                             {s.logout_time ? new Date(s.logout_time).toLocaleString('en-US', { timeZone: 'America/New_York' }) : <span className="text-primary font-bold bg-primary-container/20 px-2 py-0.5 rounded-full text-xs">Active</span>}
+                             {s.logout_time ? new Date(s.logout_time).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'}) : <span className="text-primary font-bold bg-primary-container/20 px-2 py-0.5 rounded-full text-xs">Active</span>}
                           </td>
                           <td className="p-4">
                              <div className="flex items-center gap-2 max-w-[200px]" title={s.user_agent}>

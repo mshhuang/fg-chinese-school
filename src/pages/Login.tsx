@@ -224,7 +224,10 @@ export default function Login() {
           // Also log the login activity
           let ipAddress = 'Unknown';
           try {
-             const res = await fetch('https://api.ipify.org?format=json');
+             const controller = new AbortController();
+             const timeoutId = setTimeout(() => controller.abort(), 1500);
+             const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+             clearTimeout(timeoutId);
              if (res.ok) {
                 const data = await res.json();
                 ipAddress = data.ip;

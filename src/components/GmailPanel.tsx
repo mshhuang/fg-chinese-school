@@ -202,7 +202,7 @@ export function GmailPanel() {
                  <p className="font-label text-sm">From: <span className="text-on-surface-variant font-body">{activeMessage.from}</span></p>
                  <p className="font-label text-sm">To: <span className="text-on-surface-variant font-body">{activeMessage.to}</span></p>
                </div>
-               <p className="font-caption text-xs text-on-surface-variant">{new Date(activeMessage.date).toLocaleString('en-US', { timeZone: 'America/New_York' })}</p>
+               <p className="font-caption text-xs text-on-surface-variant">{new Date(activeMessage.date).toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'})}</p>
              </div>
            </div>
 

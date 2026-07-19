@@ -345,8 +345,8 @@ export default function StaffAttendance() {
                                  if (status === 'Present') {
                                     if (clockInTimes[student.student_id]) {
                                        const d = new Date(clockInTimes[student.student_id]);
-                                       const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
-                                       const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+                                       const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' , timeZoneName: 'short'});
+                                       const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
                                        displayStatus = `${student.first_name} arrived at school at ${timeStr} on ${dateStr}`;
                                     } else {
                                        displayStatus = 'Present (In School)';

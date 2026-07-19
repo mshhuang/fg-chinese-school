@@ -73,10 +73,11 @@ export default function TeacherNewsletters() {
         }
 
         const parsed = data.map((item: any) => {
+           const formattedDate = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
            try {
-             return { id: item.newsletter_id, title: item.title, author: item.author_id, ...JSON.parse(item.content || "{}") };
+             return { id: item.newsletter_id, title: item.title, author: item.author_id, ...JSON.parse(item.content || "{}"), date: formattedDate };
            } catch {
-             return { id: item.newsletter_id, title: item.title, content: item.content, status: "Published" };
+             return { id: item.newsletter_id, title: item.title, content: item.content, status: "Published", date: formattedDate };
            }
         });
         setNewsletters(parsed);

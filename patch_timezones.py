@@ -4,31 +4,30 @@ import re
 def process_file(filepath):
     with open(filepath, 'r') as f:
         content = f.read()
+    
+    orig = content
+    
+    def repl(m):
+        inner = m.group(1).replace(", timeZoneName: 'short'", "")
+        return f"toLocaleTimeString('en-US', {{{inner}, timeZoneName: 'short'}})"
 
-    original_content = content
+    content = re.sub(
+        r"toLocaleTimeString\('en-US',\s*\{([^}]*timeZone:\s*'America/New_York'[^}]*)\}\)",
+        repl,
+        content
+    )
     
-    # toLocaleString() -> toLocaleString('en-US', { timeZone: 'America/New_York' })
-    content = content.replace(".toLocaleString()", ".toLocaleString('en-US', { timeZone: 'America/New_York' })")
-    
-    # toLocaleString([], { ... }) -> toLocaleString('en-US', { timeZone: 'America/New_York', ... })
-    content = re.sub(r"\.toLocaleString\(\s*\[\]\s*,\s*\{", r".toLocaleString('en-US', { timeZone: 'America/New_York', ", content)
+    def repl2(m):
+        inner = m.group(1).replace(", timeZoneName: 'short'", "")
+        return f"toLocaleString('en-US', {{{inner}, timeZoneName: 'short'}})"
 
-    # toLocaleDateString() -> toLocaleDateString('en-US', { timeZone: 'America/New_York' })
-    content = content.replace(".toLocaleDateString()", ".toLocaleDateString('en-US', { timeZone: 'America/New_York' })")
-    
-    # toLocaleDateString('en-US', { ... }) -> toLocaleDateString('en-US', { timeZone: 'America/New_York', ... })
-    content = re.sub(r"\.toLocaleDateString\(\s*'en-US'\s*,\s*\{", r".toLocaleDateString('en-US', { timeZone: 'America/New_York', ", content)
+    content = re.sub(
+        r"toLocaleString\('en-US',\s*\{([^}]*timeZone:\s*'America/New_York'[^}]*)\}\)",
+        repl2,
+        content
+    )
 
-    # toLocaleTimeString() -> toLocaleTimeString('en-US', { timeZone: 'America/New_York' })
-    content = content.replace(".toLocaleTimeString()", ".toLocaleTimeString('en-US', { timeZone: 'America/New_York' })")
-    
-    # toLocaleTimeString([], { ... }) -> toLocaleTimeString('en-US', { timeZone: 'America/New_York', ... })
-    content = re.sub(r"\.toLocaleTimeString\(\s*\[\]\s*,\s*\{", r".toLocaleTimeString('en-US', { timeZone: 'America/New_York', ", content)
-    
-    # toLocaleTimeString('en-US', { ... }) -> toLocaleTimeString('en-US', { timeZone: 'America/New_York', ... })
-    content = re.sub(r"\.toLocaleTimeString\(\s*'en-US'\s*,\s*\{", r".toLocaleTimeString('en-US', { timeZone: 'America/New_York', ", content)
-    
-    if content != original_content:
+    if content != orig:
         with open(filepath, 'w') as f:
             f.write(content)
         print(f"Patched {filepath}")

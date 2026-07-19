@@ -5,6 +5,7 @@ import { QRCodeBadge } from "../components/QRCodeBadge";
 import { QrCode } from "lucide-react";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
+import { ParentChatbot } from "../components/ParentChatbot";
 
 export default function ParentPortal() {
   const [activeChild, setActiveChild] = useState<string>("mei");
@@ -189,8 +190,8 @@ export default function ParentPortal() {
                        const cName = children.find(c => c.user_id === activeChild)?.first_name || (activeChild === 'mei' ? 'Mei' : activeChild === 'wei' ? 'Wei' : 'Student');
                        if (!checkInTime) return `${cName} is in the school`;
                        const d = new Date(checkInTime);
-                       const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' });
-                       const dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+                       const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' , timeZoneName: 'short'});
+                       const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
                        return `${cName} arrived at school at ${timeStr} on ${dateStr}`;
                     })() : checkInStatus === 'checked_out' ? `${children.find(c => c.user_id === activeChild)?.first_name || (activeChild === 'mei' ? 'Mei' : activeChild === 'wei' ? 'Wei' : 'Student')} is ready to go home` : 'Not Checked In'}
                  </span>
@@ -309,6 +310,7 @@ export default function ParentPortal() {
          />
       )}
 
+      <ParentChatbot />
     </div>
   );
 }
