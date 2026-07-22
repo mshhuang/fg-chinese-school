@@ -24,6 +24,7 @@ export default function Announcements() {
   const [composeTitle, setComposeTitle] = useState("");
   const [composeContent, setComposeContent] = useState("");
   const [composeAttachments, setComposeAttachments] = useState<{name: string, url: string}[]>([]);
+  const [isSystemAnnouncement, setIsSystemAnnouncement] = useState(false);
   const [audienceMode, setAudienceMode] = useState("all"); // 'all', 'roles', 'classes', 'users'
   const [targetRoleIds, setTargetRoleIds] = useState<number[]>([]);
       const [targetClassIds, setTargetClassIds] = useState<string[]>([]);
@@ -193,7 +194,7 @@ export default function Announcements() {
        return;
     }
 
-    let encodedContent = selectedPostingRole ? `$$_role:${selectedPostingRole}_$$${composeContent}` : composeContent;
+    let encodedContent = isSystemAnnouncement ? `$$_is_system:true_$$${composeContent}` : (selectedPostingRole ? `$$_role:${selectedPostingRole}_$$${composeContent}` : composeContent);
     if (composeAttachments.length > 0) {
         encodedContent += `\n\n---ATTACHMENTS---\n${JSON.stringify(composeAttachments)}`;
     }
@@ -221,6 +222,7 @@ export default function Announcements() {
        setComposeTitle("");
        setComposeContent("");
        setComposeAttachments([]);
+       setIsSystemAnnouncement(false);
        setAudienceMode("all");
        setTargetRoleIds([]);
        setTargetClassIds([]);
@@ -283,11 +285,18 @@ export default function Announcements() {
       fetchData();
   };
 
-  const handleEditAnnouncementSub = async (annId: string, authorRole: string) => {
+  const handleEditAnnouncementSub = async (annId: string, authorRole: string, isSystem: boolean, attachments: any[]) => {
       if (!editAnnContentStr.trim()) return;
-      // Always use the explicitly selected posting role if available, otherwise fallback to the current authorRole
-      const finalRole = selectedPostingRole || authorRole;
-      const encodedContent = `$$_role:${finalRole}_$$${editAnnContentStr}`;
+      let encodedContent = editAnnContentStr;
+      if (isSystem) {
+          encodedContent = `$$_is_system:true_$$${editAnnContentStr}`;
+      } else {
+          const finalRole = selectedPostingRole || authorRole;
+          encodedContent = `$$_role:${finalRole}_$$${editAnnContentStr}`;
+      }
+      if (attachments && attachments.length > 0) {
+          encodedContent += `\n\n---ATTACHMENTS---\n${JSON.stringify(attachments)}`;
+      }
       await supabase.from('announcements').update({ title: editAnnTitleStr, content: encodedContent }).eq('announcement_id', annId);
       
       logSystemActivity(
@@ -403,12 +412,19 @@ export default function Announcements() {
            <div className="max-w-6xl flex flex-col gap-6 w-full">
               {filteredAnnouncements.map(ann => {
                   const isTeacher = ann.users?.user_roles?.some((ur: any) => ur.roles?.role_name === 'Teacher');
-                  const authorName = ann.users ? (isTeacher ? formatTeacherName(ann.users.first_name, ann.users.last_name) : `${ann.users.first_name} ${ann.users.last_name}`) : "System / Unknown";
-                  const audienceInfo = extractAudienceStr(ann);
-                  const replies = ann.announcement_replies || [];
                   
                   let displayContent = ann.content || "";
                   let authorRole = getPrimaryRole(ann.users);
+                  let isSystem = false;
+                  if (displayContent.includes('$$_is_system:true_$$')) {
+                      isSystem = true;
+                      authorRole = "System";
+                      displayContent = displayContent.replace('$$_is_system:true_$$', '');
+                  }
+
+                  const authorName = isSystem ? "System Announcement" : (ann.users ? (isTeacher ? formatTeacherName(ann.users.first_name, ann.users.last_name) : `${ann.users.first_name} ${ann.users.last_name}`) : "System / Unknown");
+                  const audienceInfo = extractAudienceStr(ann);
+                  const replies = ann.announcement_replies || [];
                   
                   // Match $$_role: Role_$$ Content... or slightly malformed variants
                   const roleMatch = displayContent.match(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*(.*)/is);
@@ -516,7 +532,7 @@ export default function Announcements() {
                                      )}
                                      <div className="flex gap-2 justify-end mt-2">
                                          <button onClick={() => { setEditingAnnId(null); setSelectedPostingRole(""); }} className="px-4 py-2 rounded-full font-label text-sm hover:bg-surface-variant">Cancel</button>
-                                         <button onClick={() => { handleEditAnnouncementSub(ann.announcement_id, authorRole); setSelectedPostingRole(""); }} className="bg-primary text-on-primary px-5 py-2 rounded-full font-label font-bold text-sm">Save</button>
+                                         <button onClick={() => { handleEditAnnouncementSub(ann.announcement_id, authorRole, isSystem, attachments); setSelectedPostingRole(""); }} className="bg-primary text-on-primary px-5 py-2 rounded-full font-label font-bold text-sm">Save</button>
                                      </div>
                                  </div>
                              ) : (
@@ -661,7 +677,21 @@ export default function Announcements() {
                        <button onClick={() => setShowCompose(false)} className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors"><X className="w-5 h-5" /></button>
                    </div>
                    <form onSubmit={handleCreateAnnouncement} className="p-6 flex flex-col gap-6 overflow-y-auto flex-1">
-                       {(user?.availableRoles?.length > 1) && (
+                       {(user?.role === 'builder' || user?.role === 'admin' || user?.availableRoles?.includes('builder')) && (
+                           <div className="flex items-center gap-2 mb-4">
+                               <input
+                                   type="checkbox"
+                                   id="isSystemAnnouncement"
+                                   checked={isSystemAnnouncement}
+                                   onChange={e => setIsSystemAnnouncement(e.target.checked)}
+                                   className="rounded border-outline-variant/50 text-primary focus:ring-primary w-4 h-4"
+                               />
+                               <label htmlFor="isSystemAnnouncement" className="font-label text-sm font-bold text-on-surface cursor-pointer">
+                                   Post as System Announcement (No Name)
+                               </label>
+                           </div>
+                       )}
+                       {(user?.availableRoles?.length > 1) && !isSystemAnnouncement && (
                            <div>
                                <label className="block font-label text-sm uppercase tracking-wider font-bold text-on-surface-variant mb-3 flex items-center justify-between">
                                  <span>Post As Role</span>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Server, TerminalSquare, ShieldAlert, Activity, ArrowRight, Users, Power, AlertTriangle, Download, Upload, Database, CheckCircle, XCircle, Unlock, Clock, MessageSquare, Settings, School, Github } from 'lucide-react';
+import { Megaphone, Server, TerminalSquare, ShieldAlert, Activity, ArrowRight, Users, Power, AlertTriangle, Download, Upload, Database, CheckCircle, XCircle, Unlock, Clock, MessageSquare, Settings, School, Github } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
@@ -111,6 +111,7 @@ export default function BuilderDashboard() {
     { title: 'Sessions', desc: 'Monitor active user sessions across the system.', icon: Clock, href: '/builder/sessions', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'Password Reminders', desc: 'View and manage password reset requests.', icon: Unlock, href: '/builder/password-reminders', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'Internal Messages Monitor', desc: 'Monitor internal messages sorted by date.', icon: MessageSquare, href: '/builder/internal-messages', color: 'text-secondary', bg: 'bg-secondary-container' },
+    { title: 'Announcements', desc: 'Manage and broadcast system-wide announcements.', icon: Megaphone, href: '/builder/announcements', color: 'text-primary', bg: 'bg-primary-container' },
     { title: 'Management', desc: 'System management and settings.', icon: Settings, href: '/builder/management', color: 'text-tertiary', bg: 'bg-tertiary-container' },
     { title: 'Classes', desc: 'Manage system classes and schedules.', icon: School, href: '/builder/classes', color: 'text-primary', bg: 'bg-primary-container' },
         { title: 'GitHub Sync', desc: 'Sync files to GitHub repository.', icon: Github, href: '/builder/github-sync', color: 'text-primary', bg: 'bg-primary-container' },
