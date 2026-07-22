@@ -98,7 +98,14 @@ export default function Announcements() {
   const getPrimaryRole = (userObj: any) => {
       if (!userObj) return 'student';
       if (userObj.user_roles && userObj.user_roles.length > 0) {
-          return userObj.user_roles[0].roles?.role_name?.toLowerCase() || 'student';
+          const roles = userObj.user_roles.map((ur: any) => ur.roles?.role_name?.toLowerCase()).filter(Boolean);
+          if (roles.includes('admin')) return 'admin';
+          if (roles.includes('builder')) return 'builder';
+          if (roles.includes('teacher')) return 'teacher';
+          if (roles.includes('staff')) return 'staff';
+          if (roles.includes('volunteer')) return 'volunteer';
+          if (roles.includes('parent')) return 'parent';
+          return roles[0] || 'student';
       }
       return 'student';
   };
@@ -276,9 +283,11 @@ export default function Announcements() {
       fetchData();
   };
 
-  const handleEditAnnouncementSub = async (annId: string, currentRole?: string) => {
+  const handleEditAnnouncementSub = async (annId: string, authorRole: string) => {
       if (!editAnnContentStr.trim()) return;
-      const encodedContent = currentRole && currentRole !== getPrimaryRole(user) ? `$$_role:${currentRole}_$$${editAnnContentStr}` : editAnnContentStr;
+      // Always use the explicitly selected posting role if available, otherwise fallback to the current authorRole
+      const finalRole = selectedPostingRole || authorRole;
+      const encodedContent = `$$_role:${finalRole}_$$${editAnnContentStr}`;
       await supabase.from('announcements').update({ title: editAnnTitleStr, content: encodedContent }).eq('announcement_id', annId);
       
       logSystemActivity(
@@ -483,9 +492,31 @@ export default function Announcements() {
                                      <div className="bg-surface rounded-xl border border-outline-variant/50 ">
                                        <RichTextEditor value={editAnnContentStr} onChange={setEditAnnContentStr} className="h-[400px]" />
                                      </div>
+                                     {user?.availableRoles && user.availableRoles.length > 1 && (
+                                         <div className="mt-2">
+                                             <label className="block font-label text-sm uppercase tracking-wider font-bold text-on-surface-variant mb-2">Change Posting Role</label>
+                                             <div className="flex gap-2 flex-wrap">
+                                                 {user.availableRoles.map((r: string) => (
+                                                     <button
+                                                         key={r}
+                                                         type="button"
+                                                         onClick={() => setSelectedPostingRole(r)}
+                                                         className={cn(
+                                                             "px-3 py-1.5 rounded-lg font-label text-xs font-bold capitalize transition-all border",
+                                                             selectedPostingRole === r || (!selectedPostingRole && authorRole === r)
+                                                               ? "bg-primary text-on-primary border-primary"
+                                                               : "bg-surface text-on-surface hover:bg-surface-variant border-outline-variant/30"
+                                                         )}
+                                                     >
+                                                         {r}
+                                                     </button>
+                                                 ))}
+                                             </div>
+                                         </div>
+                                     )}
                                      <div className="flex gap-2 justify-end mt-2">
-                                         <button onClick={() => setEditingAnnId(null)} className="px-4 py-2 rounded-full font-label text-sm hover:bg-surface-variant">Cancel</button>
-                                         <button onClick={() => handleEditAnnouncementSub(ann.announcement_id, authorRole)} className="bg-primary text-on-primary px-5 py-2 rounded-full font-label font-bold text-sm">Save</button>
+                                         <button onClick={() => { setEditingAnnId(null); setSelectedPostingRole(""); }} className="px-4 py-2 rounded-full font-label text-sm hover:bg-surface-variant">Cancel</button>
+                                         <button onClick={() => { handleEditAnnouncementSub(ann.announcement_id, authorRole); setSelectedPostingRole(""); }} className="bg-primary text-on-primary px-5 py-2 rounded-full font-label font-bold text-sm">Save</button>
                                      </div>
                                  </div>
                              ) : (

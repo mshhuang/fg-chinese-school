@@ -81,8 +81,8 @@ export default function BuilderDatabase() {
   };
 
   useEffect(() => {
-    // Stopped pulling info from supabase to reduce egress
-    setLoading(false);
+    fetchStats();
+    // Stopped pulling usage from supabase to reduce egress
     setFetchingUsage(false);
   }, []);
 
@@ -109,6 +109,30 @@ export default function BuilderDatabase() {
 ];
   const [fetchingUsage, setFetchingUsage] = useState(false);
   const [usageError, setUsageError] = useState('');
+
+  const [clearingTable, setClearingTable] = useState<string | null>(null);
+  
+  const handleClearTable = async (tableName: string) => {
+    if (!window.confirm(`Are you sure you want to delete ALL records in ${tableName}? This cannot be undone.`)) return;
+    setClearingTable(tableName);
+    try {
+        let conditionColumn = 'id';
+        if (tableName === 'system_logs') {
+            conditionColumn = 'log_id';
+        }
+        const { error: err } = await supabase.from(tableName).delete().neq(conditionColumn, '00000000-0000-0000-0000-000000000000');
+        if (err) throw err;
+        alert(`Successfully cleared ${tableName}`);
+        
+        // Refresh stats
+        const { count } = await supabase.from(tableName).select('*', { count: 'exact', head: true });
+        setTableStats(prev => prev.map(t => t.name === tableName ? { ...t, count: count || 0 } : t));
+    } catch (e: any) {
+        alert('Failed to clear table: ' + e.message);
+    } finally {
+        setClearingTable(null);
+    }
+  };
 
   const fetchUsage = async () => {
     setFetchingUsage(true);
@@ -530,17 +554,18 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}
                        <th className="px-6 py-4 whitespace-nowrap">Total Rows</th>
                        <th className="px-6 py-4 whitespace-nowrap">Total Size</th>
                        <th className="px-6 py-4 whitespace-nowrap">Row Activity</th>
-                       <th className="px-6 py-4 rounded-tr-xl whitespace-nowrap">Status</th>
+                       <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                       <th className="px-6 py-4 rounded-tr-xl whitespace-nowrap">Actions</th>
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-outline-variant/30">
                     {loading ? (
                        <tr>
-                          <td colSpan={5} className="p-8 text-center text-on-surface-variant font-medium">
+                          <td colSpan={6} className="p-8 text-center text-on-surface-variant font-medium">
                              Loading database statistics...
                           </td>
                        </tr>
-                    ) : tableStats.filter(stat => stat.name === 'system_logs').map((stat, i) => (
+                    ) : tableStats.map((stat, i) => (
                        <tr key={stat.name} className="hover:bg-surface-container-lowest/50 transition-colors">
                           <td className="px-6 py-4">
                              <div className="flex items-center gap-3">
@@ -566,6 +591,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}
                              <span className="px-2 py-1 bg-green-500/10 text-green-600 rounded text-xs font-bold uppercase">
                                 Accessible
                              </span>
+                          </td>
+                          <td className="px-6 py-4">
+                             {['system_logs', 'error_logs', 'audit_logs'].includes(stat.name) && (
+                                <button 
+                                   onClick={() => handleClearTable(stat.name)}
+                                   disabled={clearingTable === stat.name}
+                                   className="px-3 py-1.5 bg-error/10 text-error hover:bg-error/20 rounded text-xs font-bold transition-colors disabled:opacity-50"
+                                >
+                                   {clearingTable === stat.name ? 'Clearing...' : 'Clear Data'}
+                                </button>
+                             )}
                           </td>
                        </tr>
                     ))}

@@ -63,6 +63,7 @@ export const supabase = createClient<any>(supabaseUrl, supabaseAnonKey, {
 
       try {
         if (options && options.method && ['POST', 'PATCH', 'DELETE', 'PUT'].includes(options.method)) {
+          queryCache.clear(); // Invalidate cache on mutation
           const urlStr = url.toString();
           if (urlStr.includes('/rest/v1/') && !urlStr.includes('system_logs') && !urlStr.includes('error_logs')) {
             const tablePath = urlStr.split('/rest/v1/')[1]?.split('?')[0];

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { BookOpen, Plus, Save, X, Edit, Trash2, Calendar, FileText, CheckCircle2, Circle, Users, XCircle } from 'lucide-react';
+import { BookOpen, Plus, Save, X, Edit, Trash2, Calendar, FileText, CheckCircle2, Circle, Users, XCircle, Search, Image as ImageIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function TeacherAssignmentBoard() {
@@ -21,6 +21,8 @@ export default function TeacherAssignmentBoard() {
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
   const [expandedAssignId, setExpandedAssignId] = useState<number | null>(null);
   const [assignmentToDelete, setAssignmentToDelete] = useState<number | null>(null);
+  const [viewingSubmission, setViewingSubmission] = useState<{ studentName: string, text: string, attachments: any[], assignmentTitle: string } | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -550,9 +552,20 @@ export default function TeacherAssignmentBoard() {
                                      const cleanRawText = rawText ? rawText.replace(/<[^>]*>?/gm, '').trim() : '';
                                      
                                      if (subAtts.length > 0 || cleanRawText || isSubmitted) {
-                                         return (
+return (
                                              <div className="flex flex-col gap-2 pt-3 mt-1 border-t border-outline-variant/20">
-                                                 <span className="font-label text-xs font-bold text-on-surface-variant uppercase tracking-wider">Student Submission</span>
+                                                 <div className="flex justify-between items-center">
+                                                     <span className="font-label text-xs font-bold text-on-surface-variant uppercase tracking-wider">Student Submission</span>
+                                                     {(cleanRawText || subAtts.length > 0) && (
+                                                         <button 
+                                                             onClick={() => setViewingSubmission({ studentName: student ? `${student.first_name} ${student.last_name}` : 'Unknown Student', text: rawText, attachments: subAtts, assignmentTitle: a.title })}
+                                                             className="px-3 py-1.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold transition-colors flex items-center gap-1.5"
+                                                         >
+                                                             <Search className="w-3.5 h-3.5" />
+                                                             Full View
+                                                         </button>
+                                                     )}
+                                                 </div>
                                                  {cleanRawText && (
                                                      <div className="tiptap-editor prose prose-sm sm:prose-base max-w-none font-body text-sm text-on-surface bg-surface p-2 rounded border border-outline-variant/30 px-3 py-2 min-h-[50px] break-normal" dangerouslySetInnerHTML={{ __html: rawText }} />
                                                  )}
@@ -563,12 +576,26 @@ export default function TeacherAssignmentBoard() {
                                                  )}
                                                  {subAtts.length > 0 && (
                                                      <div className="flex flex-wrap gap-2">
-                                                         {subAtts.map((att: any, i: number) => (
-                                                             <a key={i} href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-primary-container/30 px-3 py-1.5 rounded-lg border border-primary/20 text-xs font-label hover:bg-primary-container/50 transition-colors text-primary shadow-sm">
-                                                                 <FileText className="w-4 h-4" />
-                                                                 <span className="truncate max-w-[200px]" title={att.name}>{att.name}</span>
-                                                             </a>
-                                                         ))}
+                                                         {subAtts.map((att: any, i: number) => {
+                                                             const isImage = att.url?.startsWith('data:image/') || att.name?.match(/\.(jpeg|jpg|gif|png)$/i);
+                                                             return (
+                                                                 <div key={i} className="relative group">
+                                                                     {isImage ? (
+                                                                         <div onClick={() => setFullscreenImage(att.url)} className="cursor-pointer border border-outline-variant/30 rounded-lg overflow-hidden relative">
+                                                                            <img src={att.url} alt={att.name} className="h-20 w-auto object-cover" />
+                                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                                <Search className="w-5 h-5 text-white" />
+                                                                            </div>
+                                                                         </div>
+                                                                     ) : (
+                                                                         <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-primary-container/30 px-3 py-1.5 rounded-lg border border-primary/20 text-xs font-label hover:bg-primary-container/50 transition-colors text-primary shadow-sm">
+                                                                             <FileText className="w-4 h-4" />
+                                                                             <span className="truncate max-w-[200px]" title={att.name}>{att.name}</span>
+                                                                         </a>
+                                                                     )}
+                                                                 </div>
+                                                             );
+                                                         })}
                                                      </div>
                                                  )}
                                              </div>
@@ -603,6 +630,79 @@ export default function TeacherAssignmentBoard() {
                  <button onClick={() => handleDelete(assignmentToDelete)} className="px-4 py-2 font-label font-bold bg-error text-on-error hover:bg-error/90 rounded-full transition-colors">Delete</button>
               </div>
            </div>
+        </div>
+      )}
+
+      {viewingSubmission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl w-full max-w-4xl max-h-[90vh] shadow-xl flex flex-col overflow-hidden">
+              <div className="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-lowest sticky top-0 z-10">
+                 <div>
+                     <h2 className="text-2xl font-display font-bold text-on-surface">{viewingSubmission.studentName}'s Submission</h2>
+                     <p className="text-sm font-label text-on-surface-variant uppercase tracking-wider font-bold mt-1">{viewingSubmission.assignmentTitle}</p>
+                 </div>
+                 <button onClick={() => setViewingSubmission(null)} className="p-2 bg-surface hover:bg-surface-variant rounded-full text-on-surface-variant transition-colors">
+                    <X className="w-5 h-5" />
+                 </button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1 bg-surface-container-lowest">
+                 {viewingSubmission.text && viewingSubmission.text.replace(/<[^>]*>?/gm, '').trim() && (
+                     <div className="mb-6">
+                         <h3 className="font-label text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">Written Response</h3>
+                         <div className="tiptap-editor prose prose-sm sm:prose-base max-w-none font-body text-on-surface bg-surface p-4 rounded-xl border border-outline-variant/30 break-normal" dangerouslySetInnerHTML={{ __html: viewingSubmission.text }} />
+                     </div>
+                 )}
+                 {viewingSubmission.attachments && viewingSubmission.attachments.length > 0 && (
+                     <div>
+                         <h3 className="font-label text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">Attachments</h3>
+                         <div className="flex flex-col gap-4">
+                             {viewingSubmission.attachments.map((att, i) => {
+                                 const isImage = att.url?.startsWith('data:image/') || att.name?.match(/\.(jpeg|jpg|gif|png)$/i);
+                                 return (
+                                     <div key={i} className="bg-surface border border-outline-variant/30 rounded-xl overflow-hidden">
+                                         {isImage ? (
+                                             <div className="flex flex-col">
+                                                 <div className="px-4 py-3 border-b border-outline-variant/30 flex justify-between items-center bg-surface-variant/30">
+                                                     <div className="flex items-center gap-2">
+                                                         <ImageIcon className="w-4 h-4 text-primary" />
+                                                         <span className="font-label text-sm font-bold truncate">{att.name}</span>
+                                                     </div>
+                                                     <button onClick={() => setFullscreenImage(att.url)} className="text-xs font-label font-bold text-primary hover:underline flex items-center gap-1">
+                                                         <Search className="w-3.5 h-3.5" /> Fullscreen
+                                                     </button>
+                                                 </div>
+                                                 <div className="p-4 flex justify-center bg-surface-container-lowest">
+                                                     <img src={att.url} alt={att.name} className="max-w-full h-auto max-h-[500px] object-contain rounded-lg shadow-sm border border-outline-variant/20 cursor-pointer" onClick={() => setFullscreenImage(att.url)} />
+                                                 </div>
+                                             </div>
+                                         ) : (
+                                             <div className="px-4 py-3 flex justify-between items-center bg-surface-variant/30">
+                                                 <div className="flex items-center gap-2">
+                                                     <FileText className="w-4 h-4 text-primary" />
+                                                     <span className="font-label text-sm font-bold truncate">{att.name}</span>
+                                                 </div>
+                                                 <a href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="text-xs font-label font-bold bg-primary text-on-primary px-3 py-1.5 rounded-full hover:bg-primary/90 transition-colors">
+                                                     Download
+                                                 </a>
+                                             </div>
+                                         )}
+                                     </div>
+                                 );
+                             })}
+                         </div>
+                     </div>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
+
+      {fullscreenImage && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4 animate-in fade-in duration-200 backdrop-blur-sm" onClick={() => setFullscreenImage(null)}>
+           <button onClick={() => setFullscreenImage(null)} className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors backdrop-blur-md">
+              <X className="w-6 h-6" />
+           </button>
+           <img src={fullscreenImage} alt="Fullscreen Attachment" className="max-w-full max-h-[90vh] object-contain shadow-2xl rounded-lg" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </div>

@@ -176,6 +176,8 @@ export default function AttendanceSheet() {
     
     if (toInsert.length > 0) {
        await supabase.from('attendance').insert(toInsert);
+       
+
     }
     
     setSaving(false);

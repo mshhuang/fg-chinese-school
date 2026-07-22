@@ -85,21 +85,18 @@ export default function PrincipalClasses() {
       // Update classes table
       // @ts-ignore
       const { error: updateError } = await supabase.from('classes').update({ schedule_image_url: publicUrl }).eq('class_id', classId);
-
       if (updateError) throw updateError;
 
       // Update local state
       setClassesData(classesData.map(c => 
         c.class_id === classId ? { ...c, schedule_image_url: publicUrl } : c
       ));
-
     } catch (err: any) {
-      alert("Error uploading image. Did you run the SQL to create the bucket and column? Error: " + err.message);
+      alert("Error uploading image. " + err.message);
     } finally {
       setUploadingClassId(null);
     }
   };
-
 
   const handleSchoolScheduleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -141,8 +138,8 @@ export default function PrincipalClasses() {
     }
   };
 
-
   const handleDeleteClassSchedule = async (classId: string) => {
+
       // confirm removed due to iframe sandbox limits
       try {
           // @ts-ignore
