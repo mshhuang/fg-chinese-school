@@ -6,6 +6,7 @@ import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { DashboardNotifications } from "../components/DashboardNotifications";
 import { QRCodeBadge } from "../components/QRCodeBadge";
+import { PhotoCarousel } from "../components/PhotoCarousel";
 import { QrCode, CheckCircle2 } from "lucide-react";
 
 export default function StudentPortal() {
@@ -246,6 +247,11 @@ export default function StudentPortal() {
              </div>
           )}
         </div>
+      </section>
+
+      {/* Rotating Photo Carousel */}
+      <section className="w-full">
+        <PhotoCarousel viewerRole="student" />
       </section>
 
       {/* Bento Layout */}

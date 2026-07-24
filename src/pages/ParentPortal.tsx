@@ -6,6 +6,7 @@ import { QrCode } from "lucide-react";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { ParentChatbot } from "../components/ParentChatbot";
+import { PhotoCarousel } from "../components/PhotoCarousel";
 
 export default function ParentPortal() {
   const [activeChild, setActiveChild] = useState<string>("mei");
@@ -144,6 +145,11 @@ export default function ParentPortal() {
              </>
           )}
         </div>
+      </section>
+
+      {/* Rotating Photo Carousel */}
+      <section className="w-full">
+        <PhotoCarousel viewerRole="parent" />
       </section>
 
       {/* Bento Grid */}

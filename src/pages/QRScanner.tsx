@@ -3,6 +3,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { CheckCircle2, XCircle, Loader2, Camera, UploadCloud, StopCircle, User, Activity, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatTeacherName } from "../lib/utils";
+import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";
 
 export default function QRScanner() {
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -15,6 +16,14 @@ export default function QRScanner() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [explanation, setExplanation] = useState("");
   const [recentActivity, setRecentActivity] = useState<{name: string, action: string, time: string}[]>([]);
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isOpen: boolean;
+    userName: string;
+    actionType: string;
+    existingRecord: ExistingClockRecord | null;
+    onUpdate: (recId: string | number | undefined, timeIso: string, reason?: string) => Promise<void>;
+    onCreateNew?: (timeIso: string, reason?: string) => Promise<void>;
+  } | null>(null);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isProcessingRef = useRef(false);
@@ -110,8 +119,32 @@ export default function QRScanner() {
   };
 
 
-  const confirmAction = async () => {
-    if (loading) return;
+  const updateStudentAttendance = async (studentId: string, statusOverride = 'Present') => {
+    const { data: enrolls } = await supabase.from('enrollments').select('class_id').eq('student_id', studentId).eq('status', 'Active');
+    if (enrolls && enrolls.length > 0) {
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+      for (const enroll of enrolls) {
+        const { data: existing } = await supabase.from('attendance').select('attendance_id').eq('student_id', studentId).eq('class_id', enroll.class_id).eq('attendance_date', today);
+        if (!existing || existing.length === 0) {
+          await supabase.from('attendance').insert({
+            student_id: studentId,
+            class_id: enroll.class_id,
+            attendance_date: today,
+            status: statusOverride
+          });
+        } else {
+          await supabase.from('attendance').update({ status: statusOverride }).eq('attendance_id', existing[0].attendance_id);
+        }
+      }
+    }
+  };
+
+  const executeClockInOrOut = async (
+    timeIso: string,
+    reasonStr: string | undefined,
+    isUpdate: boolean,
+    existingRecId?: string | number
+  ) => {
     if (!scannedUser) return;
     setLoading(true);
     setMessage(null);
@@ -121,67 +154,71 @@ export default function QRScanner() {
       let actionLabel = scannedUser.nextAction === 'check_out' ? 'checked out' : 'checked in';
       
       if (scannedUser.isStaff) {
-          actionType = scannedUser.nextAction === 'check_out' ? 'clock_out' : 'clock_in';
-          const dailyStatus = explanation ? explanation : (actionType === 'clock_out' ? 'classes over' : 'check-in the building');
+        actionType = scannedUser.nextAction === 'check_out' ? 'clock_out' : 'clock_in';
+      } else {
+        actionType = scannedUser.nextAction === 'check_out' ? 'school_check_out' : 'school_check_in';
+      }
+
+      const table = scannedUser.isStaff ? 'staff_clock_ins' : 'student_clock_ins';
+      const dailyStatus = reasonStr || explanation || (actionType.includes('out') ? 'classes over' : 'check-in the building');
+
+      if (isUpdate) {
+        if (existingRecId) {
+          await supabase.from(table).update({
+            created_at: timeIso,
+            daily_status: dailyStatus
+          }).eq('id', existingRecId);
+        } else {
+          const idCol = scannedUser.isStaff ? 'user_id' : 'student_id';
+          await supabase.from(table).update({
+            created_at: timeIso,
+            daily_status: dailyStatus
+          }).eq(idCol, scannedUser.user_id).eq('action_type', actionType);
+        }
+      } else {
+        if (scannedUser.isStaff) {
           await supabase.from('staff_clock_ins').insert({
             user_id: scannedUser.user_id,
             action_type: actionType,
-            daily_status: dailyStatus
+            daily_status: dailyStatus,
+            created_at: timeIso
           });
-          await supabase.from('system_logs').insert({
-            user_id: scannedUser.user_id,
-            action_type: 'other',
-            activity: `Staff ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'}), explanation },
-            user_name: `${scannedUser.first_name} ${scannedUser.last_name}`
-          });
-      } else {
-          actionType = scannedUser.nextAction === 'check_out' ? 'school_check_out' : 'school_check_in';
-          const dailyStatus = explanation ? explanation : (scannedUser.nextAction === 'check_out' ? 'classes over' : 'check-in the building');
+        } else {
           await supabase.from('student_clock_ins').insert({
             student_id: scannedUser.user_id,
             action_type: actionType,
-            daily_status: dailyStatus
+            daily_status: dailyStatus,
+            created_at: timeIso
           });
-          await supabase.from('system_logs').insert({
-            user_id: scannedUser.user_id,
-            action_type: actionType,
-            activity: `Student ${actionLabel}`, page_name: 'QR Scanner', data_changed: { time: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' , timeZoneName: 'short'}), explanation },
-            user_name: `${scannedUser.first_name} ${scannedUser.last_name}`
-          });
+        }
       }
 
-      // Update attendance table for students
-      const isCheckIn = actionType === 'school_check_in';
-      if (isCheckIn) {
-         const { data: enrolls } = await supabase.from('enrollments').select('class_id').eq('student_id', scannedUser.user_id).eq('status', 'Active');
-         if (enrolls && enrolls.length > 0) {
-            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-            for (const enroll of enrolls) {
-               const { data: existing } = await supabase.from('attendance').select('attendance_id').eq('student_id', scannedUser.user_id).eq('class_id', enroll.class_id).eq('attendance_date', today);
-               const newStatus = 'Present';
-               if (!existing || existing.length === 0) {
-                   await supabase.from('attendance').insert({
-                       student_id: scannedUser.user_id,
-                       class_id: enroll.class_id,
-                       attendance_date: today,
-                       status: newStatus
-                   });
-               } else {
-                   await supabase.from('attendance').update({ status: newStatus }).eq('attendance_id', existing[0].attendance_id);
-               }
-            }
-         }
+      await supabase.from('system_logs').insert({
+        user_id: scannedUser.user_id,
+        action_type: actionType,
+        activity: isUpdate ? `${scannedUser.isStaff ? 'Staff' : 'Student'} updated clock time (${actionLabel})` : `${scannedUser.isStaff ? 'Staff' : 'Student'} ${actionLabel}`,
+        page_name: 'QR Scanner',
+        data_changed: { time: new Date(timeIso).toLocaleString('en-US', { timeZone: 'America/New_York', timeZoneName: 'short' }), explanation: dailyStatus },
+        user_name: `${scannedUser.first_name} ${scannedUser.last_name}`
+      });
+
+      if (!scannedUser.isStaff && (actionType === 'school_check_in' || actionType === 'clock_in')) {
+        await updateStudentAttendance(scannedUser.user_id);
       }
 
-      const now = new Date();
-      const timeString = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: '2-digit', minute: '2-digit' , timeZoneName: 'short'});
+      const timeString = new Date(timeIso).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
       const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
-      setMessage({ type: 'success', text: `Successfully ${actionLabel} ${nameStr} at ${timeString}!` });
-      setRecentActivity(prev => [{ name: nameStr, action: actionLabel, time: timeString }, ...prev].slice(0, 5));
+      
+      const successText = isUpdate
+        ? `Successfully updated ${actionLabel} time for ${nameStr} to ${timeString}!`
+        : `Successfully ${actionLabel} ${nameStr} at ${timeString}!`;
+
+      setMessage({ type: 'success', text: successText });
+      setRecentActivity(prev => [{ name: nameStr, action: isUpdate ? `Updated ${actionLabel}` : actionLabel, time: timeString }, ...prev].slice(0, 5));
       setScannedUser(null);
     } catch (e) {
       console.error(e);
-      setMessage({ type: 'error', text: 'An error occurred during check-in/out.' });
+      setMessage({ type: 'error', text: 'An error occurred during clock in/out.' });
     }
     setLoading(false);
     
@@ -191,6 +228,49 @@ export default function QRScanner() {
       isProcessingRef.current = false;
     }, 3000);
   };
+
+  const confirmAction = async () => {
+    if (loading) return;
+    if (!scannedUser) return;
+
+    let actionType = scannedUser.isStaff
+      ? (scannedUser.nextAction === 'check_out' ? 'clock_out' : 'clock_in')
+      : (scannedUser.nextAction === 'check_out' ? 'school_check_out' : 'school_check_in');
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0,0,0,0);
+    const table = scannedUser.isStaff ? 'staff_clock_ins' : 'student_clock_ins';
+    const idCol = scannedUser.isStaff ? 'user_id' : 'student_id';
+
+    const { data: todayLogs } = await supabase
+      .from(table)
+      .select('*')
+      .eq(idCol, scannedUser.user_id)
+      .gte('created_at', startOfDay.toISOString())
+      .order('created_at', { ascending: false });
+
+    const existingDup = todayLogs?.find((l: any) => l.action_type === actionType);
+
+    if (existingDup) {
+      setDuplicateWarning({
+        isOpen: true,
+        userName: scannedUser.isStaff
+          ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher')
+          : `${scannedUser.first_name} ${scannedUser.last_name}`,
+        actionType,
+        existingRecord: existingDup,
+        onUpdate: async (recId, timeIso, reasonStr) => {
+          await executeClockInOrOut(timeIso, reasonStr, true, recId);
+        },
+        onCreateNew: async (timeIso, reasonStr) => {
+          await executeClockInOrOut(timeIso, reasonStr, false);
+        }
+      });
+      return;
+    }
+
+    await executeClockInOrOut(new Date().toISOString(), explanation, false);
+  };
   
   const handleOverride = async (status: string) => {
     if (loading) return;
@@ -198,6 +278,66 @@ export default function QRScanner() {
     setLoading(true);
     setMessage(null);
     try {
+      const actionType = status === 'school_check_out' ? (scannedUser.isStaff ? 'clock_out' : 'school_check_out') : (scannedUser.isStaff ? 'clock_in' : status);
+      const startOfDay = new Date();
+      startOfDay.setHours(0,0,0,0);
+      const table = scannedUser.isStaff ? 'staff_clock_ins' : 'student_clock_ins';
+      const idCol = scannedUser.isStaff ? 'user_id' : 'student_id';
+
+      const { data: todayLogs } = await supabase
+        .from(table)
+        .select('*')
+        .eq(idCol, scannedUser.user_id)
+        .gte('created_at', startOfDay.toISOString())
+        .order('created_at', { ascending: false });
+
+      const existingDup = todayLogs?.find((l: any) => l.action_type === actionType);
+
+      if (existingDup) {
+        setLoading(false);
+        setDuplicateWarning({
+          isOpen: true,
+          userName: scannedUser.isStaff
+            ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher')
+            : `${scannedUser.first_name} ${scannedUser.last_name}`,
+          actionType,
+          existingRecord: existingDup,
+          onUpdate: async (recId, timeIso, reasonStr) => {
+            const dailyStatus = reasonStr || (status === 'school_check_out' ? 'classes over' : 'check-in the building');
+            if (recId) {
+              await supabase.from(table).update({ created_at: timeIso, daily_status: dailyStatus }).eq('id', recId);
+            } else {
+              await supabase.from(table).update({ created_at: timeIso, daily_status: dailyStatus }).eq(idCol, scannedUser.user_id).eq('action_type', actionType);
+            }
+            if (!scannedUser.isStaff) {
+              await updateStudentAttendance(scannedUser.user_id, status === 'school_check_in_late' ? 'Late' : status === 'school_absent' ? 'Absent' : 'Present');
+            }
+            const timeString = new Date(timeIso).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+            const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
+            setMessage({ type: 'success', text: `Updated override status for ${nameStr} at ${timeString}` });
+            setScannedUser(null);
+            setIsOverriding(false);
+          },
+          onCreateNew: async (timeIso, reasonStr) => {
+            const dailyStatus = reasonStr || (status === 'school_check_out' ? 'classes over' : 'check-in the building');
+            if (scannedUser.isStaff) {
+              await supabase.from('staff_clock_ins').insert({ user_id: scannedUser.user_id, action_type: status === 'school_check_out' ? 'clock_out' : 'clock_in', daily_status: dailyStatus, created_at: timeIso });
+            } else {
+              await supabase.from('student_clock_ins').insert({ student_id: scannedUser.user_id, action_type: status, daily_status: dailyStatus, created_at: timeIso });
+            }
+            if (!scannedUser.isStaff) {
+              await updateStudentAttendance(scannedUser.user_id, status === 'school_check_in_late' ? 'Late' : status === 'school_absent' ? 'Absent' : 'Present');
+            }
+            const timeString = new Date(timeIso).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+            const nameStr = scannedUser.isStaff ? formatTeacherName(scannedUser.first_name, scannedUser.last_name, 'Teacher') : `${scannedUser.first_name} ${scannedUser.last_name}`;
+            setMessage({ type: 'success', text: `Manually set status for ${nameStr} to ${status.replace('school_', '').replace('_', ' ')} at ${timeString}` });
+            setScannedUser(null);
+            setIsOverriding(false);
+          }
+        });
+        return;
+      }
+
       await supabase.from('system_logs').insert({
         user_id: scannedUser.user_id,
         action_type: status,
@@ -223,27 +363,7 @@ export default function QRScanner() {
       // Update attendance table for students
       const isCheckInStatus = status === 'school_check_in' || status === 'school_check_in_late' || status === 'school_absent';
       if (isCheckInStatus) {
-         const { data: enrolls } = await supabase.from('enrollments').select('class_id').eq('student_id', scannedUser.user_id).eq('status', 'Active');
-         if (enrolls && enrolls.length > 0) {
-            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-            for (const enroll of enrolls) {
-               const { data: existing } = await supabase.from('attendance').select('attendance_id').eq('student_id', scannedUser.user_id).eq('class_id', enroll.class_id).eq('attendance_date', today);
-               let newStatus = 'Present';
-               if (status === 'school_check_in_late') newStatus = 'Late';
-               if (status === 'school_absent') newStatus = 'Absent';
-               
-               if (!existing || existing.length === 0) {
-                   await supabase.from('attendance').insert({
-                       student_id: scannedUser.user_id,
-                       class_id: enroll.class_id,
-                       attendance_date: today,
-                       status: newStatus
-                   });
-               } else {
-                   await supabase.from('attendance').update({ status: newStatus }).eq('attendance_id', existing[0].attendance_id);
-               }
-            }
-         }
+        await updateStudentAttendance(scannedUser.user_id, status === 'school_check_in_late' ? 'Late' : status === 'school_absent' ? 'Absent' : 'Present');
       }
 
       const now = new Date();
@@ -488,6 +608,17 @@ export default function QRScanner() {
               ))}
             </div>
           </div>
+        )}
+        {duplicateWarning && (
+          <DuplicateClockWarningModal
+            isOpen={duplicateWarning.isOpen}
+            onClose={() => setDuplicateWarning(null)}
+            userName={duplicateWarning.userName}
+            actionType={duplicateWarning.actionType}
+            existingRecord={duplicateWarning.existingRecord}
+            onUpdateExisting={duplicateWarning.onUpdate}
+            onCreateNew={duplicateWarning.onCreateNew}
+          />
         )}
       </div>
     </div>

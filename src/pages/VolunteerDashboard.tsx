@@ -7,6 +7,7 @@ import { DashboardNotifications } from "../components/DashboardNotifications";
 import { QRCodeBadge } from "../components/QRCodeBadge";
 import { QrCode } from "lucide-react";
 import { formatTeacherName } from "../lib/utils";
+import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";
 
 export default function VolunteerDashboard() {
   const navigate = useNavigate();
@@ -15,6 +16,14 @@ export default function VolunteerDashboard() {
   const [showQrCode, setShowQrCode] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [clockStatus, setClockStatus] = useState<'clocked_in' | 'clocked_out' | 'loading'>('loading');
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isOpen: boolean;
+    userName: string;
+    actionType: string;
+    existingRecord: ExistingClockRecord | null;
+    onUpdate: (recId: string | number | undefined, timeIso: string, reason?: string) => Promise<void>;
+    onCreateNew?: (timeIso: string, reason?: string) => Promise<void>;
+  } | null>(null);
 
   const [greeting, setGreeting] = useState("Good morning");
   
@@ -77,13 +86,56 @@ export default function VolunteerDashboard() {
 
   const handleClockInOut = async () => {
     if (clockStatus === 'loading') return;
-    if (!user || (user?.user_id || user?.id) === 'demo') return;
+    const userId = user?.user_id || user?.id;
+    if (!userId || userId === 'demo') return;
+
     const newStatus = clockStatus === 'clocked_in' ? 'clocked_out' : 'clocked_in';
+    const targetAction = newStatus === 'clocked_in' ? 'clock_in' : 'clock_out';
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0,0,0,0);
+
+    const { data: records } = await supabase
+      .from('staff_clock_ins')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', startOfDay.toISOString())
+      .order('created_at', { ascending: false });
+
+    const existingDup = records?.find((r: any) => r.action_type === targetAction);
+
+    if (existingDup) {
+      setDuplicateWarning({
+        isOpen: true,
+        userName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Volunteer',
+        actionType: targetAction,
+        existingRecord: existingDup,
+        onUpdate: async (recId, timeIso, reason) => {
+          if (recId) {
+            await supabase.from('staff_clock_ins').update({ created_at: timeIso, daily_status: reason || (newStatus === 'clocked_in' ? 'check-in the building' : 'shifts over') }).eq('id', recId);
+          } else {
+            await supabase.from('staff_clock_ins').update({ created_at: timeIso, daily_status: reason || (newStatus === 'clocked_in' ? 'check-in the building' : 'shifts over') }).eq('user_id', userId).eq('action_type', targetAction);
+          }
+          setClockStatus(newStatus);
+        },
+        onCreateNew: async (timeIso, reason) => {
+          await supabase.from('staff_clock_ins').insert({
+            user_id: userId,
+            action_type: targetAction,
+            daily_status: reason || (newStatus === 'clocked_in' ? 'check-in the building' : 'shifts over'),
+            created_at: timeIso
+          });
+          setClockStatus(newStatus);
+        }
+      });
+      return;
+    }
+
     setClockStatus('loading');
     
     const { error } = await supabase.from('staff_clock_ins').insert({
-       user_id: (user?.user_id || user?.id),
-       action_type: newStatus === 'clocked_in' ? 'clock_in' : 'clock_out',
+       user_id: userId,
+       action_type: targetAction,
        daily_status: newStatus === 'clocked_in' ? 'check-in the building' : 'shifts over'
     });
     if (error) console.error("Error clocking in:", error);
@@ -230,14 +282,26 @@ export default function VolunteerDashboard() {
 
         </div>
       </div>
-          {showQrCode && user && (
+      {showQrCode && user && (
         <QRCodeBadge 
            studentId={(user?.user_id || user?.id)} 
            studentName={formatTeacherName(user?.first_name, user?.last_name, 'Volunteer')} 
            onClose={() => setShowQrCode(false)} 
            title="Teacher ID Badge"
         />
-     )}
+      )}
+
+      {duplicateWarning && (
+        <DuplicateClockWarningModal
+          isOpen={duplicateWarning.isOpen}
+          onClose={() => setDuplicateWarning(null)}
+          userName={duplicateWarning.userName}
+          actionType={duplicateWarning.actionType}
+          existingRecord={duplicateWarning.existingRecord}
+          onUpdateExisting={duplicateWarning.onUpdate}
+          onCreateNew={duplicateWarning.onCreateNew}
+        />
+      )}
     </div>
   );
 }

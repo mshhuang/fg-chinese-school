@@ -74,6 +74,7 @@ export default function MainLayout() {
   const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
   const [unreadNewslettersCount, setUnreadNewslettersCount] = useState(0);
   const [unreadAssignmentsCount, setUnreadAssignmentsCount] = useState(0);
+  const [hasActiveClockIn, setHasActiveClockIn] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const proceedWithRoleSwitch = (key: string) => {
@@ -280,6 +281,27 @@ export default function MainLayout() {
        } else {
            setUnreadAssignmentsCount(0);
        }
+
+       // Clock-in check
+       if (['teacher', 'staff', 'volunteer', 'admin', 'builder'].includes(userRole || '')) {
+          const startOfDay = new Date();
+          startOfDay.setHours(0,0,0,0);
+          const { data: clockData } = await supabase
+            .from('staff_clock_ins')
+            .select('action_type')
+            .eq('user_id', currentUserId)
+            .gte('created_at', startOfDay.toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (clockData && clockData.length > 0 && clockData[0].action_type === 'clock_in') {
+             setHasActiveClockIn(true);
+          } else {
+             setHasActiveClockIn(false);
+          }
+       } else {
+          setHasActiveClockIn(false);
+       }
     };
 
     let debounceTimer: any;
@@ -303,11 +325,17 @@ export default function MainLayout() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'newsletters' }, () => {
          debouncedFetchUnread();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_clock_ins', filter: `user_id=eq.${currentUserId}` }, () => {
+         debouncedFetchUnread();
+      })
       .subscribe();
+
+    window.addEventListener("clock_status_changed", fetchUnread);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
+      window.removeEventListener("clock_status_changed", fetchUnread);
     };
   }, [userInfo]);
 
@@ -345,6 +373,12 @@ export default function MainLayout() {
                        <item.icon className="w-5 h-5" />
                        {item.label}
                     </div>
+                    {item.label === 'Dashboard' && hasActiveClockIn && (
+                       <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-500/30 shrink-0">
+                          <span className="animate-ping inline-flex h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                          Active Clock
+                       </span>
+                    )}
                     {item.label === 'Messages' && unreadMessagesCount > 0 && (
                        <span className="flex w-2.5 h-2.5 relative shrink-0">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -444,6 +478,12 @@ export default function MainLayout() {
                              <item.icon className="w-5 h-5" />
                              {item.label}
                           </div>
+                          {item.label === 'Dashboard' && hasActiveClockIn && (
+                             <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-500/30 shrink-0">
+                                <span className="animate-ping inline-flex h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                Active Clock
+                             </span>
+                          )}
                           {item.label === 'Messages' && unreadMessagesCount > 0 && (
                              <span className="flex w-2.5 h-2.5 relative shrink-0">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>

@@ -20,24 +20,37 @@ export function extractPlainText(htmlContent: string): string {
 }
 
 export function formatTeacherName(firstName?: string | null, lastName?: string | null, defaultRole = 'Teacher'): string {
-  const fName = (firstName || '').trim();
-  const lName = (lastName || '').trim();
+  let fName = (firstName || '').trim();
+  let lName = (lastName || '').trim();
 
   if (!fName && !lName) return defaultRole;
 
-  if (fName === 'Youlin' && lName === 'Venerable') {
+  if (fName && !lName && fName.includes(' ')) {
+    const parts = fName.split(' ');
+    fName = parts[0];
+    lName = parts.slice(1).join(' ');
+  }
+
+  if ((fName === 'Youlin' && lName === 'Venerable') || fName.includes('法師') || lName.includes('法師')) {
     return '有霖法師';
   }
 
-  if (fName === 'Derek') return 'Mr. Derek';
-  if (fName === 'Janice') return 'Ms. Janice';
-  if (fName === 'Vickie') return 'Ms. Vickie';
-  if (fName === 'Kayvan') return 'Mr. Kayvan';
-  if (fName === 'Yang' && lName === 'Li') return 'Mr. Li';
+  const fnLower = fName.toLowerCase();
+  const lnLower = lName.toLowerCase();
 
-  if (fName.startsWith('Ms.') || fName.startsWith('Mr.')) {
-     return [fName, lName].filter(Boolean).join(' ');
+  if (fnLower === 'derek') return 'Mr. Derek';
+  if (fnLower === 'janice') return 'Ms. Janice';
+  if (fnLower === 'vickie') return 'Ms. Vickie';
+  if (fnLower === 'kayvan') return 'Mr. Kayvan';
+  if (lnLower === 'li' || fnLower === 'li') return 'Mr. Li';
+
+  if (fName.startsWith('Ms.') || fName.startsWith('Mr.') || fName.startsWith('Mrs.') || fName.startsWith('Dr.')) {
+    return [fName, lName].filter(Boolean).join(' ');
   }
 
-  return `Ms. ${fName || lName}`;
+  if (lName && lName.length > 1) {
+    return `Mr./Ms. ${lName}`;
+  }
+
+  return `Ms. ${fName || lName || defaultRole}`;
 }

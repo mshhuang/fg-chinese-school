@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2, Paperclip } from "lucide-react";
+import { Settings, Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2, Paperclip } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
@@ -113,6 +113,7 @@ export default function Announcements() {
 
   const getRoleIcon = (roleName: string, sizeClass: string) => {
       switch (roleName) {
+          case 'System': return <Settings className={sizeClass} />;
           case 'admin':
           case 'principal': return <AdminIconCustom className={sizeClass} />;
           case 'builder': return <BuilderIconCustom className={sizeClass} />;

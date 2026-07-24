@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ClipboardEdit, Search, Loader2, ArrowLeft, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLocation, useNavigate } from "react-router-dom";
+import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";
 
 export default function AttendanceSheet() {
   const location = useLocation();
@@ -23,6 +24,14 @@ export default function AttendanceSheet() {
   const [user, setUser] = useState<any>(null);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }));
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isOpen: boolean;
+    userName: string;
+    actionType: string;
+    existingRecord: ExistingClockRecord | null;
+    onUpdate: (recId: string | number | undefined, timeIso: string, reason?: string) => Promise<void>;
+    onCreateNew?: (timeIso: string, reason?: string) => Promise<void>;
+  } | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -138,22 +147,64 @@ export default function AttendanceSheet() {
     setStudentsLoading(false);
   };
 
-    const toggleClockIn = async (studentId: string, currentStatus: 'checked_in' | 'checked_out' | 'not_checked_in' | undefined) => {
-     const isCheckedIn = currentStatus === 'checked_in';
-     const actionType = isCheckedIn ? 'school_check_out' : 'school_check_in';
-     const dailyStatus = isCheckedIn ? 'classes over' : 'check-in the building';
-     
-     // Optimistic update
-     setClockIns(prev => ({ ...prev, [studentId]: isCheckedIn ? 'checked_out' : 'checked_in' }));
-     if (!isCheckedIn) {
-        setClockInTimes(prev => ({ ...prev, [studentId]: new Date().toISOString() }));
-     }
-     
-     await supabase.from('student_clock_ins').insert({
-        student_id: studentId,
-        action_type: actionType,
-        daily_status: dailyStatus
-     });
+  const toggleClockIn = async (studentId: string, currentStatus: 'checked_in' | 'checked_out' | 'not_checked_in' | undefined) => {
+    const isCheckedIn = currentStatus === 'checked_in';
+    const actionType = isCheckedIn ? 'school_check_out' : 'school_check_in';
+    const dailyStatus = isCheckedIn ? 'classes over' : 'check-in the building';
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0,0,0,0);
+
+    const { data: records } = await supabase
+      .from('student_clock_ins')
+      .select('*')
+      .eq('student_id', studentId)
+      .gte('created_at', startOfDay.toISOString())
+      .order('created_at', { ascending: false });
+
+    const existingDup = records?.find((r: any) => r.action_type === actionType);
+
+    const targetStudent = students.find(s => s.student_id === studentId);
+    const studentName = targetStudent ? `${targetStudent.first_name} ${targetStudent.last_name}` : 'Student';
+
+    if (existingDup) {
+      setDuplicateWarning({
+        isOpen: true,
+        userName: studentName,
+        actionType,
+        existingRecord: existingDup,
+        onUpdate: async (recId, timeIso, reason) => {
+          if (recId) {
+            await supabase.from('student_clock_ins').update({ created_at: timeIso, daily_status: reason || dailyStatus }).eq('id', recId);
+          } else {
+            await supabase.from('student_clock_ins').update({ created_at: timeIso, daily_status: reason || dailyStatus }).eq('student_id', studentId).eq('created_at', existingDup.created_at);
+          }
+          setClockIns(prev => ({ ...prev, [studentId]: isCheckedIn ? 'checked_out' : 'checked_in' }));
+          setClockInTimes(prev => ({ ...prev, [studentId]: timeIso }));
+        },
+        onCreateNew: async (timeIso, reason) => {
+          await supabase.from('student_clock_ins').insert({
+            student_id: studentId,
+            action_type: actionType,
+            daily_status: reason || dailyStatus,
+            created_at: timeIso
+          });
+          setClockIns(prev => ({ ...prev, [studentId]: isCheckedIn ? 'checked_out' : 'checked_in' }));
+          setClockInTimes(prev => ({ ...prev, [studentId]: timeIso }));
+        }
+      });
+      return;
+    }
+
+    // Optimistic update
+    setClockIns(prev => ({ ...prev, [studentId]: isCheckedIn ? 'checked_out' : 'checked_in' }));
+    setClockInTimes(prev => ({ ...prev, [studentId]: new Date().toISOString() }));
+    
+    await supabase.from('student_clock_ins').insert({
+      student_id: studentId,
+      action_type: actionType,
+      daily_status: dailyStatus
+    });
   };
 
   const handleSaveAttendance = async () => {
@@ -398,6 +449,17 @@ export default function AttendanceSheet() {
                )}
             </div>
           </>
+        )}
+        {duplicateWarning && (
+          <DuplicateClockWarningModal
+            isOpen={duplicateWarning.isOpen}
+            onClose={() => setDuplicateWarning(null)}
+            userName={duplicateWarning.userName}
+            actionType={duplicateWarning.actionType}
+            existingRecord={duplicateWarning.existingRecord}
+            onUpdateExisting={duplicateWarning.onUpdate}
+            onCreateNew={duplicateWarning.onCreateNew}
+          />
         )}
       </div>
     </div>

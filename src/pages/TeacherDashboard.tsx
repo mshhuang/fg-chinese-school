@@ -6,7 +6,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardNotifications } from "../components/DashboardNotifications";
 import { QRCodeBadge } from "../components/QRCodeBadge";
+import { PhotoCarousel } from "../components/PhotoCarousel";
 import { QrCode } from "lucide-react";
+import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
@@ -22,6 +24,14 @@ export default function TeacherDashboard() {
   const [totalStudentsCount, setTotalStudentsCount] = useState(0);
   const [clockModalState, setClockModalState] = useState<'closed' | 'in_initial' | 'in_no' | 'in_success' | 'out_initial' | 'out_no' | 'out_success'>('closed');
   const [clockModalReason, setClockModalReason] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isOpen: boolean;
+    userName: string;
+    actionType: string;
+    existingRecord: ExistingClockRecord | null;
+    onUpdate: (recId: string | number | undefined, timeIso: string, reason?: string) => Promise<void>;
+    onCreateNew?: (timeIso: string, reason?: string) => Promise<void>;
+  } | null>(null);
 
   useEffect(() => {
     const userJson = localStorage.getItem('user');
@@ -44,6 +54,20 @@ export default function TeacherDashboard() {
        fetchAssignedClasses(currentUser.id);
        fetchClockStatus(currentUser);
     }
+
+    const handleOpenClock = () => {
+      handleClockButtonClicked();
+    };
+    const handleStatusRefresh = () => {
+      if (currentUser) fetchClockStatus(currentUser);
+    };
+
+    window.addEventListener('open_clock_modal', handleOpenClock);
+    window.addEventListener('clock_status_changed', handleStatusRefresh);
+    return () => {
+      window.removeEventListener('open_clock_modal', handleOpenClock);
+      window.removeEventListener('clock_status_changed', handleStatusRefresh);
+    };
   }, []);
   
   
@@ -81,28 +105,124 @@ export default function TeacherDashboard() {
 
   const processClockIn = async (reason: string) => {
     if (clockStatus === 'loading') return;
+    const userId = user?.user_id || user?.id;
+    if (!userId) return;
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0,0,0,0);
+
+    const { data: records } = await supabase
+      .from('staff_clock_ins')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', startOfDay.toISOString())
+      .order('created_at', { ascending: false });
+
+    const existingDup = records?.find((r: any) => r.action_type === 'clock_in');
+
+    if (existingDup) {
+      setClockModalState('closed');
+      setDuplicateWarning({
+        isOpen: true,
+        userName: formatTeacherName(user?.first_name, user?.last_name, 'Teacher'),
+        actionType: 'clock_in',
+        existingRecord: existingDup,
+        onUpdate: async (recId, timeIso, newReason) => {
+          if (recId) {
+            await supabase.from('staff_clock_ins').update({ created_at: timeIso, daily_status: newReason || reason }).eq('id', recId);
+          } else {
+            await supabase.from('staff_clock_ins').update({ created_at: timeIso, daily_status: newReason || reason }).eq('user_id', userId).eq('action_type', 'clock_in');
+          }
+          setClockStatus('clocked_in');
+          setClockModalState('in_success');
+          window.dispatchEvent(new CustomEvent('clock_status_changed'));
+        },
+        onCreateNew: async (timeIso, newReason) => {
+          await supabase.from('staff_clock_ins').insert({
+            user_id: userId,
+            action_type: 'clock_in',
+            daily_status: newReason || reason,
+            created_at: timeIso
+          });
+          setClockStatus('clocked_in');
+          setClockModalState('in_success');
+          window.dispatchEvent(new CustomEvent('clock_status_changed'));
+        }
+      });
+      return;
+    }
+
     setClockStatus('loading');
     const { error } = await supabase.from('staff_clock_ins').insert({
-       user_id: (user?.user_id || user?.id),
+       user_id: userId,
        action_type: 'clock_in',
        daily_status: reason
     });
     if (error) console.error("Error clocking in:", error);
     setClockStatus('clocked_in');
     setClockModalState('in_success');
+    window.dispatchEvent(new CustomEvent('clock_status_changed'));
   };
 
   const processClockOut = async (reason: string) => {
     if (clockStatus === 'loading') return;
+    const userId = user?.user_id || user?.id;
+    if (!userId) return;
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0,0,0,0);
+
+    const { data: records } = await supabase
+      .from('staff_clock_ins')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('created_at', startOfDay.toISOString())
+      .order('created_at', { ascending: false });
+
+    const existingDup = records?.find((r: any) => r.action_type === 'clock_out');
+
+    if (existingDup) {
+      setClockModalState('closed');
+      setDuplicateWarning({
+        isOpen: true,
+        userName: formatTeacherName(user?.first_name, user?.last_name, 'Teacher'),
+        actionType: 'clock_out',
+        existingRecord: existingDup,
+        onUpdate: async (recId, timeIso, newReason) => {
+          if (recId) {
+            await supabase.from('staff_clock_ins').update({ created_at: timeIso, daily_status: newReason || reason }).eq('id', recId);
+          } else {
+            await supabase.from('staff_clock_ins').update({ created_at: timeIso, daily_status: newReason || reason }).eq('user_id', userId).eq('action_type', 'clock_out');
+          }
+          setClockStatus('clocked_out');
+          setClockModalState('out_success');
+          window.dispatchEvent(new CustomEvent('clock_status_changed'));
+        },
+        onCreateNew: async (timeIso, newReason) => {
+          await supabase.from('staff_clock_ins').insert({
+            user_id: userId,
+            action_type: 'clock_out',
+            daily_status: newReason || reason,
+            created_at: timeIso
+          });
+          setClockStatus('clocked_out');
+          setClockModalState('out_success');
+          window.dispatchEvent(new CustomEvent('clock_status_changed'));
+        }
+      });
+      return;
+    }
+
     setClockStatus('loading');
     const { error } = await supabase.from('staff_clock_ins').insert({
-       user_id: (user?.user_id || user?.id),
+       user_id: userId,
        action_type: 'clock_out',
        daily_status: reason
     });
     if (error) console.error("Error clocking out:", error);
     setClockStatus('clocked_out');
     setClockModalState('out_success');
+    window.dispatchEvent(new CustomEvent('clock_status_changed'));
   };
 
   
@@ -216,29 +336,67 @@ export default function TeacherDashboard() {
                <CheckCircle2 className="w-5 h-5" /> 
                QR Scanner
             </button>
-            <button 
-                onClick={handleClockButtonClicked}
-                disabled={clockStatus === 'loading'}
-                className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-3 rounded-full font-label font-bold transition-colors shadow-sm disabled:opacity-50 ${
-                    clockStatus === 'clocked_in' 
-                       ? 'bg-error-container text-on-error-container hover:bg-error-container/90 border border-error/20' 
-                       : 'bg-primary text-on-primary hover:bg-primary/90'
-                }`}
-            >
-               <Clock className="w-5 h-5 fill-current opacity-80" /> 
-               {clockStatus === 'loading' ? 'Loading...' : clockStatus === 'clocked_in' ? 'Clock Out' : 'Clock In'}
-            </button>
+            <div className="relative flex-1 md:flex-none">
+               {clockStatus === 'clocked_in' && (
+                 <span className="absolute -top-3 -right-2 z-20 flex items-center gap-1 bg-amber-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-md animate-bounce border border-white dark:border-surface">
+                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                   Active Session
+                 </span>
+               )}
+               <button 
+                   onClick={handleClockButtonClicked}
+                   disabled={clockStatus === 'loading'}
+                   className={`w-full flex items-center justify-center gap-2 px-8 py-3 rounded-full font-label font-bold transition-colors shadow-sm disabled:opacity-50 ${
+                       clockStatus === 'clocked_in' 
+                          ? 'bg-error-container text-on-error-container hover:bg-error-container/90 border border-error/20 ring-2 ring-error/30' 
+                          : 'bg-primary text-on-primary hover:bg-primary/90'
+                   }`}
+               >
+                  <Clock className="w-5 h-5 fill-current opacity-80" /> 
+                  {clockStatus === 'loading' ? 'Loading...' : clockStatus === 'clocked_in' ? 'Clock Out' : 'Clock In'}
+               </button>
+            </div>
         </div>
       </section>
 
-      {/* Overlay for grayed out parts */}
-      
-
-      <div className="flex flex-col gap-8">
-        {/* Rest of the original header buttons */}
-        <section className="flex flex-col md:flex-row justify-end items-start md:items-center gap-6 -mt-4 mb-4">
-          <div className="flex gap-4 w-full md:w-auto">
+      {/* Active Clock-in Alert Notification Banner */}
+      {clockStatus === 'clocked_in' && (
+        <div className="bg-amber-500/10 border border-amber-500/40 rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2 mb-6">
+          <div className="flex items-center gap-3.5">
+            <div className="relative flex items-center justify-center p-3 rounded-xl bg-amber-500 text-white font-bold shrink-0">
+              <Clock className="w-6 h-6" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-title text-base font-bold text-on-surface">Active Clock-In Session Detected</h4>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  Clock-Out Pending
+                </span>
+              </div>
+              <p className="font-body text-xs sm:text-sm text-on-surface-variant mt-0.5">
+                You have an active clock-in without a corresponding clock-out for today. Remember to clock out when finished!
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleClockButtonClicked}
+            className="shrink-0 px-5 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-label font-bold text-sm transition-all shadow-sm hover:shadow flex items-center gap-2"
+          >
+            <Clock className="w-4 h-4" />
+            Clock Out Now
+          </button>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-6">
+        {/* Classroom Rotating Photo Carousel */}
+        <section className="w-full">
+          <PhotoCarousel showTeacherUpload={true} currentUser={user} />
         </section>
 
         <DashboardNotifications />
@@ -485,6 +643,18 @@ export default function TeacherDashboard() {
             onClose={() => setShowQrCode(false)} 
             title="Teacher ID Badge"
          />
+      )}
+
+      {duplicateWarning && (
+        <DuplicateClockWarningModal
+          isOpen={duplicateWarning.isOpen}
+          onClose={() => setDuplicateWarning(null)}
+          userName={duplicateWarning.userName}
+          actionType={duplicateWarning.actionType}
+          existingRecord={duplicateWarning.existingRecord}
+          onUpdateExisting={duplicateWarning.onUpdate}
+          onCreateNew={duplicateWarning.onCreateNew}
+        />
       )}
 
   </div>

@@ -7,18 +7,25 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
      userRole = userRole || 'student';
      
      const selectQuery = fields || `
-        *,
+        announcement_id,
+        title,
+        content,
+        created_at,
+        created_by,
+        target_role_id,
+        target_role_ids,
+        target_class_ids,
+        target_user_ids,
         users:created_by ( first_name, last_name, email ),
-        roles:target_role_id ( role_name ),
-        announcement_replies (
-          reply_id,
-          content,
-          created_at,
-          user_id,
-          users:user_id ( first_name, last_name, email )
-        )
+        roles:target_role_id ( role_name )
      `;
-     const { data: anns, error } = await supabase.from('announcements').select(selectQuery).order('created_at', { ascending: false }).limit(50);
+
+     const queryPromise = supabase.from('announcements').select(selectQuery).order('created_at', { ascending: false }).limit(limitCount ? limitCount * 3 : 25);
+     const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+       setTimeout(() => resolve({ data: null, error: { message: 'Statement timeout' } }), 4000)
+     );
+
+     const { data: anns, error } = await Promise.race([queryPromise, timeoutPromise]);
      
      if (anns && !fields) {
          const userIds = new Set<string>();
@@ -47,7 +54,9 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
          }
      }
      if (error) {
-         console.error("fetchVisibleAnnouncements error:", error);
+         if ((error as any).code !== '57014' && (error as any).message !== 'Statement timeout') {
+            console.warn("fetchVisibleAnnouncements notice:", error);
+         }
          return [];
      }
      
