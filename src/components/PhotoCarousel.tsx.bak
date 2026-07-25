@@ -597,7 +597,7 @@ export function PhotoCarousel({
             </AnimatePresence>
 
             {/* Navigation Arrows */}
-            {photos.length > 1 && (
+            {photos.length > 0 && (
               <>
                 <button
                   onClick={prevSlide}

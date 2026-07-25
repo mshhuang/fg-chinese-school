@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 const supabase = createClient("https://xfftjqefsirzfemmklku.supabase.co", process.env.VITE_SUPABASE_ANON_KEY);
 async function run() {
-  const { data } = await supabase.from('class_photos').select('*');
-  console.log(data);
+  await supabase.from('class_photos').delete().neq('id', '0');
+  console.log("Photos cleared");
   process.exit(0);
 }
 run();

@@ -1,4 +1,3 @@
-import { Resend } from 'resend';
 import crypto from 'crypto';
 import fsSync from 'fs';
 import express from "express";
@@ -11,55 +10,13 @@ async function startServer() {
 
   // API routes FIRST
   
-  app.post('/api/alert/send', express.json(), async (req, res) => {
-    try {
-      const { subject, message } = req.body;
-      const resend = new Resend(process.env.RESEND_API_KEY || 're_123');
-      
-      if (!process.env.RESEND_API_KEY) {
-        console.warn('RESEND_API_KEY not found, skipping actual email send.');
-        return res.json({ success: true, mocked: true });
-      }
-      
-      const { data, error } = await resend.emails.send({
-        from: 'Nexus Academy <onboarding@resend.dev>',
-        to: 'janice.yang267@gmail.com',
-        subject: subject || 'System Alert',
-        html: `<p>${message}</p>`
-      });
 
-      if (error) {
-        return res.status(400).json({ error });
-      }
-      res.json({ success: true, data });
-    } catch (err) {
-      console.error('Email alert error:', err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  
   app.post('/api/messages/send', express.json(), async (req, res) => {
     try {
       const { to, subject, text } = req.body;
-      const resend = new Resend(process.env.RESEND_API_KEY || 're_123');
-      
-      if (!process.env.RESEND_API_KEY) {
-        console.warn('RESEND_API_KEY not found, skipping actual email send.');
-        return res.json({ success: true, mocked: true });
-      }
-      
-      const { data, error } = await resend.emails.send({
-        from: 'Nexus Academy <onboarding@resend.dev>',
-        to: to,
-        subject: subject || 'Message from Nexus Academy',
-        html: `<p>${text}</p>`
-      });
-
-      if (error) {
-        return res.status(400).json({ error: error.message });
-      }
-      res.json({ success: true, data });
+      console.log(`[Mock Email] Sending email to ${to}: ${subject}`);
+      // Mock successful send since Resend is not being used
+      res.json({ success: true, mocked: true });
     } catch (err) {
       console.error('Email send error:', err);
       res.status(500).json({ error: err.message });

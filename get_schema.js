@@ -1,16 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://example.supabase.co';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'fake';
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function test() {
-  const { data } = await supabase.from('system_logs').select('*').limit(1);
-  if (data && data.length > 0) {
-     console.log(Object.keys(data[0]));
-  } else {
-     console.log('empty or failed', data);
-  }
+import { createClient } from "@supabase/supabase-js";
+const supabase = createClient("https://xfftjqefsirzfemmklku.supabase.co", process.env.VITE_SUPABASE_ANON_KEY);
+async function run() {
+  const { data, error } = await supabase.from('class_photos').insert([{ id: 'test-123', title: 'test', image_url: 'test', teacher_name: 'test'}]).select();
+  console.log("Insert result:", data, error);
 }
-test();
+run();

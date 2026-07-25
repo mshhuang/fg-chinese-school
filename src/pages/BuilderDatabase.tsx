@@ -117,10 +117,34 @@ export default function BuilderDatabase() {
     setClearingTable(tableName);
     try {
         let conditionColumn = 'id';
-        if (tableName === 'system_logs') {
-            conditionColumn = 'log_id';
+        const pkMap: Record<string, string> = {
+            'users': 'user_id',
+            'roles': 'role_id',
+            'user_roles': 'user_id',
+            'classes': 'class_id',
+            'enrollments': 'enrollment_id',
+            'announcements': 'announcement_id',
+            'newsletters': 'newsletter_id',
+            'attendance': 'record_id',
+            'assignments': 'assignment_id',
+            'assignment_students': 'assignment_id',
+            'internal_messages': 'message_id',
+            'system_logs': 'log_id',
+            'error_logs': 'id',
+            'user_sessions': 'id',
+            'staff_clock_ins': 'id',
+            'student_clock_ins': 'id',
+            'school_events': 'id',
+            'class_photos': 'id',
+            'parent_child': 'parent_id',
+            'programs': 'program_id'
+        };
+        
+        if (pkMap[tableName]) {
+            conditionColumn = pkMap[tableName];
         }
-        const { error: err } = await supabase.from(tableName).delete().neq(conditionColumn, '00000000-0000-0000-0000-000000000000');
+
+        const { error: err } = await supabase.from(tableName).delete().not(conditionColumn, 'is', null);
         if (err) throw err;
         alert(`Successfully cleared ${tableName}`);
         
