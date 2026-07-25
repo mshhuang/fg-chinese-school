@@ -186,7 +186,7 @@ export default function PrincipalDashboard() {
               </h3>
               <div className="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border border-outline-variant/20">
                 <p className="font-body text-on-surface leading-relaxed">
-                  <span className="font-bold">Substitution needed:</span> Grade 4 Math (Mr. Chen - Sick Leave)
+                  <span className="font-bold">Substitution needed:</span> Grade 4 Math (Ms. Chen - Sick Leave)
                 </p>
                 <button className="mt-4 text-error font-label text-sm font-bold opacity-50 cursor-not-allowed">Assign Sub</button>
               </div>

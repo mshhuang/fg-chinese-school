@@ -39,8 +39,6 @@ export function formatTeacherName(firstName?: string | null, lastName?: string |
   const lnLower = lName.toLowerCase();
 
   if (fnLower === 'derek') return 'Mr. Derek';
-  if (fnLower === 'janice') return 'Ms. Janice';
-  if (fnLower === 'vickie') return 'Ms. Vickie';
   if (fnLower === 'kayvan') return 'Mr. Kayvan';
   if (lnLower === 'li' || fnLower === 'li') return 'Mr. Li';
 
@@ -48,9 +46,13 @@ export function formatTeacherName(firstName?: string | null, lastName?: string |
     return [fName, lName].filter(Boolean).join(' ');
   }
 
-  if (lName && lName.length > 1) {
-    return `Mr./Ms. ${lName}`;
+  if (fName) {
+    return `Ms. ${fName}`;
   }
 
-  return `Ms. ${fName || lName || defaultRole}`;
+  if (lName && lName.length > 1) {
+    return `Ms. ${lName}`;
+  }
+
+  return `Ms. ${defaultRole}`;
 }

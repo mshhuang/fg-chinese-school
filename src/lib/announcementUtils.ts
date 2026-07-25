@@ -20,12 +20,34 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
         roles:target_role_id ( role_name )
      `;
 
-     const queryPromise = supabase.from('announcements').select(selectQuery).order('created_at', { ascending: false }).limit(limitCount ? limitCount * 3 : 25);
-     const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
-       setTimeout(() => resolve({ data: null, error: { message: 'Statement timeout' } }), 4000)
-     );
+     let anns: any[] | null = null;
+     let error: any = null;
 
-     const { data: anns, error } = await Promise.race([queryPromise, timeoutPromise]);
+     // Try the complex join query first
+     const queryPromise = supabase.from('announcements')
+         .select(selectQuery)
+         .order('created_at', { ascending: false })
+         .limit(limitCount ? limitCount * 3 : 200);
+
+     const { data: primaryData, error: primaryErr } = await queryPromise;
+
+     if (!primaryErr && primaryData) {
+         anns = primaryData;
+     } else {
+         console.warn("fetchVisibleAnnouncements join query failed:", primaryErr?.message || primaryErr);
+         // Fallback to simple query if joins cause timeout
+         const fallbackQuery = fields || '*';
+         const { data: fallbackData, error: fallbackErr } = await supabase.from('announcements')
+             .select(fallbackQuery)
+             .order('created_at', { ascending: false })
+             .limit(limitCount ? limitCount * 3 : 200);
+             
+         if (!fallbackErr && fallbackData) {
+             anns = fallbackData;
+         } else {
+             error = fallbackErr;
+         }
+     }
      
      if (anns && !fields) {
          const userIds = new Set<string>();
@@ -38,29 +60,49 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
          
          const uIdArray = Array.from(userIds);
          if (uIdArray.length > 0) {
-             const { data: uRoles } = await supabase.from('user_roles').select('user_id, roles(role_name)').in('user_id', uIdArray);
+             // Fetch users and roles separately for manual hydration (especially if fallback query was used)
+             const [rolesRes, usersRes] = await Promise.all([
+                 supabase.from('user_roles').select('user_id, roles(role_name)').in('user_id', uIdArray),
+                 supabase.from('users').select('user_id, first_name, last_name, email').in('user_id', uIdArray)
+             ]);
+
              const roleMap: Record<string, any[]> = {};
-             uRoles?.forEach(ur => {
+             rolesRes.data?.forEach(ur => {
                  if (!roleMap[ur.user_id]) roleMap[ur.user_id] = [];
                  roleMap[ur.user_id].push(ur);
              });
              
+             const userMap: Record<string, any> = {};
+             usersRes.data?.forEach(u => {
+                 userMap[u.user_id] = u;
+             });
+
              (anns as any[]).forEach(a => {
+                 if (!a.users && a.created_by && userMap[a.created_by]) {
+                     a.users = userMap[a.created_by];
+                 }
                  if (a.users) (a.users as any).user_roles = roleMap[a.created_by] || [];
+                 
                  a.announcement_replies?.forEach((r: any) => {
+                     if (!r.users && r.user_id && userMap[r.user_id]) {
+                         r.users = userMap[r.user_id];
+                     }
                      if (r.users) (r.users as any).user_roles = roleMap[r.user_id] || [];
                  });
              });
          }
      }
+
      if (error) {
-         if ((error as any).code !== '57014' && (error as any).message !== 'Statement timeout') {
-            console.warn("fetchVisibleAnnouncements notice:", error);
-         }
+         console.warn("fetchVisibleAnnouncements notice:", error);
          return [];
      }
      
      let allAnns: any[] = (anns as any[]) || [];
+     
+     // Filter out system configuration rows stored in announcements table
+     allAnns = allAnns.filter(a => a.title !== 'SYSTEM_SCHOOL_SCHEDULE_URL');
+
      if (userRole === 'admin' || userRole === 'principal' || userRole === 'builder') {
          return limitCount ? allAnns.slice(0, limitCount) : allAnns;
      }

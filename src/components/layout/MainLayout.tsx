@@ -194,7 +194,8 @@ export default function MainLayout() {
        setUnreadMessagesCount(count || 0);
 
        // Announcements
-       const annData = await fetchVisibleAnnouncements(userInfo, localStorage.getItem('current_role') || userRole || '');
+       const selectFields = "announcement_id, title, created_at, created_by, target_role_id, target_role_ids, target_class_ids, target_user_ids";
+       const annData = await fetchVisibleAnnouncements(userInfo, localStorage.getItem('current_role') || userRole || '', 20, selectFields);
 
        if (annData) {
          const stored = localStorage.getItem(`ann_read_${currentUserId}`);

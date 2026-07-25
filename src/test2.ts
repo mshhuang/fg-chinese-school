@@ -1,12 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-dotenv.config();
-
-const supabase = createClient(process.env.VITE_SUPABASE_URL || '', process.env.VITE_SUPABASE_ANON_KEY || '');
-
-async function run() {
-  const { data } = await supabase.from('users').select('*');
-  console.log(data?.find(u => u.first_name === 'Emily' || u.last_name === 'Wang' || u.email === 'janice.yang267@gmail.com'));
+import { fetchVisibleAnnouncements } from "./lib/announcementUtils";
+async function runTest() {
+  const mockUser = { id: "77e1a165-aac8-46e8-a0bf-76f7ffa14a7f" };
+  const adminAnns = await fetchVisibleAnnouncements(mockUser, "admin");
+  console.log("Admin visible announcements count:", adminAnns.length);
+  const teacherAnns = await fetchVisibleAnnouncements(mockUser, "teacher");
+  console.log("Teacher visible announcements count:", teacherAnns.length);
 }
-
-run();
+runTest().catch(console.error);

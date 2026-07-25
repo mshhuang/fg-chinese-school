@@ -8,17 +8,17 @@ const SCHEDULE: Record<string, any[]> = {
   mei: [
     { time: "08:30 AM", class: "Homeroom", room: "Room 302", teacher: "Ms. Chen" },
     { time: "09:00 AM", class: "Chinese Literature", room: "Room 302", teacher: "Ms. Chen" },
-    { time: "10:30 AM", class: "Math", room: "Room 305", teacher: "Mr. Lin" },
+    { time: "10:30 AM", class: "Math", room: "Room 305", teacher: "Ms. Lin" },
     { time: "11:30 AM", class: "Lunch", room: "Cafeteria", teacher: "Staff" },
     { time: "12:30 PM", class: "Science", room: "Room 102", teacher: "Mrs. Wong" },
-    { time: "01:30 PM", class: "Calligraphy", room: "Art Room", teacher: "Mr. Zhang" }
+    { time: "01:30 PM", class: "Calligraphy", room: "Art Room", teacher: "Ms. Zhang" }
   ],
   wei: [
     { time: "08:30 AM", class: "Homeroom", room: "Room 104", teacher: "Ms. Lee" },
     { time: "09:00 AM", class: "Reading Basics", room: "Room 104", teacher: "Ms. Lee" },
     { time: "10:00 AM", class: "Math Basics", room: "Room 104", teacher: "Ms. Lee" },
     { time: "11:00 AM", class: "Lunch", room: "Cafeteria", teacher: "Staff" },
-    { time: "12:00 PM", class: "Art & Crafts", room: "Art Room", teacher: "Mr. Zhang" },
+    { time: "12:00 PM", class: "Art & Crafts", room: "Art Room", teacher: "Ms. Zhang" },
     { time: "01:00 PM", class: "Physical Education", room: "Gym", teacher: "Coach Wu" }
   ]
 };
