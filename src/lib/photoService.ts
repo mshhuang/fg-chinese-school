@@ -131,6 +131,17 @@ export async function addPhoto(photo: Omit<ClassPhotoItem, 'id' | 'created_at' |
     likes_count: 0,
     reactions: { '❤️': 0, '👏': 0, '⭐': 0 }
   };
+  
+  if (photo.teacher_role === 'teacher' || photo.teacher_role === 'Teacher') {
+    fetch('/api/alert/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: `New Photo Uploaded by ${photo.teacher_name || 'a Teacher'}`,
+        message: `${photo.teacher_name || 'A teacher'} uploaded a new photo for ${photo.class_name || 'their students'}.<br><br>Description: ${photo.description || 'No description'}<br><br><a href="${window.location.origin}">View Photo</a>`
+      })
+    }).catch(e => console.error('Alert failed', e));
+  }
 
   // Update local storage sync immediately
   const current = await getPhotos();

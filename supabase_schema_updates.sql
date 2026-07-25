@@ -77,3 +77,23 @@ ALTER TABLE classes ADD COLUMN IF NOT EXISTS co_teachers UUID[] DEFAULT '{}';
 -- Add multiple co-teachers support to classes
 ALTER TABLE classes ADD COLUMN IF NOT EXISTS co_teachers UUID[] DEFAULT '{}';
 
+
+-- Create class_photos table
+CREATE TABLE IF NOT EXISTS class_photos (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    description TEXT,
+    image_url TEXT,
+    teacher_name TEXT,
+    teacher_role TEXT,
+    class_name TEXT,
+    audience_type TEXT DEFAULT 'all',
+    target_audience_label TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    likes_count INTEGER DEFAULT 0,
+    reactions TEXT DEFAULT '{"❤️": 0, "👏": 0, "⭐": 0}'
+);
+
+ALTER TABLE class_photos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all for class_photos" ON class_photos;
+CREATE POLICY "Enable all for class_photos" ON class_photos FOR ALL USING (true) WITH CHECK (true);

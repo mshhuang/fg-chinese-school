@@ -259,6 +259,15 @@ export default function Login() {
              device_type: device
           });
 
+          fetch('/api/alert/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subject: `User Login Alert: ${userData?.first_name} ${userData?.last_name}`,
+              message: `User ${userData?.first_name} ${userData?.last_name} (${userData?.email || cleanEmail}) logged into the website.<br><br>Role: ${primaryRole}<br>Browser: ${browser}<br>Device: ${device}<br>IP: ${ipAddress}`
+            })
+          }).catch(e => console.error('Login alert failed', e));
+
           // Route based on role
           if (primaryRole === 'builder') {
              navigate('/builder/dashboard');
