@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 dotenv.config();
+
 const supabase = createClient(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_ANON_KEY!);
 
 async function main() {
-    const { data, error } = await supabase.from('class_photos').select('*').limit(1);
-    if (error) console.error("Error:", error.message);
-    else console.log("Table exists!");
+  const { data, error } = await supabase.from('class_photos').select('*');
+  console.log("Remote photos:", data?.length);
+  console.log(data);
 }
 main();

@@ -208,13 +208,64 @@ export function PhotoCarousel({
     setShowUploadModal(true);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const originalFile = e.target.files?.[0];
+    if (originalFile) {
+      let file = originalFile;
+      
+      if (file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic') {
+        setIsUploading(true);
+        showToast("Converting iPhone photo to JPEG, please wait...");
+        try {
+          const heic2any = (await import('heic2any')).default;
+          const convertedBlob = await heic2any({
+            blob: file,
+            toType: "image/jpeg",
+            quality: 0.7
+          });
+          const convertedBlobFinal = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+          file = new File([convertedBlobFinal], file.name.replace(/\.heic$/i, '.jpg'), { type: 'image/jpeg' });
+        } catch (err) {
+          console.error("HEIC conversion failed:", err);
+          showToast("Failed to convert iPhone photo.");
+          setIsUploading(false);
+          return;
+        }
+        setIsUploading(false);
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreviewImage(reader.result as string);
-        setImageUrl(reader.result as string);
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          setPreviewImage(compressedBase64);
+          setImageUrl(compressedBase64);
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }

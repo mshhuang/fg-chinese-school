@@ -2,9 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { Database } from './database.types';
 
 // @ts-ignore
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co';
 // @ts-ignore
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder';
 
 
 const queryCache = new Map<string, { data: any, timestamp: number, response: Response }>();

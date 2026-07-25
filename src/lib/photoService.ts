@@ -30,16 +30,33 @@ const DEFAULT_PHOTOS: ClassPhotoItem[] = [];
 
 const STORAGE_KEY = 'school_class_photos_v3';
 
+function safeSetLocalStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (err) {
+    console.warn(`Failed to set localStorage for key ${key}:`, err);
+  }
+}
+
+function safeGetLocalStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch (err) {
+    console.warn(`Failed to get localStorage for key ${key}:`, err);
+    return null;
+  }
+}
+
 export async function getPhotos(roleFilter?: 'student' | 'parent' | 'teacher' | 'admin' | 'staff' | 'all' | string, selectedClassFilter?: string): Promise<ClassPhotoItem[]> {
   let photos: ClassPhotoItem[] = [];
 
   // Read local storage cache first to ensure immediate offline/deleted consistency
   try {
-    const localData = localStorage.getItem(STORAGE_KEY);
+    const localData = safeGetLocalStorage(STORAGE_KEY);
     if (localData) {
       const parsed = JSON.parse(localData);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        photos = parsed;
+        photos = parsed.filter(p => p.image_url && !p.image_url.startsWith('data:image/heic'));
       }
     }
   } catch (e) {}
@@ -48,7 +65,7 @@ export async function getPhotos(roleFilter?: 'student' | 'parent' | 'teacher' | 
   if (photos.length === 0) {
     photos = DEFAULT_PHOTOS;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PHOTOS));
+      safeSetLocalStorage(STORAGE_KEY, JSON.stringify(DEFAULT_PHOTOS));
     } catch (e) {}
   }
 
@@ -78,13 +95,26 @@ export async function getPhotos(roleFilter?: 'student' | 'parent' | 'teacher' | 
 
       // Merge remote photos into local list without resurrecting deleted items
       const localIds = new Set(photos.map(p => p.id));
-      const deletedIds = new Set(JSON.parse(localStorage.getItem('deleted_photo_ids') || '[]'));
+      let deletedIdsArray = [];
+      try {
+        const deletedStr = safeGetLocalStorage('deleted_photo_ids');
+        if (deletedStr) deletedIdsArray = JSON.parse(deletedStr);
+      } catch (e) {
+        console.warn("Could not parse deleted_photo_ids", e);
+      }
+      const deletedIds = new Set(deletedIdsArray);
       
-      remotePhotos.forEach(rp => {
-        if (!localIds.has(rp.id) && !deletedIds.has(rp.id)) {
-          photos.unshift(rp);
+      const mergedPhotos = [...remotePhotos.filter(rp => !deletedIds.has(rp.id))];
+      const remoteIds = new Set(mergedPhotos.map(p => p.id));
+      
+      // Keep local photos that haven't synced to remote yet
+      photos.forEach(lp => {
+        if (!remoteIds.has(lp.id) && !deletedIds.has(lp.id)) {
+          mergedPhotos.push(lp);
         }
       });
+      
+      photos = mergedPhotos;
     }
   } catch (e) {
     // Supabase optional fallback
@@ -137,7 +167,7 @@ export async function addPhoto(photo: Omit<ClassPhotoItem, 'id' | 'created_at' |
   const current = await getPhotos();
   const updated = [newPhoto, ...current.filter(p => p.id !== newPhoto.id)];
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    safeSetLocalStorage(STORAGE_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event('photos_updated'));
   } catch (e) {
     console.error('Failed to save photo locally:', e);
@@ -178,7 +208,7 @@ export async function updatePhoto(photoId: string, updates: Partial<ClassPhotoIt
 
   current[index] = updatedPhoto;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+    safeSetLocalStorage(STORAGE_KEY, JSON.stringify(current));
     window.dispatchEvent(new Event('photos_updated'));
   } catch (e) {}
 
@@ -199,11 +229,18 @@ export async function updatePhoto(photoId: string, updates: Partial<ClassPhotoIt
 export async function deletePhoto(id: string): Promise<boolean> {
   // Track deleted IDs in localStorage so remote sync does not resurrect deleted items
   try {
-    const deletedIds = new Set(JSON.parse(localStorage.getItem('deleted_photo_ids') || '[]'));
+    let deletedIdsArray = [];
+    try {
+      const deletedStr = safeGetLocalStorage('deleted_photo_ids');
+      if (deletedStr) deletedIdsArray = JSON.parse(deletedStr);
+    } catch (e) {
+      console.warn("Could not parse deleted_photo_ids", e);
+    }
+    const deletedIds = new Set(deletedIdsArray);
     deletedIds.add(id);
-    localStorage.setItem('deleted_photo_ids', JSON.stringify(Array.from(deletedIds)));
+    safeSetLocalStorage('deleted_photo_ids', JSON.stringify(Array.from(deletedIds)));
 
-    const localData = localStorage.getItem(STORAGE_KEY);
+    const localData = safeGetLocalStorage(STORAGE_KEY);
     let current: ClassPhotoItem[] = [];
     if (localData) {
       current = JSON.parse(localData);
@@ -211,7 +248,7 @@ export async function deletePhoto(id: string): Promise<boolean> {
       current = DEFAULT_PHOTOS;
     }
     const updated = current.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    safeSetLocalStorage(STORAGE_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event('photos_updated'));
   } catch (e) {
     console.error('Error removing photo locally:', e);
@@ -242,7 +279,7 @@ export async function addReaction(photoId: string, reactionType: string): Promis
 
   current[index] = updatedPhoto;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+    safeSetLocalStorage(STORAGE_KEY, JSON.stringify(current));
     window.dispatchEvent(new Event('photos_updated'));
   } catch (e) {}
 

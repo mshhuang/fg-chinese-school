@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Clock, Users, CheckCircle2, XCircle, Newspaper, Eye, X, FileText, Trash2 } from "lucide-react";
+import { Search, Filter, Clock, Users, CheckCircle2, XCircle, Newspaper, Eye, X, FileText, Trash2, Upload, Download, Megaphone } from "lucide-react";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
@@ -175,6 +175,98 @@ export default function PrincipalNewsletters() {
      }
   };
 
+  const handleDownload = () => {
+      if (!showPdfModal?.pdfData) return;
+      const a = document.createElement("a");
+      a.href = showPdfModal.pdfData;
+      a.download = showPdfModal.pdfName || "newsletter.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+  };
+
+  const handleUploadEdit = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) {
+          alert("File is too large. Max 5MB allowed.");
+          return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+          const base64 = event.target?.result as string;
+          
+          const newsletter = newsletters.find(n => n.id === showPdfModal.id);
+          if (!newsletter) return;
+
+          const updatedProps = { ...newsletter, pdfData: base64, pdfName: file.name };
+          delete updatedProps.id;
+          delete updatedProps.title;
+          delete updatedProps.class_id;
+
+          try {
+              // @ts-ignore
+              const { error } = await supabase.from('newsletters').update({
+                  content: JSON.stringify(updatedProps)
+              }).eq('newsletter_id', showPdfModal.id);
+              
+              if (error) throw error;
+
+              setShowPdfModal((prev: any) => prev ? { ...prev, pdfData: base64, pdfName: file.name } : null);
+              await loadNewsletters();
+              alert("Edited newsletter uploaded successfully.");
+          } catch(err) {
+              console.error("Upload failed", err);
+              alert("Failed to upload edited newsletter.");
+          }
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+  };
+
+  const handlePostAnnouncement = async () => {
+      if (!showPdfModal) return;
+      
+      const atts = [];
+      if (showPdfModal.pdfData) {
+          atts.push({ name: showPdfModal.pdfName || "newsletter.pdf", url: showPdfModal.pdfData });
+      }
+
+      let encodedContent = `Newsletter: ${showPdfModal.title}\n\n${showPdfModal.content || ''}`;
+      if (atts.length > 0) {
+          encodedContent += `\n\n---ATTACHMENTS---\n${JSON.stringify(atts)}`;
+      }
+
+      const payload: any = {
+          title: `Newsletter: ${showPdfModal.title}`,
+          content: encodedContent,
+          target_class_ids: showPdfModal.class_id ? [showPdfModal.class_id] : [],
+          target_role_ids: [],
+          target_user_ids: [],
+          created_by: 'ec13df7f-1a4f-422e-abd8-05732ca798d2'
+      };
+      
+      const userJson = localStorage.getItem('user');
+      if (userJson) {
+         try {
+             payload.created_by = JSON.parse(userJson).id;
+             if (payload.created_by === 'demo') {
+                 payload.created_by = 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068';
+             }
+         } catch(e){}
+      }
+
+      try {
+          const { error } = await supabase.from('announcements').insert(payload);
+          if (error) throw error;
+          alert("Posted to announcement board successfully.");
+      } catch (err) {
+          console.error("Post failed", err);
+          alert("Failed to post announcement.");
+      }
+  };
+
   return (
     <div className="w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col gap-8 pb-32 md:pb-8">
        {/* Header */}
@@ -313,6 +405,18 @@ export default function PrincipalNewsletters() {
                        <button onClick={() => { handleDelete(showPdfModal.id); setShowPdfModal(null); }} className="bg-error/10 text-error hover:bg-error/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                           <Trash2 className="w-4 h-4" /> Delete
                        </button>
+                       <button onClick={handleDownload} className="bg-surface-variant text-on-surface hover:bg-surface-variant/80 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
+                          <Download className="w-4 h-4" /> Download
+                       </button>
+                       <label className="bg-surface-variant text-on-surface hover:bg-surface-variant/80 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2 cursor-pointer">
+                          <Upload className="w-4 h-4" /> Upload Edited
+                          <input type="file" className="hidden" accept="application/pdf" onChange={handleUploadEdit} />
+                       </label>
+                       {showPdfModal.status === "Published" && (
+                           <button onClick={handlePostAnnouncement} className="bg-tertiary/10 text-tertiary hover:bg-tertiary/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
+                              <Megaphone className="w-4 h-4" /> Post
+                           </button>
+                       )}
                        <button onClick={() => {
                           const w = window.open();
                           if(w) {
