@@ -316,47 +316,88 @@ export function PhotoCarousel({
       ? 'All Audience (Students & Parents)'
       : `Classes: ${classNameToUse} (Students & Parents)`;
 
-    if (editingPhotoId) {
-      // Edit Existing Photo
-      const updated = await updatePhoto(editingPhotoId, {
-        title: title.trim(),
-        description: description.trim(),
-        image_url: imageUrl.trim(),
-        class_name: classNameToUse,
-        class_names: finalClasses,
-        audience_type: audienceTarget,
-        target_audience_label: targetAudienceLabel
-      });
-
-      if (updated) {
-        setPhotos(prev => prev.map(p => p.id === editingPhotoId ? updated : p));
-        if (lightboxPhoto?.id === editingPhotoId) {
-          setLightboxPhoto(updated);
+    let finalImageUrl = imageUrl.trim();
+    if (finalImageUrl.startsWith('data:image/')) {
+        try {
+            const response = await fetch(finalImageUrl);
+            const blob = await response.blob();
+            const ext = blob.type.split('/')[1] || 'jpg';
+            const filePath = `photo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('class_photos')
+                .upload(filePath, blob, { cacheControl: '3600', upsert: false });
+                
+            if (!uploadError) {
+                const { data } = supabase.storage.from('class_photos').getPublicUrl(filePath);
+                finalImageUrl = data.publicUrl;
+            } else {
+                console.error("Storage upload failed:", uploadError);
+                if (uploadError.statusCode === "404" || uploadError.statusCode === "400") { 
+                     alert("Could not upload photo: Bucket 'class_photos' not found. Ensure it exists and is public.");
+                     setIsUploading(false);
+                     return;
+                } else { 
+                     alert("Could not upload photo: " + uploadError.message);
+                     setIsUploading(false);
+                     return;
+                }
+            }
+        } catch (e) {
+            console.error("Failed to upload image:", e);
+            alert("Failed to upload the image.");
+            setIsUploading(false);
+            return;
         }
-      }
-      showToast('Photo highlight updated successfully!');
-    } else {
-      // Add New Photo
-      const created = await addPhoto({
-        title: title.trim(),
-        description: description.trim(),
-        image_url: imageUrl.trim(),
-        teacher_name: teacherName || 'Teacher',
-        teacher_role: teacherRole,
-        class_name: classNameToUse,
-        class_names: finalClasses,
-        audience_type: audienceTarget,
-        target_audience_label: targetAudienceLabel
-      });
-
-      // setPhotos(prev => [created, ...prev]); handled by event
-      setCurrentIndex(0);
-      showToast('Photo highlight published successfully!');
     }
 
-    setIsUploading(false);
-    setShowUploadModal(false);
-    setEditingPhotoId(null);
+    try {
+      if (editingPhotoId) {
+        // Edit Existing Photo
+        const updated = await updatePhoto(editingPhotoId, {
+          title: title.trim(),
+          description: description.trim(),
+          image_url: finalImageUrl,
+          class_name: classNameToUse,
+          class_names: finalClasses,
+          audience_type: audienceTarget,
+          target_audience_label: targetAudienceLabel
+        });
+
+        if (updated) {
+          setPhotos(prev => prev.map(p => p.id === editingPhotoId ? updated : p));
+          if (lightboxPhoto?.id === editingPhotoId) {
+            setLightboxPhoto(updated);
+          }
+        }
+        showToast('Photo highlight updated successfully!');
+      } else {
+        // Add New Photo
+        const created = await addPhoto({
+          title: title.trim(),
+          description: description.trim(),
+          image_url: finalImageUrl,
+          teacher_name: teacherName || 'Teacher',
+          teacher_role: teacherRole,
+          class_name: classNameToUse,
+          class_names: finalClasses,
+          audience_type: audienceTarget,
+          target_audience_label: targetAudienceLabel
+        });
+
+        // setPhotos(prev => [created, ...prev]); handled by event
+        setCurrentIndex(0);
+        showToast('Photo highlight published successfully!');
+      }
+
+      setIsUploading(false);
+      setShowUploadModal(false);
+      setEditingPhotoId(null);
+    } catch (err: any) {
+      console.error("Database save failed:", err);
+      alert("Database error: Could not save the photo highlight. " + err.message);
+      setIsUploading(false);
+    }
   };
 
   const handleReactionClick = async (e: React.MouseEvent, photoId: string, emoji: string) => {

@@ -33,19 +33,36 @@ export default function Announcements() {
   const [selectedPostingRole, setSelectedPostingRole] = useState<string>("");
 
   
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-       alert("File is too large. Max 2MB allowed.");
+    if (file.size > 10 * 1024 * 1024) {
+       alert("File is too large. Max 10MB allowed.");
        return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-       const dataUrl = event.target?.result as string;
-       setComposeAttachments(prev => [...prev, { name: file.name, url: dataUrl }]);
-    };
-    reader.readAsDataURL(file);
+    setIsSubmitting(true);
+    try {
+        const ext = file.name.split('.').pop() || 'file';
+        const safeName = file.name.replace(/[^a-zA-Z0-9.-_]/g, '').substring(0, 30);
+        const filePath = `announcements/${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${safeName}`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('announcements')
+            .upload(filePath, file, { cacheControl: '3600', upsert: false });
+            
+        if (!uploadError) {
+            const { data } = supabase.storage.from('announcements').getPublicUrl(filePath);
+            setComposeAttachments(prev => [...prev, { name: file.name, url: data.publicUrl }]);
+        } else {
+            console.error("Storage upload failed:", uploadError);
+            alert("Could not upload file: " + uploadError.message);
+        }
+    } catch (err) {
+        console.error("Upload error", err);
+        alert("Failed to upload the file.");
+    } finally {
+        setIsSubmitting(false);
+    }
     e.target.value = '';
   };
 

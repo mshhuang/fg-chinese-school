@@ -103,7 +103,8 @@ export default function AdminContent() {
                                if (activeTab === 'newsletters') {
                                    try {
                                        const parsed = JSON.parse(row.content || "{}");
-                                       return extractPlainText(parsed.content || parsed.pdfName || row.content);
+                                       const text = extractPlainText(parsed.content || parsed.pdfName || '');
+                                       return `[${parsed.status || 'No Status'}] ${parsed.audience ? `Audience: ${parsed.audience} - ` : ''}${text}` || extractPlainText(row.content);
                                    } catch (e) {
                                        return extractPlainText(row.content);
                                    }

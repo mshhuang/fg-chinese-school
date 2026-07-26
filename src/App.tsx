@@ -66,6 +66,7 @@ import StaffCalendar from "./pages/StaffCalendar";
 import VolunteerCalendar from "./pages/VolunteerCalendar";
 import AdminReports from "./pages/AdminReports";
 import BuilderInternalMessages from "./pages/BuilderInternalMessages";
+import BuilderStorage from "./pages/BuilderStorage";
 import SupportWidget from "./components/SupportWidget";
 
 // Initialize Google Analytics if measurement ID is provided
@@ -167,6 +168,7 @@ export default function App() {
 
            {/* Builder (formerly Admin) */}
            <Route path="/builder/dashboard" element={<BuilderDashboard />} />
+           <Route path="/builder/storage" element={<BuilderStorage />} />
            <Route path="/builder/github-sync" element={<BuilderGitHubSync />} />
            <Route path="/builder/calendar" element={<AdminCalendar />} />
            <Route path="/builder/messages" element={<PrincipalMessages />} />

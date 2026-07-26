@@ -3,6 +3,6 @@ require('dotenv').config();
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 async function main() {
   const { data, error } = await supabase.from('class_photos').select('*');
-  console.log("Photos:", data?.length, error);
+  console.log("Select result:", data, error);
 }
 main();

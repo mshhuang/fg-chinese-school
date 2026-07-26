@@ -1,103 +1,59 @@
 const fs = require('fs');
 let code = fs.readFileSync('src/pages/Announcements.tsx', 'utf8');
 
-// 1. Add confirmId state
-code = code.replace(
-  "const [classComments, setClassComments] = useState<any[]>([]);",
-  "const [classComments, setClassComments] = useState<any[]>([]);\n  const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);\n  const [confirmCommentDeleteId, setConfirmCommentDeleteId] = useState<any>(null);"
-);
+const targetStr = `  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+       alert("File is too large. Max 2MB allowed.");
+       return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+       const dataUrl = event.target?.result as string;
+       setComposeAttachments(prev => [...prev, { name: file.name, url: dataUrl }]);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };`;
 
-// 2. Update handleDelete
-code = code.replace(
-  `const handleDeleteAnnouncement = async (ann_id: string | number) => {
-      if (!confirm("Are you sure you want to delete this announcement? This will also delete all class comments to it.")) return;
+const newStr = `  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+       alert("File is too large. Max 10MB allowed.");
+       return;
+    }
+    setIsSubmitting(true);
+    try {
+        const ext = file.name.split('.').pop() || 'file';
+        const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '').substring(0, 30);
+        const filePath = \`announcements/\${Date.now()}_\${Math.random().toString(36).substring(2, 7)}_\${safeName}\`;
+        
+        const { error: uploadError } = await supabase.storage
+            .from('class_photos')
+            .upload(filePath, file, { cacheControl: '3600', upsert: false });
+            
+        if (!uploadError) {
+            const { data } = supabase.storage.from('class_photos').getPublicUrl(filePath);
+            setComposeAttachments(prev => [...prev, { name: file.name, url: data.publicUrl }]);
+        } else {
+            console.error("Storage upload failed:", uploadError);
+            alert("Could not upload file: " + uploadError.message);
+        }
+    } catch (err) {
+        console.error("Upload error", err);
+        alert("Failed to upload the file.");
+    } finally {
+        setIsSubmitting(false);
+    }
+    e.target.value = '';
+  };`;
 
-      try {
-          const { error } = await supabase.from('announcements').delete().eq('announcement_id', ann_id);
-          if (error) throw error;
-          
-          await fetchAnnouncements();
-      } catch(e) {
-          console.error("Delete failed", e);
-      }
-  };`,
-  `const handleDeleteAnnouncement = async (ann_id: string | number, confirmed: boolean = false) => {
-      if (!confirmed) return;
+if (!code.includes(targetStr)) {
+    console.error("Target string not found in Announcements.tsx!");
+    process.exit(1);
+}
 
-      try {
-          const { error } = await supabase.from('announcements').delete().eq('announcement_id', ann_id);
-          if (error) throw error;
-          
-          setConfirmDeleteId(null);
-          await fetchAnnouncements();
-      } catch(e) {
-          console.error("Delete failed", e);
-      }
-  };`
-);
-
-code = code.replace(
-  `const handleDeleteComment = async (comment_id: string | number) => {
-      if (!confirm("Are you sure you want to delete this class comment?")) return;
-      
-      try {
-          const { error } = await supabase.from('class_announcement_comments').delete().eq('comment_id', comment_id);
-          if (error) throw error;
-          
-          await fetchComments();
-      } catch(e) {
-          console.error("Delete failed", e);
-      }
-  };`,
-  `const handleDeleteComment = async (comment_id: string | number, confirmed: boolean = false) => {
-      if (!confirmed) return;
-      
-      try {
-          const { error } = await supabase.from('class_announcement_comments').delete().eq('comment_id', comment_id);
-          if (error) throw error;
-          
-          setConfirmCommentDeleteId(null);
-          await fetchComments();
-      } catch(e) {
-          console.error("Delete failed", e);
-      }
-  };`
-);
-
-
-// 3. Update the buttons
-// Announcement delete button
-code = code.replace(
-  `<button onClick={(e) => { e.stopPropagation(); handleDeleteAnnouncement(ann.announcement_id); }} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete Announcement">
-                               <Trash2 className="w-4 h-4" />
-                            </button>`,
-  `{confirmDeleteId === ann.announcement_id ? (
-                               <div className="flex items-center gap-1 bg-error-container/20 px-2 py-1 rounded-full" onClick={(e) => e.stopPropagation()}>
-                                   <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }} className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface px-1">Cancel</button>
-                                   <button onClick={(e) => { e.stopPropagation(); handleDeleteAnnouncement(ann.announcement_id, true); }} className="text-[10px] font-bold text-error hover:underline px-1">Confirm</button>
-                               </div>
-                            ) : (
-                            <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(ann.announcement_id); }} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete Announcement">
-                               <Trash2 className="w-4 h-4" />
-                            </button>
-                            )}`
-);
-
-// Comment delete button
-code = code.replace(
-  `<button onClick={() => handleDeleteComment(cmt.comment_id)} className="w-6 h-6 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete Comment">
-                                               <Trash2 className="w-3 h-3" />
-                                            </button>`,
-  `{confirmCommentDeleteId === cmt.comment_id ? (
-                                            <div className="flex items-center gap-1 bg-error-container/20 px-1 py-0.5 rounded-full">
-                                               <button onClick={() => setConfirmCommentDeleteId(null)} className="text-[9px] font-bold text-on-surface-variant hover:text-on-surface px-1">Cancel</button>
-                                               <button onClick={() => handleDeleteComment(cmt.comment_id, true)} className="text-[9px] font-bold text-error hover:underline px-1">Del</button>
-                                            </div>
-                                            ) : (
-                                            <button onClick={() => setConfirmCommentDeleteId(cmt.comment_id)} className="w-6 h-6 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete Comment">
-                                               <Trash2 className="w-3 h-3" />
-                                            </button>
-                                            )}`
-);
-
+code = code.replace(targetStr, newStr);
 fs.writeFileSync('src/pages/Announcements.tsx', code);
