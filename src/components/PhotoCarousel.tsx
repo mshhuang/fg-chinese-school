@@ -211,6 +211,11 @@ export function PhotoCarousel({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const originalFile = e.target.files?.[0];
     if (originalFile) {
+      if (originalFile.size > 10 * 1024 * 1024) {
+        showToast("Photo exceeds 10MB size limit.");
+        return;
+      }
+      
       let file = originalFile;
       
       if (file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic') {

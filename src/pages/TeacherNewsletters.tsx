@@ -318,11 +318,9 @@ export default function TeacherNewsletters() {
                        {news.status}
                     </span>
                     <div className="flex gap-2">
-                       {news.pdfData && (
-                           <button onClick={() => setShowPdfModal(news)} className="w-8 h-8 rounded-full hover:bg-primary/10 hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="View PDF">
-                               <Eye className="w-4 h-4" />
-                           </button>
-                       )}
+                       <button onClick={() => setShowPdfModal(news)} className="w-8 h-8 rounded-full hover:bg-primary/10 hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
+                           <Eye className="w-4 h-4" />
+                       </button>
                        {(news.status === "Draft" || news.status === "Rejected") && (
                          <>
                          <button onClick={() => handleEditInit(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="Edit">
@@ -485,8 +483,14 @@ export default function TeacherNewsletters() {
                       <X className="w-5 h-5" />
                    </button>
                 </div>
-                <div className="flex-1 bg-surface-container-lowest p-2">
-                    <iframe src={showPdfModal.pdfData} className="w-full h-full rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                <div className="flex-1 bg-surface-container-lowest p-2 overflow-y-auto">
+                    {showPdfModal.pdfData ? (
+                        <iframe src={showPdfModal.pdfData} className="w-full h-full min-h-[400px] rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                    ) : (
+                        <div className="p-6 h-full bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-y-auto whitespace-pre-wrap font-body text-on-surface">
+                            {showPdfModal.content || "No content available."}
+                        </div>
+                    )}
                 </div>
              </div>
           </div>

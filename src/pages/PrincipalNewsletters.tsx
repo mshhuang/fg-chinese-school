@@ -10,9 +10,19 @@ export default function PrincipalNewsletters() {
   const [showPdfModal, setShowPdfModal] = useState<any>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [postModal, setPostModal] = useState<any>(null);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [availableClasses, setAvailableClasses] = useState<{class_id: string, class_name: string}[]>([]);
 
   useEffect(() => {
     loadNewsletters();
+    const fetchClasses = async () => {
+      try {
+        const { data, error } = await supabase.from('classes').select('class_id, class_name');
+        if (data) setAvailableClasses(data);
+      } catch(e){}
+    };
+    fetchClasses();
   }, []);
 
   const loadNewsletters = async () => {
@@ -226,22 +236,20 @@ export default function PrincipalNewsletters() {
   };
 
   const handlePostAnnouncement = async () => {
-      if (!showPdfModal) return;
+      if (!postModal) return;
       
       const atts = [];
-      if (showPdfModal.pdfData) {
-          atts.push({ name: showPdfModal.pdfName || "newsletter.pdf", url: showPdfModal.pdfData });
+      if (postModal.pdfData) {
+          atts.push({ name: postModal.pdfName || "newsletter.pdf", url: postModal.pdfData });
       }
-
-      let encodedContent = `Newsletter: ${showPdfModal.title}\n\n${showPdfModal.content || ''}`;
+      let encodedContent = `Newsletter: ${postModal.title}\n\n${postModal.content || ''}`;
       if (atts.length > 0) {
           encodedContent += `\n\n---ATTACHMENTS---\n${JSON.stringify(atts)}`;
       }
-
       const payload: any = {
-          title: `Newsletter: ${showPdfModal.title}`,
+          title: `Newsletter: ${postModal.title}`,
           content: encodedContent,
-          target_class_ids: showPdfModal.class_id ? [showPdfModal.class_id] : [],
+          target_class_ids: selectedClasses,
           target_role_ids: [],
           target_user_ids: [],
           created_by: 'ec13df7f-1a4f-422e-abd8-05732ca798d2'
@@ -261,6 +269,7 @@ export default function PrincipalNewsletters() {
           const { error } = await supabase.from('announcements').insert(payload);
           if (error) throw error;
           alert("Posted to announcement board successfully.");
+          setPostModal(null);
       } catch (err) {
           console.error("Post failed", err);
           alert("Failed to post announcement.");
@@ -328,11 +337,9 @@ export default function PrincipalNewsletters() {
                        {news.status}
                     </span>
                     <div className="flex gap-2">
-                       {news.pdfData && (
-                           <button onClick={() => setShowPdfModal(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
-                              <Eye className="w-4 h-4" />
-                           </button>
-                       )}
+                       <button onClick={() => setShowPdfModal(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
+                          <Eye className="w-4 h-4" />
+                       </button>
                        {news.status === "Pending Approval" && (
                          <>
                            <button onClick={() => handleApprove(news.id)} className="w-8 h-8 rounded-full hover:bg-primary-container/50 hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="Approve">
@@ -413,7 +420,10 @@ export default function PrincipalNewsletters() {
                           <input type="file" className="hidden" accept="application/pdf" onChange={handleUploadEdit} />
                        </label>
                        {showPdfModal.status === "Published" && (
-                           <button onClick={handlePostAnnouncement} className="bg-tertiary/10 text-tertiary hover:bg-tertiary/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
+                           <button onClick={() => {
+                               setPostModal(showPdfModal);
+                               setSelectedClasses(showPdfModal.class_id ? [showPdfModal.class_id] : []);
+                           }} className="bg-tertiary/10 text-tertiary hover:bg-tertiary/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                               <Megaphone className="w-4 h-4" /> Post
                            </button>
                        )}
@@ -432,9 +442,15 @@ export default function PrincipalNewsletters() {
                        </button>
                    </div>
                 </div>
-                <div className="flex-1 bg-surface-container-lowest p-2 flex flex-col gap-2">
-                    <iframe src={showPdfModal.pdfData} className="flex-1 w-full rounded-xl border border-outline-variant/20" title="PDF Viewer" />
-                    <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/20">
+                <div className="flex-1 bg-surface-container-lowest p-2 flex flex-col gap-2 overflow-y-auto">
+                    {showPdfModal.pdfData ? (
+                        <iframe src={showPdfModal.pdfData} className="flex-1 w-full min-h-[400px] rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                    ) : (
+                        <div className="flex-1 p-6 bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-y-auto whitespace-pre-wrap font-body text-on-surface">
+                            {showPdfModal.content || "No content available."}
+                        </div>
+                    )}
+                    <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/20 shrink-0">
                        <label className="block text-xs font-label font-bold text-on-surface-variant mb-1">Admin Notes / Description</label>
                        <textarea 
                           value={newsletters.find(n => n.id === showPdfModal.id)?.adminComment || ""}
@@ -453,6 +469,57 @@ export default function PrincipalNewsletters() {
              </div>
           </div>
        )}
+       
+            {postModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+                   <div className="bg-surface-container-lowest rounded-3xl p-6 w-full max-w-md shadow-lg flex flex-col">
+                       <h3 className="font-title text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
+                           <Megaphone className="w-5 h-5 text-tertiary" /> Post Newsletter
+                       </h3>
+                       <p className="text-on-surface-variant mb-4 text-sm font-body">Select the classes to post this newsletter to.</p>
+                       <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto mb-6 pr-2">
+                           <label className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/30 hover:bg-surface-variant/30 cursor-pointer transition-colors">
+                               <input type="checkbox" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary"
+                                 checked={selectedClasses.length === availableClasses.length && availableClasses.length > 0}
+                                 onChange={(e) => {
+                                     if (e.target.checked) {
+                                         setSelectedClasses(availableClasses.map(c => c.class_id));
+                                     } else {
+                                         setSelectedClasses([]);
+                                     }
+                                 }}
+                               />
+                               <span className="font-label text-sm text-on-surface font-bold">Select All</span>
+                           </label>
+                           {availableClasses.map(c => (
+                               <label key={c.class_id} className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/30 hover:bg-surface-variant/30 cursor-pointer transition-colors">
+                                   <input type="checkbox" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary"
+                                     checked={selectedClasses.includes(c.class_id)}
+                                     onChange={(e) => {
+                                         if (e.target.checked) {
+                                             setSelectedClasses(prev => [...prev, c.class_id]);
+                                         } else {
+                                             setSelectedClasses(prev => prev.filter(id => id !== c.class_id));
+                                         }
+                                     }}
+                                   />
+                                   <span className="font-label text-sm text-on-surface font-bold">{c.class_name}</span>
+                               </label>
+                           ))}
+                       </div>
+                       
+                       <div className="flex gap-3 justify-end mt-auto">
+                           <button onClick={() => setPostModal(null)} className="px-6 py-2 rounded-full font-label text-sm bg-surface-variant text-on-surface-variant font-bold hover:bg-surface-variant/80 transition-colors">
+                               Cancel
+                           </button>
+                           <button onClick={handlePostAnnouncement} disabled={selectedClasses.length === 0} className="px-6 py-2 rounded-full font-label text-sm bg-tertiary text-on-tertiary font-bold hover:bg-tertiary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                               Post to Announcements
+                           </button>
+                       </div>
+                   </div>
+                </div>
+            )}
+            
     </div>
   );
 }

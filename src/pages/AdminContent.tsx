@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { Megaphone, Plus, Trash2, Newspaper } from "lucide-react";
+import { extractPlainText } from "../lib/utils";
 
 export default function AdminContent() {
   const [activeTab, setActiveTab] = useState<'announcements' | 'newsletters'>('announcements');
@@ -98,7 +99,17 @@ export default function AdminContent() {
                      </td>
                      <td className="p-4">
                         <p className="font-body text-sm text-on-surface-variant max-w-sm truncate">
-                           {row.content?.replace(/<[^>]*>?/gm, '')}
+                           {(() => {
+                               if (activeTab === 'newsletters') {
+                                   try {
+                                       const parsed = JSON.parse(row.content || "{}");
+                                       return extractPlainText(parsed.content || parsed.pdfName || row.content);
+                                   } catch (e) {
+                                       return extractPlainText(row.content);
+                                   }
+                               }
+                               return extractPlainText(row.content);
+                           })()}
                         </p>
                      </td>
                      <td className="p-4 text-right">

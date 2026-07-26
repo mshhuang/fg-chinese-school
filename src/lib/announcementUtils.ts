@@ -17,7 +17,18 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
         target_class_ids,
         target_user_ids,
         users:created_by ( first_name, last_name, email ),
-        roles:target_role_id ( role_name )
+        roles:target_role_id ( role_name ),
+        announcement_replies (
+           reply_id,
+           content,
+           created_at,
+           user_id,
+           users (
+               first_name,
+               last_name,
+               email
+           )
+        )
      `;
 
      let anns: any[] | null = null;

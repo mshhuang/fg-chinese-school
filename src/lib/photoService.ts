@@ -56,7 +56,7 @@ export async function getPhotos(roleFilter?: 'student' | 'parent' | 'teacher' | 
     if (localData) {
       const parsed = JSON.parse(localData);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        photos = parsed.filter(p => p.image_url && !p.image_url.startsWith('data:image/heic'));
+        photos = parsed.filter(p => p.image_url);
       }
     }
   } catch (e) {}
@@ -74,7 +74,8 @@ export async function getPhotos(roleFilter?: 'student' | 'parent' | 'teacher' | 
     const { data, error } = await supabase
       .from('class_photos')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (!error && data && data.length > 0) {
       const remotePhotos: ClassPhotoItem[] = data.map((item: any) => ({
@@ -114,7 +115,7 @@ export async function getPhotos(roleFilter?: 'student' | 'parent' | 'teacher' | 
         }
       });
       
-      photos = mergedPhotos;
+      photos = mergedPhotos.slice(0, 50);
     }
   } catch (e) {
     // Supabase optional fallback
@@ -150,7 +151,7 @@ export async function getPhotos(roleFilter?: 'student' | 'parent' | 'teacher' | 
     }
   }
 
-  return uniquePhotos;
+  return uniquePhotos.slice(0, 50);
 }
 
 export async function addPhoto(photo: Omit<ClassPhotoItem, 'id' | 'created_at' | 'likes_count' | 'reactions'>): Promise<ClassPhotoItem> {
@@ -165,7 +166,7 @@ export async function addPhoto(photo: Omit<ClassPhotoItem, 'id' | 'created_at' |
 
   // Update local storage sync immediately
   const current = await getPhotos();
-  const updated = [newPhoto, ...current.filter(p => p.id !== newPhoto.id)];
+  const updated = [newPhoto, ...current.filter(p => p.id !== newPhoto.id)].slice(0, 50);
   try {
     safeSetLocalStorage(STORAGE_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event('photos_updated'));

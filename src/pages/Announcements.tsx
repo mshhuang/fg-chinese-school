@@ -417,15 +417,15 @@ export default function Announcements() {
                   let displayContent = ann.content || "";
                   let authorRole = getPrimaryRole(ann.users);
                   let isSystem = false;
-                  if (displayContent.includes('$$_is_system:true_$$')) {
+                  if (/\$\$_is_system:true_?\$\$/is.test(displayContent)) {
                       isSystem = true;
                       authorRole = "System";
-                      displayContent = displayContent.replace('$$_is_system:true_$$', '');
+                      displayContent = displayContent.replace(/\$\$_is_system:true_?\$\$\s*/is, '');
                   }
 
                   const authorName = isSystem ? "System Announcement" : (ann.users ? (isTeacher ? formatTeacherName(ann.users.first_name, ann.users.last_name) : `${ann.users.first_name} ${ann.users.last_name}`) : "System / Unknown");
                   const audienceInfo = extractAudienceStr(ann);
-                  const replies = ann.announcement_replies || [];
+                  const replies = [...(ann.announcement_replies || [])].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
                   
                   // Match $$_role: Role_$$ Content... or slightly malformed variants
                   const roleMatch = displayContent.match(/\$\$_role:\s*(.*?)\s*(?:_\$\$|\$\$)\s*(.*)/is);
@@ -435,11 +435,11 @@ export default function Announcements() {
                   }
 
                   let attachments: any[] = [];
-                  if (displayContent.includes('\n\n---ATTACHMENTS---\n')) {
-                      const parts = displayContent.split('\n\n---ATTACHMENTS---\n');
-                      displayContent = parts[0];
+                  const attachMatch = displayContent.match(/\n*---ATTACHMENTS---\n*([\s\S]*)/);
+                  if (attachMatch) {
+                      displayContent = displayContent.substring(0, attachMatch.index);
                       try {
-                          attachments = JSON.parse(parts[1]);
+                          attachments = JSON.parse(attachMatch[1]);
                       } catch(e){}
                   }
 
@@ -560,7 +560,7 @@ export default function Announcements() {
                                {replies.length > 0 && (
                                    <div className="flex flex-col gap-4">
                                        <p className="font-bold text-xs uppercase tracking-wider text-on-surface-variant">{replies.length} class comment{replies.length !== 1 ? 's' : ''}</p>
-                                       <div className="flex flex-col gap-4 max-h-60 overflow-y-auto pr-2">
+                                       <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2">
                                            {replies.map((r: any) => (
                                                <div key={r.reply_id} className="flex gap-3 text-sm group">
                                                    <div className="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center shrink-0 mt-1 cursor-pointer">
