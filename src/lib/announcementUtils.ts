@@ -38,7 +38,7 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
      const queryPromise = supabase.from('announcements')
          .select(selectQuery)
          .order('created_at', { ascending: false })
-         .limit(limitCount ? limitCount * 3 : 200);
+         .limit(200);
 
      const { data: primaryData, error: primaryErr } = await queryPromise;
 
@@ -51,7 +51,7 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
          const { data: fallbackData, error: fallbackErr } = await supabase.from('announcements')
              .select(fallbackQuery)
              .order('created_at', { ascending: false })
-             .limit(limitCount ? limitCount * 3 : 200);
+             .limit(200);
              
          if (!fallbackErr && fallbackData) {
              anns = fallbackData;

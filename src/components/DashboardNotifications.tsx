@@ -101,7 +101,7 @@ export function DashboardNotifications() {
           const { data: newsData } = await supabase
             .from('newsletters')
             .select('newsletter_id')
-            .eq('status', 'Published');
+            .eq('status', 'Approved');
 
           if (newsData) {
             const stored = localStorage.getItem(`news_read_${userId}`);

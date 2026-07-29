@@ -15,16 +15,32 @@ export default function BuilderStorage() {
     loadFiles();
   }, [selectedBucket]);
 
+  const listAllFiles = async (bucketName: string, path = ''): Promise<any[]> => {
+    let allFiles: any[] = [];
+    const { data, error } = await supabase.storage.from(bucketName).list(path, { limit: 1000, sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) return allFiles;
+    for (const item of data || []) {
+      if (item.id === null && !item.metadata) {
+        // It's a folder
+        const subPath = path ? `${path}/${item.name}` : item.name;
+        const subFiles = await listAllFiles(bucketName, subPath);
+        allFiles = allFiles.concat(subFiles);
+      } else {
+        allFiles.push({
+          ...item,
+          fullPath: path ? `${path}/${item.name}` : item.name
+        });
+      }
+    }
+    return allFiles;
+  };
+
   const loadFiles = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: listError } = await supabase.storage.from(selectedBucket).list('', {
-        limit: 1000,
-        sortBy: { column: 'created_at', order: 'desc' }
-      });
-      if (listError) throw listError;
-      setFiles(data || []);
+      const data = await listAllFiles(selectedBucket);
+      setFiles(data);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to load files');
@@ -34,12 +50,13 @@ export default function BuilderStorage() {
     }
   };
 
-  const handleDelete = async (fileName: string) => {
-    if (!confirm(`Are you sure you want to delete ${fileName}?`)) return;
+  const handleDelete = async (file: any) => {
+    const filePath = file.fullPath || file.name;
+    if (!confirm(`Are you sure you want to delete ${file.name}?`)) return;
     try {
-      const { error: delError } = await supabase.storage.from(selectedBucket).remove([fileName]);
+      const { error: delError } = await supabase.storage.from(selectedBucket).remove([filePath]);
       if (delError) throw delError;
-      setFiles(prev => prev.filter(f => f.name !== fileName));
+      setFiles(prev => prev.filter(f => f.id !== file.id));
     } catch (err: any) {
       alert("Failed to delete file: " + err.message);
     }
@@ -114,9 +131,10 @@ export default function BuilderStorage() {
               <tbody>
                 {files.filter(f => f.name !== '.emptyFolderPlaceholder').map(file => {
                   const isImage = file.metadata?.mimetype?.startsWith('image/');
-                  const url = getPublicUrl(file.name);
+                  const filePath = file.fullPath || file.name;
+                  const url = getPublicUrl(filePath);
                   return (
-                    <tr key={file.id || file.name} className="border-b border-outline-variant/40 last:border-0 hover:bg-surface-variant/10">
+                    <tr key={file.id || filePath} className="border-b border-outline-variant/40 last:border-0 hover:bg-surface-variant/10">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           {isImage ? (
@@ -127,7 +145,7 @@ export default function BuilderStorage() {
                             </div>
                           )}
                           <div>
-                            <p className="font-body font-bold text-on-surface break-all">{file.name}</p>
+                            <p className="font-body font-bold text-on-surface break-all">{filePath}</p>
                             <p className="font-body text-xs text-on-surface-variant">{file.metadata?.mimetype || 'Unknown'}</p>
                           </div>
                         </div>
@@ -141,7 +159,7 @@ export default function BuilderStorage() {
                         <a href={url} target="_blank" rel="noopener noreferrer" className="p-2 text-secondary hover:bg-secondary/10 rounded-lg transition-colors" title="Open in new tab">
                           <FileText className="w-4 h-4" />
                         </a>
-                        <button onClick={() => handleDelete(file.name)} className="p-2 text-error hover:bg-error/10 rounded-lg transition-colors" title="Delete">
+                        <button onClick={() => handleDelete(file)} className="p-2 text-error hover:bg-error/10 rounded-lg transition-colors" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </td>

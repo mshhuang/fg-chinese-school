@@ -7,7 +7,7 @@ import { jsPDF } from "jspdf";
 
 
 export default function AdminReports() {
-  const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'attendance' | 'credentials' | 'login_history' | 'checkin_history' | 'staff_attendance'>('teachers');
+  const [activeTab, setActiveTab] = useState<'teachers' | 'students' | 'classes' | 'enrollments' | 'attendance' | 'credentials' | 'login_history' | 'student_logins' | 'checkin_history' | 'staff_attendance'>('teachers');
   const [teachers, setTeachers] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -28,6 +28,16 @@ export default function AdminReports() {
   const [attendanceTeacherFilter, setAttendanceTeacherFilter] = useState('all');
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [loginLogsLoading, setLoginLogsLoading] = useState(false);
+  
+  // Student Logins State
+  const [studentLoginsStartDate, setStudentLoginsStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  });
+  const [studentLoginsEndDate, setStudentLoginsEndDate] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }));
+  const [studentLoginsData, setStudentLoginsData] = useState<any[]>([]);
+  const [studentLoginsLoading, setStudentLoginsLoading] = useState(false);
   const [checkinLogsLoading, setCheckinLogsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -122,6 +132,12 @@ export default function AdminReports() {
   }, [activeTab, loginDate]);
 
   useEffect(() => {
+    if (activeTab === 'student_logins') {
+       fetchStudentLogins();
+    }
+  }, [activeTab, studentLoginsStartDate, studentLoginsEndDate]);
+
+  useEffect(() => {
     if (activeTab === 'checkin_history') {
        fetchCheckinLogs();
     }
@@ -179,6 +195,90 @@ export default function AdminReports() {
      setCheckinLogsLoading(false);
   }
 
+
+  async function fetchStudentLogins() {
+     setStudentLoginsLoading(true);
+     
+     try {
+       const { data: visitData, error: visitError } = await supabase
+         .from('page_visit_report')
+         .select('*')
+         .eq('user_role', 'student')
+         .gte('visit_date', studentLoginsStartDate)
+         .lte('visit_date', studentLoginsEndDate);
+
+       if (visitError) throw visitError;
+       
+       const { data: usersData, error: usersError } = await supabase
+         .from('users')
+         .select('user_id, first_name, last_name, user_name');
+
+       if (usersError) throw usersError;
+
+       const { data: enrollsData, error: enrollsError } = await supabase
+         .from('enrollments')
+         .select('student_id, classes(class_name)');
+
+       if (enrollsError) throw enrollsError;
+
+       const classGroups: Record<string, any[]> = {};
+       
+       const matchUser = (name: string) => {
+         return usersData?.find(u => {
+           if (`${u.first_name} ${u.last_name}` === name) return true;
+           const normName = name.replace(/\s+/g, ' ').trim().toLowerCase();
+           const normU = `${u.first_name || ''} ${u.last_name || ''}`.replace(/\s+/g, ' ').trim().toLowerCase();
+           return normName === normU;
+         });
+       };
+
+       visitData?.forEach(visit => {
+         const user = matchUser(visit.user_name);
+         const studentId = user ? user.user_id : null;
+         
+         const studentEnrolls = enrollsData?.filter(e => e.student_id === studentId) || [];
+         let classNames = studentEnrolls.map((e: any) => e.classes?.class_name).filter(Boolean);
+         if (classNames.length === 0) classNames = ['Unassigned'];
+
+         classNames.forEach(cName => {
+           if (!classGroups[cName]) {
+             classGroups[cName] = [];
+           }
+           // Use name as identifier if ID is missing
+           const idToMatch = studentId || visit.user_name;
+           const existing = classGroups[cName].find(s => (s.user_id || s.user_name) === idToMatch);
+           
+           const visitDateTime = new Date(`${visit.visit_date}T${visit.visit_time}`);
+           
+           if (existing) {
+             existing.login_count = (existing.login_count || 1) + 1;
+             const existingDate = new Date(existing.last_login);
+             if (visitDateTime > existingDate) {
+                 existing.last_login = visitDateTime.toISOString();
+             }
+           } else {
+             classGroups[cName].push({
+               user_id: studentId,
+               user_name: visit.user_name,
+               last_login: visitDateTime.toISOString(),
+               login_count: 1
+             });
+           }
+         });
+       });
+       
+       const groupedArray = Object.keys(classGroups).map(className => ({
+         class_name: className,
+         students: classGroups[className]
+       })).sort((a, b) => a.class_name.localeCompare(b.class_name));
+       
+       setStudentLoginsData(groupedArray);
+     } catch (err) {
+       console.error("Error fetching student visits:", err);
+     } finally {
+       setStudentLoginsLoading(false);
+     }
+  }
 
   async function fetchLoginLogs() {
      setLoginLogsLoading(true);
@@ -314,6 +414,14 @@ export default function AdminReports() {
           }`}
         >
           <Clock className="w-4 h-4" /> Login History
+        </button>
+        <button
+          onClick={() => setActiveTab('student_logins')}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
+            activeTab === 'student_logins' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+          }`}
+        >
+          <Users className="w-4 h-4" /> Student Activity (Visits)
         </button>
         <button
           onClick={() => setActiveTab('checkin_history')}
@@ -890,6 +998,88 @@ export default function AdminReports() {
               </div>
             )}
 
+            {activeTab === 'student_logins' && (
+              <div>
+                <ReportPrintHeader title="STUDENT ACTIVITY BY CLASS" />
+                <div className="flex flex-col gap-2 mb-6 print:hidden">
+                   <div className="flex justify-between items-end border-b border-outline-variant/30 pb-4">
+                       <h2 className="font-display text-2xl font-bold text-on-surface">Student Activity (Visits)</h2>
+                       <span className="font-mono text-sm text-on-surface-variant">{studentLoginsStartDate} to {studentLoginsEndDate}</span>
+                   </div>
+                   <p className="text-on-surface-variant">View student page visits grouped by their assigned classes.</p>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-4 mb-6 print:hidden">
+                   <div className="flex flex-col gap-2">
+                     <label className="font-label text-sm font-bold text-on-surface-variant">Start Date</label>
+                     <input 
+                       type="date" 
+                       value={studentLoginsStartDate}
+                       onChange={e => setStudentLoginsStartDate(e.target.value)}
+                       className="px-4 py-2 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
+                     />
+                   </div>
+                   <div className="flex flex-col gap-2">
+                     <label className="font-label text-sm font-bold text-on-surface-variant">End Date</label>
+                     <input 
+                       type="date" 
+                       value={studentLoginsEndDate}
+                       onChange={e => setStudentLoginsEndDate(e.target.value)}
+                       className="px-4 py-2 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
+                     />
+                   </div>
+                </div>
+
+                {studentLoginsLoading ? (
+                   <div className="py-12 text-center text-on-surface-variant">
+                     <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                     Loading data...
+                   </div>
+                ) : studentLoginsData.length === 0 ? (
+                   <div className="py-12 text-center text-on-surface-variant font-medium bg-surface rounded-2xl border border-outline-variant/30">
+                     No student logins found in this date range.
+                   </div>
+                ) : (
+                   <div className="flex flex-col gap-8">
+                     {studentLoginsData.map((group, idx) => (
+                       <div key={idx} className="bg-surface rounded-2xl border border-outline-variant/30 overflow-hidden shadow-sm">
+                         <div className="px-6 py-4 bg-surface-container-lowest border-b border-outline-variant/30 flex justify-between items-center">
+                           <h3 className="font-label font-bold text-lg text-primary">{group.class_name}</h3>
+                           <span className="bg-primary/10 text-primary px-3 py-1 rounded-full font-bold text-sm">
+                             {group.students.length} Student{group.students.length !== 1 ? 's' : ''}
+                           </span>
+                         </div>
+                         <div className="overflow-x-auto">
+                           <table className="w-full text-left border-collapse">
+                             <thead>
+                               <tr className="border-b border-outline-variant/20">
+                                 <th className="py-3 px-6 font-label font-bold text-sm text-on-surface-variant">Student Name</th>
+                                 <th className="py-3 px-6 font-label font-bold text-sm text-on-surface-variant">Last Visit</th>
+                                 <th className="py-3 px-6 font-label font-bold text-sm text-on-surface-variant text-right">Total Page Visits</th>
+                               </tr>
+                             </thead>
+                             <tbody className="divide-y divide-outline-variant/10">
+                               {group.students.map((student: any) => (
+                                 <tr key={student.user_id} className="hover:bg-surface-variant/10 transition-colors">
+                                   <td className="py-3 px-6 text-on-surface font-medium">{student.user_name}</td>
+                                   <td className="py-3 px-6 text-on-surface-variant font-body text-sm">
+                                     {new Date(student.last_login).toLocaleString('en-US', { timeZone: 'America/New_York' })}
+                                   </td>
+                                   <td className="py-3 px-6 text-on-surface-variant font-body text-sm text-right">
+                                     {student.login_count}
+                                   </td>
+                                 </tr>
+                               ))}
+                             </tbody>
+                           </table>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                )}
+              </div>
+            )}
+            
             {activeTab === 'login_history' && (
               <div>
                 <ReportPrintHeader title="LOGIN HISTORY REPORT" />

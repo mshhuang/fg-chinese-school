@@ -1,64 +1,31 @@
 const fs = require('fs');
 let code = fs.readFileSync('src/pages/PrincipalNewsletters.tsx', 'utf8');
 
-// 1. Add confirmId state
-code = code.replace(
-  "const [rejectReason, setRejectReason] = useState(\"\");",
-  "const [rejectReason, setRejectReason] = useState(\"\");\n  const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);"
-);
+const displayTarget = `                         {news.pdfName && (
+                             <div className="flex items-center gap-2 mb-4 bg-surface-container py-1.5 px-3 rounded-lg w-max max-w-full overflow-hidden">
+                                 <FileText className="w-4 h-4 text-primary shrink-0" />
+                                 <span className="text-xs font-mono truncate">{news.pdfName}</span>
+                             </div>
+                         )}`;
 
-// 2. Update handleDelete
-code = code.replace(
-  `const handleDelete = async (id: string | number) => {
-     if (!window.confirm("Are you sure you want to delete this newsletter?")) return;
-     
-     try {
-         // @ts-ignore
-         const { error } = await supabase.from('newsletters').delete().eq('newsletter_id', id);
-         
-         if (error) {
-             if (error.code === '42501') alert("RLS blocks deletion. Please check table policies.");
-             throw error;
-         }
-         await loadNewsletters();
-     } catch(e) {
-         console.error("Delete failed", e);
-         alert("Failed to delete newsletter");
-     }
-  };`,
-  `const handleDelete = async (id: string | number, confirmed: boolean = false) => {
-     if (!confirmed) return;
-     
-     try {
-         // @ts-ignore
-         const { error } = await supabase.from('newsletters').delete().eq('newsletter_id', id);
-         
-         if (error) {
-             throw error;
-         }
-         setConfirmDeleteId(null);
-         await loadNewsletters();
-     } catch(e) {
-         console.error("Delete failed", e);
-     }
-  };`
-);
+const displayReplace = `                         {news.pdfName && (
+                             <a href={news.pdfData} target="_blank" rel="noreferrer" className="flex items-center gap-2 mb-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg w-max max-w-full overflow-hidden">
+                                 <FileText className="w-4 h-4 text-primary shrink-0" />
+                                 <span className="text-xs font-mono truncate text-primary hover:underline">{news.pdfName}</span>
+                             </a>
+                         )}
+                         {news.attachments && news.attachments.length > 0 && (
+                             <div className="flex flex-wrap gap-2 mb-4">
+                                 {news.attachments.map((att: any, i: number) => (
+                                     <a key={i} href={att.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg max-w-full overflow-hidden">
+                                         <FileText className="w-4 h-4 text-primary shrink-0" />
+                                         <span className="text-xs font-mono truncate text-primary hover:underline">{att.name}</span>
+                                     </a>
+                                 ))}
+                             </div>
+                         )}`;
 
-// 3. Update the button
-code = code.replace(
-  `<button onClick={() => handleDelete(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                       </button>`,
-  `{confirmDeleteId === news.id ? (
-                           <div className="flex items-center gap-1 bg-error-container/20 px-2 rounded-full">
-                               <button onClick={() => setConfirmDeleteId(null)} className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface px-1 py-1">Cancel</button>
-                               <button onClick={() => handleDelete(news.id, true)} className="text-[10px] font-bold text-error hover:underline px-1 py-1">Confirm</button>
-                           </div>
-                       ) : (
-                       <button onClick={() => setConfirmDeleteId(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                       </button>
-                       )}`
-);
+code = code.replace(displayTarget, displayReplace);
 
 fs.writeFileSync('src/pages/PrincipalNewsletters.tsx', code);
+console.log('patched principal newsletters');

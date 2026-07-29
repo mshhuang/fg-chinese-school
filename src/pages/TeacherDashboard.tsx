@@ -298,7 +298,7 @@ export default function TeacherDashboard() {
            try {
              return { id: item.newsletter_id, title: item.title, author: item.author_id, ...JSON.parse(item.content || "{}"), date: formattedDate };
            } catch {
-             return { id: item.newsletter_id, title: item.title, content: item.content, status: "Published", date: formattedDate };
+             return { id: item.newsletter_id, title: item.title, content: item.content, status: "Approved", date: formattedDate };
            }
         });
         setRecentSubmissions(parsed);

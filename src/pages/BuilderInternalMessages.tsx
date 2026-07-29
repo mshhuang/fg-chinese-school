@@ -121,7 +121,7 @@ export default function BuilderInternalMessages() {
 
         <div className="bg-surface border border-outline-variant rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[1000px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-container-lowest">
                   <th className="py-4 px-6 font-label font-bold text-on-surface-variant">Date</th>

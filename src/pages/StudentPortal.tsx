@@ -187,6 +187,7 @@ export default function StudentPortal() {
             setCheckInTime(data[0].created_at);
         } else if (data[0].action_type === 'school_check_out') {
             setCheckInStatus('checked_out');
+            setCheckInTime(data[0].created_at);
         } else {
             setCheckInStatus('not_checked_in');
         }
@@ -227,10 +228,16 @@ export default function StudentPortal() {
               <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
                 if (!checkInTime) return `${userName} is in the school`;
                 const d = new Date(checkInTime);
-                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' , timeZoneName: 'short'});
-                const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' }) + ' EST';
+                const dateStr = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
                 return `${userName} arrived at school at ${timeStr} on ${dateStr}`;
-              })() : checkInStatus === 'checked_out' ? `${userName} is ready to go home` : 'Not Checked In'}
+              })() : checkInStatus === 'checked_out' ? (() => {
+                if (!checkInTime) return `${userName} is ready to go home`;
+                const d = new Date(checkInTime);
+                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' }) + ' EST';
+                const dateStr = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+                return `${userName} is ready to go home。${timeStr} on ${dateStr}`;
+              })() : 'Not Checked In'}
             </span>
           </div>
 

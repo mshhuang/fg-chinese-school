@@ -216,9 +216,9 @@ export default function MainLayout() {
              .select('newsletter_id, status');
            
            if (['admin', 'builder'].includes(userRole || '')) {
-               query = query.in('status', ['Published', 'Pending Approval']);
+               query = query.in('status', ['Approved', 'Pending Approval', 'Published']);
            } else {
-               query = query.eq('status', 'Published');
+               query = query.in('status', ['Approved', 'Published']);
            }
 
            const { data: newsData } = await query;

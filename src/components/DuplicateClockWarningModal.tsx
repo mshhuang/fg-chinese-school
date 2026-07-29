@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Clock, Save, Plus, X, Loader2 } from 'lucide-react';
+import { AlertTriangle, Clock, Save, Plus, X, Loader2, Trash2 } from 'lucide-react';
 
 export interface ExistingClockRecord {
   id?: string | number;
@@ -18,6 +18,7 @@ interface DuplicateClockWarningModalProps {
   existingRecord: ExistingClockRecord | null;
   onUpdateExisting: (recordId: string | number | undefined, newTimeIso: string, newReason?: string) => Promise<void>;
   onCreateNew?: (newTimeIso: string, newReason?: string) => Promise<void>;
+  onDelete?: () => Promise<void>;
 }
 
 export const DuplicateClockWarningModal: React.FC<DuplicateClockWarningModalProps> = ({
@@ -27,7 +28,8 @@ export const DuplicateClockWarningModal: React.FC<DuplicateClockWarningModalProp
   actionType,
   existingRecord,
   onUpdateExisting,
-  onCreateNew
+  onCreateNew,
+  onDelete
 }) => {
   const [selectedTime, setSelectedTime] = useState('');
   const [reason, setReason] = useState('');
@@ -47,7 +49,7 @@ export const DuplicateClockWarningModal: React.FC<DuplicateClockWarningModalProp
   if (!isOpen) return null;
 
   const isCheckIn = actionType === 'clock_in' || actionType === 'school_check_in';
-  const actionLabel = isCheckIn ? 'Clock In' : 'Clock Out';
+  const actionLabel = isCheckIn ? 'Clock In' : (actionType === 'school_check_out' ? 'Ready to Go Home' : 'Clock Out');
 
   const formatExistingTime = (isoString?: string) => {
     if (!isoString) return 'earlier today';
@@ -121,10 +123,10 @@ export const DuplicateClockWarningModal: React.FC<DuplicateClockWarningModalProp
         {/* Body Description */}
         <div className="bg-amber-50 dark:bg-amber-950/30 p-4 rounded-2xl border border-amber-200/60 dark:border-amber-800/40 text-sm text-amber-900 dark:text-amber-200 flex flex-col gap-1">
           <p className="font-semibold">
-            {userName} was already {actionLabel.toLowerCase()}ned at {formatExistingTime(existingRecord?.created_at)}.
+            {userName} was already {isCheckIn ? 'clocked in' : (actionType === 'school_check_out' ? 'marked ready to go home' : 'clocked out')} at {formatExistingTime(existingRecord?.created_at)}.
           </p>
           <p className="text-xs opacity-90">
-            Would you like to change/update the {actionLabel.toLowerCase()} time for this record, or create a new entry?
+            Would you like to change/update the {isCheckIn ? 'clock-in' : (actionType === 'school_check_out' ? 'ready-to-go-home' : 'clock-out')} time for this record, or create a new entry?
           </p>
         </div>
 
@@ -180,6 +182,27 @@ export const DuplicateClockWarningModal: React.FC<DuplicateClockWarningModalProp
             </button>
           )}
 
+
+          {onDelete && (
+            <button
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  await onDelete();
+                  onClose();
+                } catch (e) {
+                  console.error(e);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              className="w-full py-2.5 px-4 rounded-2xl border border-error/30 text-error font-semibold text-sm hover:bg-error/10 transition-colors flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Remove This Entry (Undo)
+            </button>
+          )}
           <button
             onClick={onClose}
             disabled={loading}

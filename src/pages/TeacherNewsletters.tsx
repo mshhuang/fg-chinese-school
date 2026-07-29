@@ -18,6 +18,8 @@ export default function TeacherNewsletters() {
   const [pdfFile, setPdfFile] = useState<string | null>(null);
   const [pdfFileObj, setPdfFileObj] = useState<File | null>(null);
   const [pdfName, setPdfName] = useState("");
+  const [attachments, setAttachments] = useState<{name: string, url: string | null, fileObj: File | null}[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [editingNewsletterId, setEditingNewsletterId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -77,7 +79,7 @@ export default function TeacherNewsletters() {
            try {
              return { id: item.newsletter_id, title: item.title, author: item.author_id, ...JSON.parse(item.content || "{}"), date: formattedDate };
            } catch {
-             return { id: item.newsletter_id, title: item.title, content: item.content, status: "Published", date: formattedDate };
+             return { id: item.newsletter_id, title: item.title, content: item.content, status: "Approved", date: formattedDate };
            }
         });
         setNewsletters(parsed);
@@ -90,7 +92,7 @@ export default function TeacherNewsletters() {
     }
   };
 
-  const STATUSES = ["All", "Draft", "Pending Approval", "Published", "Rejected"];
+  const STATUSES = ["All", "Draft", "Pending Approval", "Rejected", "Approved", "Published"];
 
   const filteredNewsletters = newsletters.filter(n => {
     const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) || (n.content && n.content.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -99,20 +101,29 @@ export default function TeacherNewsletters() {
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-     if (e.target.files && e.target.files[0]) {
-        const file = e.target.files[0];
-        setPdfName(file.name);
-        if (file.size > 2 * 1024 * 1024) {
-           alert("File is too large for this prototype. Please keep it under 2MB.");
-           return;
+     if (e.target.files && e.target.files.length > 0) {
+        const newFiles = Array.from(e.target.files);
+        const newAttachments = [...attachments];
+        let hasError = false;
+
+        for (const file of newFiles) {
+            if (file.size > 10 * 1024 * 1024) {
+               alert(`File ${file.name} is too large. Please keep it under 10MB.`);
+               hasError = true;
+               continue;
+            }
+            newAttachments.push({
+                name: file.name,
+                url: null,
+                fileObj: file
+            });
         }
-        setPdfFileObj(file); // Save File object for storage upload
-        const reader = new FileReader();
-        reader.onloadend = () => {
-           setPdfFile(reader.result as string); // Keep base64 for fallback/local storage
-        };
-        reader.readAsDataURL(file);
+        setAttachments(newAttachments);
      }
+  };
+  
+  const removeAttachment = (index: number) => {
+      setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
 
@@ -124,6 +135,7 @@ export default function TeacherNewsletters() {
      setPdfName(news.pdfName || "");
      setPdfFile(news.pdfData || null);
      setPdfFileObj(null);
+     setAttachments(news.attachments || []);
      setShowModal(true);
   };
 
@@ -179,6 +191,7 @@ export default function TeacherNewsletters() {
         author: authorName, 
         pdfData: finalPdfData,
         pdfName,
+        attachments: finalAttachments,
         adminComment: null
      };
 
@@ -186,10 +199,11 @@ export default function TeacherNewsletters() {
        if (editingNewsletterId) {
            const { error } = await supabase.from('newsletters').update({
                title,
-               content: JSON.stringify(payloadProps)
+               content: JSON.stringify(payloadProps),
+               status: payloadProps.status
            }).eq('newsletter_id', editingNewsletterId);
            if (error) throw error;
-           alert("Newsletter successfully updated!");
+           alert("Newsletter successfully updated!"); setIsUploading(false);
        } else {
            const { data, error } = await supabase.from('newsletters').insert([{
                title,
@@ -239,7 +253,8 @@ export default function TeacherNewsletters() {
      try {
          // @ts-ignore
          const { error } = await supabase.from('newsletters').update({
-             content: JSON.stringify(updatedProps)
+             content: JSON.stringify(updatedProps),
+             status: updatedProps.status
          }).eq('newsletter_id', id);
          
          if (error) {
@@ -306,12 +321,14 @@ export default function TeacherNewsletters() {
                  <div className="flex justify-between items-start mb-4">
                     <span className={cn(
                        "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label flex items-center gap-1.5",
-                       news.status === "Published" ? "bg-primary-container/20 text-primary border border-primary/20" : 
+                       news.status === "Approved" ? "bg-primary-container/20 text-primary border border-primary/20" : 
+                       news.status === "Published" ? "bg-secondary-container/20 text-secondary border border-secondary/20" : 
                        news.status === "Pending Approval" ? "bg-tertiary-container/30 text-tertiary-dim border border-tertiary/20" :
                        news.status === "Rejected" ? "bg-error-container/30 text-error border border-error/20" :
                        "bg-surface-variant text-on-surface-variant border border-outline-variant/30"
                     )}>
-                       {news.status === "Published" ? <CheckCircle2 className="w-3 h-3" /> : 
+                       {news.status === "Approved" ? <CheckCircle2 className="w-3 h-3" /> : 
+                        news.status === "Published" ? <CheckCircle2 className="w-3 h-3" /> : 
                         news.status === "Pending Approval" ? <Clock className="w-3 h-3" /> :
                         news.status === "Rejected" ? <AlertCircle className="w-3 h-3" /> :
                         <Edit3 className="w-3 h-3" />}
@@ -341,9 +358,19 @@ export default function TeacherNewsletters() {
                  <p className="font-body text-sm text-on-surface-variant mb-4 line-clamp-3 flex-1">{news.content}</p>
                  
                  {news.pdfName && (
-                     <div className="flex items-center gap-2 mb-4 bg-surface-container py-1.5 px-3 rounded-lg w-max max-w-full overflow-hidden">
+                     <a href={news.pdfData} target="_blank" rel="noreferrer" className="flex items-center gap-2 mb-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg w-max max-w-full overflow-hidden">
                          <FileText className="w-4 h-4 text-primary shrink-0" />
-                         <span className="text-xs font-mono truncate">{news.pdfName}</span>
+                         <span className="text-xs font-mono truncate text-primary hover:underline">{news.pdfName}</span>
+                     </a>
+                 )}
+                 {news.attachments && news.attachments.length > 0 && (
+                     <div className="flex flex-wrap gap-2 mb-4">
+                         {news.attachments.map((att: any, i: number) => (
+                             <a key={i} href={att.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg max-w-full overflow-hidden">
+                                 <FileText className="w-4 h-4 text-primary shrink-0" />
+                                 <span className="text-xs font-mono truncate text-primary hover:underline">{att.name}</span>
+                             </a>
+                         ))}
                      </div>
                  )}
 
@@ -368,7 +395,7 @@ export default function TeacherNewsletters() {
                  <div className="flex items-center justify-between pt-4 border-t border-outline-variant/20 mt-auto">
                     <div className="flex items-center gap-2 text-on-surface-variant">
                        <Users className="w-4 h-4 shrink-0" />
-                       <span className="font-label text-xs uppercase tracking-wider font-bold">{news.audience}</span>
+                       <span className="font-label text-xs uppercase tracking-wider font-bold overflow-hidden line-clamp-1">{news.posted_to || news.audience}</span>
                     </div>
                     <span className="font-caption text-xs text-on-surface-variant">{news.date}</span>
                  </div>
@@ -389,7 +416,7 @@ export default function TeacherNewsletters() {
              <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between mb-6">
                    <h2 className="text-2xl font-display font-bold text-on-surface">Create Newsletter</h2>
-                   <button onClick={() => setShowModal(false)} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant">
+                   <button onClick={() => setShowModal(false)} disabled={isUploading} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant">
                       <X className="w-5 h-5" />
                    </button>
                 </div>
@@ -425,38 +452,60 @@ export default function TeacherNewsletters() {
                        />
                     </div>
                     <div>
-                       <label className="block text-sm font-label font-bold text-on-surface mb-2">Upload PDF Newsletter</label>
+                       <label className="block text-sm font-label font-bold text-on-surface mb-2">Attachments</label>
                        <input 
                            type="file" 
-                           accept="application/pdf"
+                           multiple
+                           accept=".pdf,.doc,.docx,.txt,image/*,.heic"
                            ref={fileInputRef}
                            className="hidden"
                            onChange={handleFileChange}
                        />
                        <div 
                            onClick={() => fileInputRef.current?.click()}
-                           className="w-full border-2 border-dashed border-outline-variant/50 hover:border-primary/50 bg-surface-container-low hover:bg-primary/5 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors"
+                           className="w-full border-2 border-dashed border-outline-variant/50 hover:border-primary/50 bg-surface-container-low hover:bg-primary/5 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors mb-4"
                        >
                            <FileText className="w-8 h-8 text-on-surface-variant mb-2" />
-                           {pdfName ? (
-                              <p className="text-sm font-bold text-primary">{pdfName}</p>
-                           ) : (
-                              <>
-                                <p className="text-sm font-bold text-on-surface">Click to attach PDF</p>
-                                <p className="text-xs text-on-surface-variant mt-1">Max file size: 2MB</p>
-                              </>
-                           )}
+                           <p className="text-sm font-bold text-on-surface">Click to attach files</p>
+                           <p className="text-xs text-on-surface-variant mt-1">Supported: PDF, Word, Text, Images, HEIC (Max 10MB each)</p>
                        </div>
+                       
+                       {(pdfName || attachments.length > 0) && (
+                           <div className="flex flex-col gap-2">
+                               {pdfName && (
+                                   <div className="flex items-center justify-between bg-surface-container px-4 py-2 rounded-xl border border-outline-variant/30">
+                                      <div className="flex items-center gap-2 overflow-hidden">
+                                          <FileText className="w-4 h-4 text-primary shrink-0" />
+                                          <span className="text-sm font-medium truncate">{pdfName}</span>
+                                      </div>
+                                      <button onClick={() => { setPdfName(""); setPdfFile(null); setPdfFileObj(null); }} className="text-error hover:text-error/80 shrink-0 p-1">
+                                          <X className="w-4 h-4" />
+                                      </button>
+                                   </div>
+                               )}
+                               {attachments.map((att, i) => (
+                                   <div key={i} className="flex items-center justify-between bg-surface-container px-4 py-2 rounded-xl border border-outline-variant/30">
+                                      <div className="flex items-center gap-2 overflow-hidden">
+                                          <FileText className="w-4 h-4 text-primary shrink-0" />
+                                          <span className="text-sm font-medium truncate">{att.name}</span>
+                                      </div>
+                                      <button onClick={() => removeAttachment(i)} className="text-error hover:text-error/80 shrink-0 p-1">
+                                          <X className="w-4 h-4" />
+                                      </button>
+                                   </div>
+                               ))}
+                           </div>
+                       )}
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3 mt-6 pt-6 border-t border-outline-variant/20">
-                   <button onClick={() => handleSave("Draft")} className="flex-1 bg-surface-container hover:bg-surface-variant text-on-surface font-bold py-3 px-6 rounded-full transition-colors text-sm">
-                      Save as Draft
+                   <button disabled={isUploading} onClick={() => handleSave("Draft")} className="flex-1 bg-surface-container hover:bg-surface-variant text-on-surface font-bold py-3 px-6 rounded-full transition-colors text-sm disabled:opacity-50">
+                      {isUploading ? 'Saving...' : 'Save as Draft'}
                    </button>
-                   <button onClick={() => handleSave("Pending Approval")} className="flex-[2] bg-primary hover:bg-primary/90 text-on-primary font-bold py-3 px-6 rounded-full transition-colors text-sm flex items-center justify-center gap-2">
+                   <button disabled={isUploading} onClick={() => handleSave("Pending Approval")} className="flex-[2] bg-primary hover:bg-primary/90 text-on-primary font-bold py-3 px-6 rounded-full transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                        <Send className="w-4 h-4" />
-                       Submit for Approval
+                       {isUploading ? 'Saving...' : 'Submit for Approval'}
                    </button>
                 </div>
              </div>

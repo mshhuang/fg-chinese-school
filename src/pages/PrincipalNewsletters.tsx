@@ -11,18 +11,45 @@ export default function PrincipalNewsletters() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [postModal, setPostModal] = useState<any>(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<{role_id: number, role_name: string}[]>([]);
   const [availableClasses, setAvailableClasses] = useState<{class_id: string, class_name: string}[]>([]);
 
   useEffect(() => {
-    loadNewsletters();
-    const fetchClasses = async () => {
+    if (showPdfModal?.pdfData && showPdfModal.pdfData.includes('base64,')) {
       try {
-        const { data, error } = await supabase.from('classes').select('class_id, class_name');
-        if (data) setAvailableClasses(data);
+        const base64 = showPdfModal.pdfData.split(',')[1];
+        const byteString = atob(base64);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([ab], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        setPdfBlobUrl(url);
+        return () => URL.revokeObjectURL(url);
+      } catch(e) {
+        setPdfBlobUrl(showPdfModal.pdfData);
+      }
+    } else {
+      setPdfBlobUrl(showPdfModal?.pdfData || null);
+    }
+  }, [showPdfModal?.pdfData]);
+
+  useEffect(() => {
+    loadNewsletters();
+    const fetchClassesAndRoles = async () => {
+      try {
+        const { data: cData } = await supabase.from('classes').select('class_id, class_name');
+        if (cData) setAvailableClasses(cData);
+        const { data: rData } = await supabase.from('roles').select('role_id, role_name');
+        if (rData) setAvailableRoles(rData.filter(r => [4, 5, 9].includes(r.role_id))); // Teacher, Student, Parent
       } catch(e){}
     };
-    fetchClasses();
+    fetchClassesAndRoles();
   }, []);
 
   const loadNewsletters = async () => {
@@ -67,9 +94,9 @@ export default function PrincipalNewsletters() {
         const parsed = data.map((item: any) => {
            const formattedDate = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
            try {
-             return { id: item.newsletter_id, title: item.title, author: item.author_id, ...JSON.parse(item.content || "{}"), date: formattedDate };
+             return { id: item.newsletter_id, title: item.title, author: item.author_id, class_id: item.class_id, ...JSON.parse(item.content || "{}"), date: formattedDate };
            } catch {
-             return { id: item.newsletter_id, title: item.title, content: item.content, status: "Published", date: formattedDate };
+             return { id: item.newsletter_id, title: item.title, content: item.content, class_id: item.class_id, status: "Approved", date: formattedDate };
            }
         });
         setNewsletters(parsed);
@@ -96,7 +123,8 @@ export default function PrincipalNewsletters() {
      try {
          // @ts-ignore
          const { error } = await supabase.from('newsletters').update({
-             content: JSON.stringify(updatedProps)
+             content: JSON.stringify(updatedProps),
+             status: updatedProps.status
          }).eq('newsletter_id', id);
          
          if (error) {
@@ -108,7 +136,7 @@ export default function PrincipalNewsletters() {
      }
   };
 
-  const STATUSES = ["All", "Pending Approval", "Published", "Rejected"];
+  const STATUSES = ["All", "Pending Approval", "Rejected", "Approved", "Published"];
 
   const filteredNewsletters = newsletters.filter(n => {
     const matchesSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) || (n.author && n.author.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -116,18 +144,55 @@ export default function PrincipalNewsletters() {
     return matchesSearch && matchesFilter && n.status !== 'Draft'; // Admins don't see drafts
   });
 
+  const groupedNewsletters: Record<string, any[]> = {};
+  filteredNewsletters.forEach(news => {
+     const c = availableClasses.find(c => c.class_id === news.class_id);
+     const cName = c ? c.class_name : "General / Unassigned";
+     if (!groupedNewsletters[cName]) {
+         groupedNewsletters[cName] = [];
+     }
+     groupedNewsletters[cName].push(news);
+  });
+
+  const handleRevert = async (id: string | number) => {
+     const newsletter = newsletters.find(n => n.id === id);
+     if (!newsletter) return;
+     
+     const updatedProps = { ...newsletter, status: "Pending Approval" };
+     delete updatedProps.id;
+     delete updatedProps.title;
+     
+     try {
+         // @ts-ignore
+         const { error } = await supabase.from('newsletters').update({
+             content: JSON.stringify(updatedProps),
+             status: updatedProps.status
+         }).eq('newsletter_id', id);
+         
+         if (error) {
+             if (error.code === '42501') alert("RLS blocks update. Please check table policies.");
+             throw error;
+         }
+         await loadNewsletters();
+     } catch (err) {
+         console.error("Revert failed", err);
+         alert("Failed to revert status.");
+     }
+  };
+
   const handleApprove = async (id: string | number) => {
      const newsletter = newsletters.find(n => n.id === id);
      if (!newsletter) return;
      
-     const updatedProps = { ...newsletter, status: "Published" };
+     const updatedProps = { ...newsletter, status: "Approved" };
      delete updatedProps.id;
      delete updatedProps.title;
 
      try {
          // @ts-ignore
          const { error } = await supabase.from('newsletters').update({
-             content: JSON.stringify(updatedProps)
+             content: JSON.stringify(updatedProps),
+             status: updatedProps.status
          }).eq('newsletter_id', id);
          
          if (error) {
@@ -153,7 +218,8 @@ export default function PrincipalNewsletters() {
      try {
          // @ts-ignore
          const { error } = await supabase.from('newsletters').update({
-             content: JSON.stringify(updatedProps)
+             content: JSON.stringify(updatedProps),
+             status: updatedProps.status
          }).eq('newsletter_id', id);
          
          if (error) {
@@ -186,9 +252,9 @@ export default function PrincipalNewsletters() {
   };
 
   const handleDownload = () => {
-      if (!showPdfModal?.pdfData) return;
+      if (!pdfBlobUrl) return;
       const a = document.createElement("a");
-      a.href = showPdfModal.pdfData;
+      a.href = pdfBlobUrl;
       a.download = showPdfModal.pdfName || "newsletter.pdf";
       document.body.appendChild(a);
       a.click();
@@ -218,8 +284,9 @@ export default function PrincipalNewsletters() {
           try {
               // @ts-ignore
               const { error } = await supabase.from('newsletters').update({
-                  content: JSON.stringify(updatedProps)
-              }).eq('newsletter_id', showPdfModal.id);
+             content: JSON.stringify(updatedProps),
+             status: updatedProps.status
+         }).eq('newsletter_id', showPdfModal.id);
               
               if (error) throw error;
 
@@ -250,7 +317,7 @@ export default function PrincipalNewsletters() {
           title: `Newsletter: ${postModal.title}`,
           content: encodedContent,
           target_class_ids: selectedClasses,
-          target_role_ids: [],
+          target_role_ids: selectedRoles,
           target_user_ids: [],
           created_by: 'ec13df7f-1a4f-422e-abd8-05732ca798d2'
       };
@@ -268,8 +335,22 @@ export default function PrincipalNewsletters() {
       try {
           const { error } = await supabase.from('announcements').insert(payload);
           if (error) throw error;
-          alert("Posted to announcement board successfully.");
+          const selectedClassNames = availableClasses.filter(c => selectedClasses.includes(c.class_id)).map(c => c.class_name);
+          const selectedRoleNames = availableRoles.filter(r => selectedRoles.includes(r.role_id)).map(r => r.role_name + 's');
+          const allTargets = [...selectedRoleNames, ...selectedClassNames].join(', ');
+          
+          const newsletter = newsletters.find(n => n.id === postModal.id);
+          if (newsletter) {
+             const updatedProps = { ...newsletter, status: 'Published', posted_to: allTargets };
+             delete updatedProps.id;
+             delete updatedProps.title;
+             delete updatedProps.class_id;
+             await supabase.from('newsletters').update({ content: JSON.stringify(updatedProps), is_published: true, status: updatedProps.status }).eq('newsletter_id', postModal.id);
+          }
+
+          alert(`Posted to announcement board successfully to: ${allTargets}`);
           setPostModal(null);
+          await loadNewsletters();
       } catch (err) {
           console.error("Post failed", err);
           alert("Failed to post announcement.");
@@ -323,64 +404,87 @@ export default function PrincipalNewsletters() {
        </div>
 
        {/* List / Grid */}
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredNewsletters.map(news => (
-             <div key={news.id} className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col hover:shadow-md transition-all shadow-sm">
-                 <div className="flex justify-between items-start mb-4">
-                    <span className={cn(
-                       "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label flex items-center gap-1.5",
-                       news.status === "Published" ? "bg-primary-container/20 text-primary border border-primary/20" : 
-                       news.status === "Rejected" ? "bg-error-container/20 text-error border border-error/20" :
-                       "bg-tertiary-container/30 text-tertiary-dim border border-tertiary/20"
-                    )}>
-                       {news.status === "Published" ? <CheckCircle2 className="w-3 h-3" /> : news.status === "Rejected" ? <XCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                       {news.status}
-                    </span>
-                    <div className="flex gap-2">
-                       <button onClick={() => setShowPdfModal(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
-                          <Eye className="w-4 h-4" />
-                       </button>
-                       {news.status === "Pending Approval" && (
-                         <>
-                           <button onClick={() => handleApprove(news.id)} className="w-8 h-8 rounded-full hover:bg-primary-container/50 hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="Approve">
-                              <CheckCircle2 className="w-4 h-4" />
-                           </button>
-                           <button onClick={() => handleReject(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Reject">
-                              <XCircle className="w-4 h-4" />
-                           </button>
-                         </>
-                       )}
-                       {confirmDeleteId === news.id ? (
-                           <div className="flex items-center gap-1 bg-error-container/20 px-2 rounded-full">
-                               <button onClick={() => setConfirmDeleteId(null)} className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface px-1 py-1">Cancel</button>
-                               <button onClick={() => handleDelete(news.id, true)} className="text-[10px] font-bold text-error hover:underline px-1 py-1">Confirm</button>
-                           </div>
-                       ) : (
-                       <button onClick={() => setConfirmDeleteId(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                       </button>
-                       )}
-                    </div>
-                 </div>
+       <div className="flex flex-col gap-8">
+          {Object.keys(groupedNewsletters).sort().map(groupName => (
+             <div key={groupName} className="flex flex-col gap-4">
+                <h2 className="font-display text-2xl font-bold text-primary border-b border-outline-variant/30 pb-2">{groupName}</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {groupedNewsletters[groupName].map(news => (
+                     <div key={news.id} className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col hover:shadow-md transition-all shadow-sm">
+                         <div className="flex justify-between items-start mb-4">
+                            <span className={cn(
+                               "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label flex items-center gap-1.5",
+                               news.status === "Approved" ? "bg-primary-container/20 text-primary border border-primary/20" : 
+                               news.status === "Published" ? "bg-secondary-container/20 text-secondary border border-secondary/20" : 
+                               news.status === "Rejected" ? "bg-error-container/20 text-error border border-error/20" :
+                               "bg-tertiary-container/30 text-tertiary-dim border border-tertiary/20"
+                            )}>
+                               {news.status === "Approved" ? <CheckCircle2 className="w-3 h-3" /> : news.status === "Published" ? <CheckCircle2 className="w-3 h-3" /> : news.status === "Rejected" ? <XCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                               {news.status}
+                            </span>
+                            <div className="flex gap-2">
+                               <button onClick={() => setShowPdfModal(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
+                                  <Eye className="w-4 h-4" />
+                               </button>
+                               {news.status === "Pending Approval" && (
+                                   <button onClick={() => handleApprove(news.id)} className="w-8 h-8 rounded-full hover:bg-primary-container/50 hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="Approve">
+                                      <CheckCircle2 className="w-4 h-4" />
+                                   </button>
+                               )}
+                               {(news.status === "Pending Approval" || news.status === "Approved") && (
+                                   <button onClick={() => handleReject(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Reject">
+                                      <XCircle className="w-4 h-4" />
+                                   </button>
+                               )}
+                               {news.status === "Approved" && (
+                                   <button onClick={() => handleRevert(news.id)} className="w-8 h-8 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors" title="Revert to Pending">
+                                      <Clock className="w-4 h-4" />
+                                   </button>
+                               )}
+                               {confirmDeleteId === news.id ? (
+                                   <div className="flex items-center gap-1 bg-error-container/20 px-2 rounded-full">
+                                       <button onClick={() => setConfirmDeleteId(null)} className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface px-1 py-1">Cancel</button>
+                                       <button onClick={() => handleDelete(news.id, true)} className="text-[10px] font-bold text-error hover:underline px-1 py-1">Confirm</button>
+                                   </div>
+                               ) : (
+                               <button onClick={() => setConfirmDeleteId(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors" title="Delete">
+                                  <Trash2 className="w-4 h-4" />
+                               </button>
+                               )}
+                            </div>
+                         </div>
 
-                 <h3 className="font-display text-xl font-bold text-on-surface mb-1">{news.title}</h3>
-                 <p className="font-label text-xs text-on-surface-variant font-bold mb-4">Submitted by {news.author}</p>
-                 <p className="font-body text-sm text-on-surface-variant mb-4 line-clamp-3 flex-1">{news.content}</p>
+                         <h3 className="font-display text-xl font-bold text-on-surface mb-1">{news.title}</h3>
+                         <p className="font-label text-xs text-on-surface-variant font-bold mb-4">Submitted by {news.author}</p>
+                         <p className="font-body text-sm text-on-surface-variant mb-4 line-clamp-3 flex-1">{news.content}</p>
 
-                 {news.pdfName && (
-                     <div className="flex items-center gap-2 mb-4 bg-surface-container py-1.5 px-3 rounded-lg w-max max-w-full overflow-hidden">
-                         <FileText className="w-4 h-4 text-primary shrink-0" />
-                         <span className="text-xs font-mono truncate">{news.pdfName}</span>
+                         {news.pdfName && (
+                             <a href={news.pdfData} target="_blank" rel="noreferrer" className="flex items-center gap-2 mb-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg w-max max-w-full overflow-hidden">
+                                 <FileText className="w-4 h-4 text-primary shrink-0" />
+                                 <span className="text-xs font-mono truncate text-primary hover:underline">{news.pdfName}</span>
+                             </a>
+                         )}
+                         {news.attachments && news.attachments.length > 0 && (
+                             <div className="flex flex-wrap gap-2 mb-4">
+                                 {news.attachments.map((att: any, i: number) => (
+                                     <a key={i} href={att.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg max-w-full overflow-hidden">
+                                         <FileText className="w-4 h-4 text-primary shrink-0" />
+                                         <span className="text-xs font-mono truncate text-primary hover:underline">{att.name}</span>
+                                     </a>
+                                 ))}
+                             </div>
+                         )}
+
+                         <div className="flex items-center justify-between pt-4 border-t border-outline-variant/20 mt-auto">
+                            <div className="flex items-center gap-2 text-on-surface-variant">
+                               <Users className="w-4 h-4 shrink-0" />
+                               <span className="font-label text-xs uppercase tracking-wider font-bold text-ellipsis overflow-hidden line-clamp-1">{news.posted_to || news.audience || groupName}</span>
+                            </div>
+                            <span className="font-caption text-xs text-on-surface-variant">{news.date}</span>
+                         </div>
                      </div>
-                 )}
-
-                 <div className="flex items-center justify-between pt-4 border-t border-outline-variant/20 mt-auto">
-                    <div className="flex items-center gap-2 text-on-surface-variant">
-                       <Users className="w-4 h-4 shrink-0" />
-                       <span className="font-label text-xs uppercase tracking-wider font-bold">{news.audience}</span>
-                    </div>
-                    <span className="font-caption text-xs text-on-surface-variant">{news.date}</span>
-                 </div>
+                  ))}
+                </div>
              </div>
           ))}
 
@@ -401,13 +505,20 @@ export default function PrincipalNewsletters() {
                    <div className="flex gap-2">
                        {showPdfModal.status === "Pending Approval" && (
                          <>
-                           <button onClick={() => { handleApprove(showPdfModal.id); setShowPdfModal(null); }} className="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
+                           <button onClick={async () => { await handleApprove(showPdfModal.id); setShowPdfModal(null); }} className="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                               <CheckCircle2 className="w-4 h-4" /> Approve
                            </button>
+                         </>
+                       )}
+                       {(showPdfModal.status === "Pending Approval" || showPdfModal.status === "Approved") && (
                            <button onClick={() => { handleReject(showPdfModal.id); setShowPdfModal(null); }} className="bg-error/10 text-error hover:bg-error/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                               <XCircle className="w-4 h-4" /> Reject
                            </button>
-                         </>
+                       )}
+                       {showPdfModal.status === "Approved" && (
+                           <button onClick={() => { handleRevert(showPdfModal.id); setShowPdfModal(null); }} className="bg-surface-variant text-on-surface hover:bg-surface-variant/80 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
+                              <Clock className="w-4 h-4" /> Revert to Pending
+                           </button>
                        )}
                        <button onClick={() => { handleDelete(showPdfModal.id); setShowPdfModal(null); }} className="bg-error/10 text-error hover:bg-error/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                           <Trash2 className="w-4 h-4" /> Delete
@@ -419,7 +530,7 @@ export default function PrincipalNewsletters() {
                           <Upload className="w-4 h-4" /> Upload Edited
                           <input type="file" className="hidden" accept="application/pdf" onChange={handleUploadEdit} />
                        </label>
-                       {showPdfModal.status === "Published" && (
+                       {showPdfModal.status === "Approved" && (
                            <button onClick={() => {
                                setPostModal(showPdfModal);
                                setSelectedClasses(showPdfModal.class_id ? [showPdfModal.class_id] : []);
@@ -430,7 +541,8 @@ export default function PrincipalNewsletters() {
                        <button onClick={() => {
                           const w = window.open();
                           if(w) {
-                              w.document.write('<iframe src="' + showPdfModal.pdfData + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
+                              
+                              w.document.write('<iframe src="' + pdfBlobUrl + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
                               setTimeout(() => { w.print(); }, 500);
                           }
                        }} className="bg-primary text-on-primary hover:bg-primary/90 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
@@ -443,8 +555,8 @@ export default function PrincipalNewsletters() {
                    </div>
                 </div>
                 <div className="flex-1 bg-surface-container-lowest p-2 flex flex-col gap-2 overflow-y-auto">
-                    {showPdfModal.pdfData ? (
-                        <iframe src={showPdfModal.pdfData} className="flex-1 w-full min-h-[400px] rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                    {pdfBlobUrl ? (
+                        <iframe src={pdfBlobUrl} className="flex-1 w-full min-h-[400px] rounded-xl border border-outline-variant/20" title="PDF Viewer" />
                     ) : (
                         <div className="flex-1 p-6 bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-y-auto whitespace-pre-wrap font-body text-on-surface">
                             {showPdfModal.content || "No content available."}
@@ -476,8 +588,25 @@ export default function PrincipalNewsletters() {
                        <h3 className="font-title text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
                            <Megaphone className="w-5 h-5 text-tertiary" /> Post Newsletter
                        </h3>
-                       <p className="text-on-surface-variant mb-4 text-sm font-body">Select the classes to post this newsletter to.</p>
+                       <p className="text-on-surface-variant mb-4 text-sm font-body">Select the audience to post this newsletter to.</p>
                        <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto mb-6 pr-2">
+                           <div className="text-xs font-bold font-label uppercase text-on-surface-variant mt-2 mb-1">Target Roles</div>
+                           {availableRoles.map(r => (
+                               <label key={r.role_id} className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/30 hover:bg-surface-variant/30 cursor-pointer transition-colors">
+                                   <input type="checkbox" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary"
+                                     checked={selectedRoles.includes(r.role_id)}
+                                     onChange={(e) => {
+                                         if (e.target.checked) {
+                                             setSelectedRoles(prev => [...prev, r.role_id]);
+                                         } else {
+                                             setSelectedRoles(prev => prev.filter(id => id !== r.role_id));
+                                         }
+                                     }}
+                                   />
+                                   <span className="font-label text-sm text-on-surface font-bold">All {r.role_name}s</span>
+                               </label>
+                           ))}
+                           <div className="text-xs font-bold font-label uppercase text-on-surface-variant mt-2 mb-1">Target Classes</div>
                            <label className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/30 hover:bg-surface-variant/30 cursor-pointer transition-colors">
                                <input type="checkbox" className="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary"
                                  checked={selectedClasses.length === availableClasses.length && availableClasses.length > 0}
@@ -512,7 +641,7 @@ export default function PrincipalNewsletters() {
                            <button onClick={() => setPostModal(null)} className="px-6 py-2 rounded-full font-label text-sm bg-surface-variant text-on-surface-variant font-bold hover:bg-surface-variant/80 transition-colors">
                                Cancel
                            </button>
-                           <button onClick={handlePostAnnouncement} disabled={selectedClasses.length === 0} className="px-6 py-2 rounded-full font-label text-sm bg-tertiary text-on-tertiary font-bold hover:bg-tertiary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                           <button onClick={handlePostAnnouncement} disabled={selectedClasses.length === 0 && selectedRoles.length === 0} className="px-6 py-2 rounded-full font-label text-sm bg-tertiary text-on-tertiary font-bold hover:bg-tertiary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                Post to Announcements
                            </button>
                        </div>

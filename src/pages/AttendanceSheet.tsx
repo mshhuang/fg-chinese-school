@@ -135,11 +135,8 @@ export default function AttendanceSheet() {
           setNotes(noteMap);
           setIsSubmitted(true);
        } else {
-          // default all present
+          // default no color
           const initMap: Record<string, string> = {};
-          mapped.forEach(s => {
-             if (s.student_id) initMap[s.student_id] = 'Present';
-          });
           setAttendance(initMap);
           setIsSubmitted(false);
        }
@@ -147,7 +144,7 @@ export default function AttendanceSheet() {
     setStudentsLoading(false);
   };
 
-  const toggleClockIn = async (studentId: string, currentStatus: 'checked_in' | 'checked_out' | 'not_checked_in' | undefined) => {
+  const toggleClockIn = async (studentId: string, currentStatus: 'checked_in' | 'checked_out' | 'not_checked_in' | undefined, skipDuplicateCheck: boolean = false) => {
     const isCheckedIn = currentStatus === 'checked_in';
     const actionType = isCheckedIn ? 'school_check_out' : 'school_check_in';
     const dailyStatus = isCheckedIn ? 'classes over' : 'check-in the building';
@@ -167,7 +164,7 @@ export default function AttendanceSheet() {
     const targetStudent = students.find(s => s.student_id === studentId);
     const studentName = targetStudent ? `${targetStudent.first_name} ${targetStudent.last_name}` : 'Student';
 
-    if (existingDup) {
+    if (existingDup && !skipDuplicateCheck) {
       setDuplicateWarning({
         isOpen: true,
         userName: studentName,
@@ -191,6 +188,14 @@ export default function AttendanceSheet() {
           });
           setClockIns(prev => ({ ...prev, [studentId]: isCheckedIn ? 'checked_out' : 'checked_in' }));
           setClockInTimes(prev => ({ ...prev, [studentId]: timeIso }));
+        },
+        onDelete: async () => {
+           if (existingDup.id) {
+               await supabase.from('student_clock_ins').delete().eq('id', existingDup.id);
+           } else {
+               await supabase.from('student_clock_ins').delete().eq('student_id', studentId).eq('action_type', actionType).eq('created_at', existingDup.created_at);
+           }
+           setClockIns(prev => ({ ...prev, [studentId]: isCheckedIn ? 'checked_in' : 'not_checked_in' }));
         }
       });
       return;
@@ -380,47 +385,68 @@ export default function AttendanceSheet() {
                                </td>
                                <td className="py-3 px-4 text-center">
                                   <div className="flex flex-col items-center gap-2">
-                                                                          <button
-                                        onClick={() => toggleClockIn(s.student_id, clockIns[s.student_id])}
-                                        className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-colors ${clockIns[s.student_id] === 'checked_in' ? 'bg-[#E8F5E9] text-[#2E7D32] border border-[#2E7D32]/30' : clockIns[s.student_id] === 'checked_out' ? 'bg-[#FFF3E0] text-[#E65100] border border-[#E65100]/30' : 'bg-surface-variant text-on-surface-variant border border-outline-variant/30'}`}
-                                     >
-                                        {clockIns[s.student_id] === 'checked_in' ? 'Clock Out' : 'Clock In'}
-                                     </button>
+                                                                         <div className="flex gap-2">
+                                        <button
+                                           onClick={() => toggleClockIn(s.student_id, 'not_checked_in')}
+                                           className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${clockIns[s.student_id] === 'checked_in' ? 'bg-green-500 border-green-600 text-white shadow-md scale-105' : 'bg-surface-variant border-outline-variant/30 text-on-surface-variant hover:bg-surface-variant/80'}`}
+                                        >
+                                           Clock In
+                                        </button>
+                                        <button
+                                           onClick={() => toggleClockIn(s.student_id, 'checked_in')}
+                                           className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${clockIns[s.student_id] === 'checked_out' ? 'bg-amber-500 border-amber-600 text-white shadow-md scale-105' : 'bg-surface-variant border-outline-variant/30 text-on-surface-variant hover:bg-surface-variant/80'}`}
+                                        >
+                                           Ready to Go Home
+                                        </button>
+                                     </div>
                                      <span className={`text-[11px] font-label ${clockIns[s.student_id] === 'checked_in' ? 'text-[#2E7D32]' : clockIns[s.student_id] === 'checked_out' ? 'text-[#2E7D32] font-bold' : 'text-on-surface-variant'}`}>
                                         {clockIns[s.student_id] === 'checked_in'
                                            ? (() => {
                                                 if (!clockInTimes[s.student_id]) return `${s.first_name} is in the school`;
                                                 const d = new Date(clockInTimes[s.student_id]);
-                                                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' , timeZoneName: 'short'});
-                                                const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+                                                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' }) + ' EST';
+                                                const dateStr = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
                                                 return `${s.first_name} arrived at school at ${timeStr} on ${dateStr}`;
                                              })()
-                                           : clockIns[s.student_id] === 'checked_out' ? `${s.first_name} is ready to go home` : 'Not Arrived'}
+                                           : clockIns[s.student_id] === 'checked_out' ? (() => {
+                                                if (!clockInTimes[s.student_id]) return `${s.first_name} is ready to go home`;
+                                                const d = new Date(clockInTimes[s.student_id]);
+                                                const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' }) + ' EST';
+                                                const dateStr = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
+                                                return `${s.first_name} is ready to go home。${timeStr} on ${dateStr}`;
+                                             })() : 'Not Arrived'}
                                      </span>
                                   </div>
                                </td>
                                <td className="py-3 px-4">
                                   <div className="flex items-center justify-center gap-2">
                                      <button 
-                                        onClick={() => !isSubmitted && setAttendance(p => ({...p, [s.student_id]: 'Present'}))}
+                                        onClick={async () => {
+                                            if (isSubmitted) return;
+                                            const isCurrently = attendance[s.student_id] === 'Present';
+                                            setAttendance(p => ({...p, [s.student_id]: isCurrently ? '' : 'Present'}));
+                                            if (!isCurrently && clockIns[s.student_id] !== 'checked_in' && clockIns[s.student_id] !== 'checked_out') {
+                                                await toggleClockIn(s.student_id, 'not_checked_in', true);
+                                            }
+                                        }}
                                         disabled={isSubmitted}
-                                        className={`flex items-center justify-center p-2 rounded-full transition-colors ${attendance[s.student_id] === 'Present' ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container border border-outline-variant/30 text-on-surface-variant'} ${!isSubmitted ? 'hover:bg-surface-variant' : 'opacity-80 cursor-default'}`}
+                                        className={`flex items-center justify-center p-2 rounded-full transition-all border ${attendance[s.student_id] === 'Present' ? 'bg-green-500 border-green-600 text-white shadow-md scale-110' : 'bg-surface-container border-outline-variant/30 text-on-surface-variant'} ${!isSubmitted ? (attendance[s.student_id] === 'Present' ? 'hover:bg-green-600' : 'hover:bg-green-100 hover:text-green-600 hover:border-green-300') : 'opacity-80 cursor-default'}`}
                                         title="Present"
                                      >
                                         <CheckCircle2 className="w-5 h-5" />
                                      </button>
                                      <button 
-                                        onClick={() => !isSubmitted && setAttendance(p => ({...p, [s.student_id]: 'Late'}))}
+                                        onClick={() => !isSubmitted && setAttendance(p => ({...p, [s.student_id]: p[s.student_id] === 'Late' ? '' : 'Late'}))}
                                         disabled={isSubmitted}
-                                        className={`flex items-center justify-center p-2 rounded-full transition-colors ${attendance[s.student_id] === 'Late' ? 'bg-yellow-500 text-white shadow-sm' : 'bg-surface-container border border-outline-variant/30 text-on-surface-variant'} ${!isSubmitted ? 'hover:bg-surface-variant' : 'opacity-80 cursor-default'}`}
+                                        className={`flex items-center justify-center p-2 rounded-full transition-all border ${attendance[s.student_id] === 'Late' ? 'bg-amber-500 border-amber-600 text-white shadow-md scale-110' : 'bg-surface-container border-outline-variant/30 text-on-surface-variant'} ${!isSubmitted ? (attendance[s.student_id] === 'Late' ? 'hover:bg-amber-600' : 'hover:bg-amber-100 hover:text-amber-600 hover:border-amber-300') : 'opacity-80 cursor-default'}`}
                                         title="Late"
                                      >
                                         <Clock className="w-5 h-5" />
                                      </button>
                                      <button 
-                                        onClick={() => !isSubmitted && setAttendance(p => ({...p, [s.student_id]: 'Absent'}))}
+                                        onClick={() => !isSubmitted && setAttendance(p => ({...p, [s.student_id]: p[s.student_id] === 'Absent' ? '' : 'Absent'}))}
                                         disabled={isSubmitted}
-                                        className={`flex items-center justify-center p-2 rounded-full transition-colors ${attendance[s.student_id] === 'Absent' ? 'bg-error text-error-container shadow-sm' : 'bg-surface-container border border-outline-variant/30 text-on-surface-variant'} ${!isSubmitted ? 'hover:bg-surface-variant' : 'opacity-80 cursor-default'}`}
+                                        className={`flex items-center justify-center p-2 rounded-full transition-all border ${attendance[s.student_id] === 'Absent' ? 'bg-red-500 border-red-600 text-white shadow-md scale-110' : 'bg-surface-container border-outline-variant/30 text-on-surface-variant'} ${!isSubmitted ? (attendance[s.student_id] === 'Absent' ? 'hover:bg-red-600' : 'hover:bg-red-100 hover:text-red-600 hover:border-red-300') : 'opacity-80 cursor-default'}`}
                                         title="Absent"
                                      >
                                         <XCircle className="w-5 h-5" />
