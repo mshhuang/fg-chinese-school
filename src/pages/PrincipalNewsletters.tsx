@@ -22,6 +22,17 @@ export default function PrincipalNewsletters() {
   const [loading, setLoading] = useState(false);
   const [postModal, setPostModal] = useState<any>(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [activeViewerUrl, setActiveViewerUrl] = useState<string | null>(null);
+
+  const openViewer = (news: any, targetUrl?: string) => {
+      setShowPdfModal(news);
+      setTimeout(() => {
+          setActiveViewerUrl(targetUrl || news.pdfData || (news.attachments && news.attachments[0]?.url) || null);
+      }, 0);
+  };
+
+
+
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
   const [availableRoles, setAvailableRoles] = useState<{role_id: number, role_name: string}[]>([]);
@@ -472,7 +483,7 @@ export default function PrincipalNewsletters() {
                                {news.status}
                             </span>
                             <div className="flex gap-2">
-                               <button onClick={() => setShowPdfModal(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
+                               <button onClick={() => openViewer(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
                                   <Eye className="w-4 h-4" />
                                </button>
                                {news.status === "Pending Approval" && (
@@ -511,18 +522,18 @@ export default function PrincipalNewsletters() {
                          <p className="font-body text-sm text-on-surface-variant mb-4 line-clamp-3 flex-1">{news.content}</p>
 
                          {news.pdfName && (
-                             <a href={news.pdfData} target="_blank" rel="noreferrer" className="flex items-center gap-2 mb-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg w-max max-w-full overflow-hidden">
+                             <button onClick={(e) => { e.stopPropagation(); openViewer(news, news.pdfData); }} className="flex items-center gap-2 mb-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg w-max max-w-full overflow-hidden">
                                  <FileText className="w-4 h-4 text-primary shrink-0" />
                                  <span className="text-xs font-mono truncate text-primary hover:underline">{news.pdfName}</span>
-                             </a>
+                             </button>
                          )}
                          {news.attachments && news.attachments.length > 0 && (
                              <div className="flex flex-wrap gap-2 mb-4">
                                  {news.attachments.map((att: any, i: number) => (
-                                     <a key={i} href={att.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg max-w-full overflow-hidden">
+                                     <button type="button" key={i} onClick={(e) => { e.stopPropagation(); openViewer(news, att.url); }} className="flex items-center gap-2 bg-surface-container hover:bg-surface-variant transition-colors py-1.5 px-3 rounded-lg max-w-full overflow-hidden">
                                          <FileText className="w-4 h-4 text-primary shrink-0" />
                                          <span className="text-xs font-mono truncate text-primary hover:underline">{att.name}</span>
-                                     </a>
+                                     </button>
                                  ))}
                              </div>
                          )}
@@ -580,7 +591,7 @@ export default function PrincipalNewsletters() {
                        </button>
                        <label className="bg-surface-variant text-on-surface hover:bg-surface-variant/80 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2 cursor-pointer">
                           <Upload className="w-4 h-4" /> Upload Edited
-                          <input type="file" className="hidden" accept="application/pdf" onChange={handleUploadEdit} />
+                          <input type="file" className="hidden"  onChange={handleUploadEdit} />
                        </label>
                        {showPdfModal.status === "Approved" && (
                            <button onClick={() => {
@@ -607,22 +618,28 @@ export default function PrincipalNewsletters() {
                    </div>
                 </div>
                 <div className="flex-1 bg-surface-container-lowest p-2 flex flex-col gap-2 overflow-y-auto">
-                    {pdfBlobUrl ? (
-                        <iframe src={pdfBlobUrl} className="flex-1 w-full min-h-[400px] rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                    {activeViewerUrl ? (
+                        <iframe src={activeViewerUrl} className="flex-1 w-full min-h-[400px] rounded-xl border border-outline-variant/20" title="Document Viewer" />
                     ) : (
                         <div className="flex-1 p-6 bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-y-auto whitespace-pre-wrap font-body text-on-surface">
                             {showPdfModal.content || "No content available."}
                         </div>
                     )}
-                    {showPdfModal.attachments && showPdfModal.attachments.length > 0 && (
+                    {(showPdfModal.attachments?.length > 0 || pdfBlobUrl) && (
                         <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/20 shrink-0">
                             <label className="block text-xs font-label font-bold text-on-surface-variant mb-2">Attached Files</label>
                             <div className="flex flex-wrap gap-2">
-                                {showPdfModal.attachments.map((att: any, i: number) => (
-                                    <a key={i} href={att.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-surface-container hover:bg-surface-variant transition-colors py-2 px-3 rounded-lg border border-outline-variant/30">
-                                        <FileText className="w-4 h-4 text-primary shrink-0" />
-                                        <span className="text-sm font-medium text-primary hover:underline">{att.name}</span>
-                                    </a>
+                                {pdfBlobUrl && (
+                                    <button onClick={() => setActiveViewerUrl(pdfBlobUrl)} className={`flex items-center gap-2 py-2 px-3 rounded-lg border transition-colors ${activeViewerUrl === pdfBlobUrl ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container hover:bg-surface-variant border-outline-variant/30 text-primary'}`}>
+                                        <FileText className={`w-4 h-4 shrink-0 ${activeViewerUrl === pdfBlobUrl ? 'text-on-primary' : 'text-primary'}`} />
+                                        <span className="text-sm font-medium hover:underline">{showPdfModal.pdfName || 'Main Document'}</span>
+                                    </button>
+                                )}
+                                {showPdfModal.attachments?.map((att: any, i: number) => (
+                                    <button key={i} onClick={() => setActiveViewerUrl(att.url)} className={`flex items-center gap-2 py-2 px-3 rounded-lg border transition-colors ${activeViewerUrl === att.url ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container hover:bg-surface-variant border-outline-variant/30 text-primary'}`}>
+                                        <FileText className={`w-4 h-4 shrink-0 ${activeViewerUrl === att.url ? 'text-on-primary' : 'text-primary'}`} />
+                                        <span className="text-sm font-medium hover:underline">{att.name}</span>
+                                    </button>
                                 ))}
                             </div>
                         </div>
