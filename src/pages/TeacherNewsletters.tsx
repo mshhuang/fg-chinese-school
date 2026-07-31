@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Plus, Clock, Edit3, Trash2, Sparkles, Send, CheckCircle2, FileText, X, Eye, AlertCircle, Newspaper, Filter, Users } from "lucide-react";
+import { Search, Plus, Clock, Edit3, Trash2, Sparkles, Send, CheckCircle2, FileText, X, Eye, AlertCircle, Newspaper, Filter, Users , ArrowLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
@@ -604,8 +604,14 @@ export default function TeacherNewsletters() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl w-full max-w-4xl h-[90vh] shadow-xl flex flex-col overflow-hidden mx-auto">
                 <div className="flex items-center justify-between p-4 border-b border-outline-variant/20 bg-surface-container-low">
-                   <h2 className="text-lg font-display font-bold text-on-surface">{showPdfModal.title}</h2>
-                   <button onClick={() => {
+                   <div className="flex items-center gap-3">
+                       <button onClick={() => setShowPdfModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant" title="Back to previous page">
+                           <ArrowLeft className="w-5 h-5" />
+                       </button>
+                       <h2 className="text-lg font-display font-bold text-on-surface line-clamp-1">{showPdfModal.title}</h2>
+                   </div>
+                   <div className="flex items-center gap-2">
+                       <button onClick={() => {
                           const w = window.open();
                           if(w) {
                               w.document.write('<iframe src="' + showPdfModal.pdfData + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
@@ -615,9 +621,7 @@ export default function TeacherNewsletters() {
                           <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
                           Print
                        </button>
-                   <button onClick={() => setShowPdfModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant">
-                      <X className="w-5 h-5" />
-                   </button>
+                   </div>
                 </div>
                 <div className="flex-1 bg-surface-container-lowest p-2 overflow-y-auto flex flex-col gap-2">
                     {activeViewerUrl ? (
