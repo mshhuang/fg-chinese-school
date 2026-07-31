@@ -30,21 +30,21 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
      let classIdsPromise: Promise<string[]> = Promise.resolve([]);
      if (userRole === 'student') {
          classIdsPromise = supabase.from('enrollments').select('class_id').eq('student_id', user.id)
-            .then(res => res.data?.map(e => e.class_id) || []);
+            .then(res => (res.data?.map(e => e.class_id) || []) as string[]);
      } else if (userRole === 'parent') {
          classIdsPromise = supabase.from('parent_child').select('child_id').eq('parent_id', user.id)
             .then(res => {
                 const childIds = res.data?.map(c => c.child_id) || [];
                 if (childIds.length > 0) {
                     return supabase.from('enrollments').select('class_id').in('student_id', childIds)
-                        .then(r => r.data?.map(e => e.class_id) || []);
+                        .then(r => (r.data?.map(e => e.class_id) || []) as string[]);
                 }
                 return [];
             });
      } else if (userRole === 'teacher') {
          classIdsPromise = supabase.from('classes').select('class_id')
             .or(`primary_teacher_id.eq.${user.id},co_teacher_id.eq.${user.id},co_teachers.cs.{${user.id}}`)
-            .then(res => res.data?.map(c => c.class_id) || []);
+            .then(res => (res.data?.map(c => c.class_id) || []) as string[]);
      }
      
      let [{ data: primaryData, error: primaryErr }, { data: rolesData }, userClassIds] = await Promise.all([

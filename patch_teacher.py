@@ -1,27 +1,47 @@
 import re
 
-with open('src/pages/TeacherDashboard.tsx', 'r') as f:
+with open('src/pages/TeacherNewsletters.tsx', 'r') as f:
     content = f.read()
 
-content = re.sub(
-    r"\.from\('system_logs'\)\s*\.select\('\*'\)\s*\.eq\('user_id', currentUser\.id\)\s*\.in\('action_type', \['teacher_clock_in', 'teacher_clock_out'\]\)",
-    r".from('staff_clock_ins')\n       .select('*')\n       .eq('user_id', currentUser.id)",
-    content
-)
+# Add state
+if 'const [confirmDeleteId, setConfirmDeleteId] = useState' not in content:
+    content = content.replace('const [editingNewsletterId, setEditingNewsletterId] = useState<string | null>(null);', 
+                              'const [editingNewsletterId, setEditingNewsletterId] = useState<string | null>(null);\n  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);')
 
-content = re.sub(
-    r"setClockStatus\(data\[0\]\.action_type === 'teacher_clock_in' \? 'clocked_in' : 'clocked_out'\);",
-    r"setClockStatus(data[0].action_type === 'clock_in' ? 'clocked_in' : 'clocked_out');",
-    content
-)
+# Update handleDelete
+bad_handle = """  const handleDelete = async (id: string | number) => {
+     try {
+        // @ts-ignore
+        const { error } = await supabase.from('newsletters').delete().eq('newsletter_id', id);"""
 
-content = re.sub(
-    r"const \{ error \} = await supabase\.from\('system_logs'\)\.insert\(\{.*?'Teacher'\)\s*\}\);",
-    r"const { error } = await supabase.from('staff_clock_ins').insert({\n       user_id: (user?.user_id || user?.id),\n       action_type: newStatus === 'clocked_in' ? 'clock_in' : 'clock_out'\n    });",
-    content,
-    flags=re.DOTALL
-)
+good_handle = """  const handleDelete = async (id: string | number, confirmed: boolean = false) => {
+     if (!confirmed) return;
+     try {
+        // @ts-ignore
+        const { error } = await supabase.from('newsletters').delete().eq('newsletter_id', id);"""
 
-with open('src/pages/TeacherDashboard.tsx', 'w') as f:
+if bad_handle in content:
+    content = content.replace(bad_handle, good_handle)
+
+# Update button
+bad_btn = """                       <button onClick={() => handleDelete(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                       </button>"""
+
+good_btn = """                       {confirmDeleteId === news.id ? (
+                           <div className="flex items-center gap-1 bg-error-container/20 px-2 rounded-full">
+                               <button onClick={() => setConfirmDeleteId(null)} className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface px-1 py-1">Cancel</button>
+                               <button onClick={() => { setConfirmDeleteId(null); handleDelete(news.id, true); }} className="text-[10px] font-bold text-error hover:underline px-1 py-1">Confirm</button>
+                           </div>
+                       ) : (
+                           <button onClick={() => setConfirmDeleteId(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                           </button>
+                       )}"""
+
+if bad_btn in content:
+    content = content.replace(bad_btn, good_btn)
+
+with open('src/pages/TeacherNewsletters.tsx', 'w') as f:
     f.write(content)
-print("Patched!")
+print("TeacherNewsletters patched.")

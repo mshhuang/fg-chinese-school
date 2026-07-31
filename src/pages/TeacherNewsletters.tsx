@@ -31,6 +31,7 @@ export default function TeacherNewsletters() {
   const [attachments, setAttachments] = useState<{name: string, url: string | null, fileObj: File | null}[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [editingNewsletterId, setEditingNewsletterId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -160,6 +161,7 @@ export default function TeacherNewsletters() {
             });
         }
         setAttachments(newAttachments);
+        if (fileInputRef.current) fileInputRef.current.value = '';
      }
   };
   
@@ -182,7 +184,7 @@ export default function TeacherNewsletters() {
 
   const handleSave = async (status: "Draft" | "Pending Approval") => {
      if (!title.trim()) return alert("Title is required");
-     
+     setIsUploading(true);
      let finalPdfData = pdfFile;
      
      if (pdfFileObj) {
@@ -205,7 +207,7 @@ export default function TeacherNewsletters() {
      }
      
 
-     let finalAttachments = [...attachments];
+     let finalAttachments = attachments.map(a => ({...a}));
      for (let i = 0; i < finalAttachments.length; i++) {
          const att = finalAttachments[i];
          if (att.fileObj) {
@@ -283,9 +285,12 @@ export default function TeacherNewsletters() {
      
      setShowModal(false);
      setEditingNewsletterId(null);
-     setTitle(""); setContent(""); setPdfFile(null); setPdfFileObj(null); setPdfName("");
+     setTitle(""); setContent(""); setPdfFile(null); setPdfFileObj(null); setPdfName(""); setAttachments([]);
+     setIsUploading(false);
   };
-  const handleDelete = async (id: string | number) => {
+  const handleDelete = async (id: string | number, confirmed: boolean = false) => {
+     if (!confirmed) return;
+     if (!id) return;
      try {
         // @ts-ignore
         const { error } = await supabase.from('newsletters').delete().eq('newsletter_id', id);
@@ -409,9 +414,16 @@ export default function TeacherNewsletters() {
                          </button>
                          </>
                        )}
-                       <button onClick={() => handleDelete(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                       </button>
+                       {confirmDeleteId === news.id ? (
+                           <div className="flex items-center gap-1 bg-error-container/20 px-2 rounded-full">
+                               <button onClick={() => setConfirmDeleteId(null)} className="text-[10px] font-bold text-on-surface-variant hover:text-on-surface px-1 py-1">Cancel</button>
+                               <button onClick={() => { setConfirmDeleteId(null); handleDelete(news.id, true); }} className="text-[10px] font-bold text-error hover:underline px-1 py-1">Confirm</button>
+                           </div>
+                       ) : (
+                           <button onClick={() => setConfirmDeleteId(news.id)} className="w-8 h-8 rounded-full hover:bg-error-container/50 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                           </button>
+                       )}
                     </div>
                  </div>
 
@@ -596,12 +608,25 @@ export default function TeacherNewsletters() {
                       <X className="w-5 h-5" />
                    </button>
                 </div>
-                <div className="flex-1 bg-surface-container-lowest p-2 overflow-y-auto">
+                <div className="flex-1 bg-surface-container-lowest p-2 overflow-y-auto flex flex-col gap-2">
                     {showPdfModal.pdfData ? (
-                        <iframe src={showPdfModal.pdfData} className="w-full h-full min-h-[400px] rounded-xl border border-outline-variant/20" title="PDF Viewer" />
+                        <iframe src={showPdfModal.pdfData} className="flex-1 w-full min-h-[400px] rounded-xl border border-outline-variant/20" title="PDF Viewer" />
                     ) : (
-                        <div className="p-6 h-full bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-y-auto whitespace-pre-wrap font-body text-on-surface">
+                        <div className="flex-1 p-6 bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-y-auto whitespace-pre-wrap font-body text-on-surface">
                             {showPdfModal.content || "No content available."}
+                        </div>
+                    )}
+                    {showPdfModal.attachments && showPdfModal.attachments.length > 0 && (
+                        <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/20 shrink-0">
+                            <label className="block text-xs font-label font-bold text-on-surface-variant mb-2">Attached Files</label>
+                            <div className="flex flex-wrap gap-2">
+                                {showPdfModal.attachments.map((att: any, i: number) => (
+                                    <a key={i} href={att.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-surface-container hover:bg-surface-variant transition-colors py-2 px-3 rounded-lg border border-outline-variant/30">
+                                        <FileText className="w-4 h-4 text-primary shrink-0" />
+                                        <span className="text-sm font-medium text-primary hover:underline">{att.name}</span>
+                                    </a>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>

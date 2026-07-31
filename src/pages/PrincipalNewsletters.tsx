@@ -277,6 +277,7 @@ export default function PrincipalNewsletters() {
 
   const handleDelete = async (id: string | number, confirmed: boolean = false) => {
      if (!confirmed) return;
+     if (!id) return;
      
      try {
          // @ts-ignore
@@ -346,7 +347,10 @@ export default function PrincipalNewsletters() {
   const handlePostAnnouncement = async () => {
       if (!postModal) return;
       
-      const atts = [];
+      let atts: any[] = [];
+      if (postModal.attachments && Array.isArray(postModal.attachments)) {
+          atts = [...postModal.attachments];
+      }
       if (postModal.pdfData) {
           atts.push({ name: postModal.pdfName || "newsletter.pdf", url: postModal.pdfData });
       }
@@ -568,7 +572,7 @@ export default function PrincipalNewsletters() {
                               <Clock className="w-4 h-4" /> Revert to Pending
                            </button>
                        )}
-                       <button onClick={() => { handleDelete(showPdfModal.id); setShowPdfModal(null); }} className="bg-error/10 text-error hover:bg-error/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
+                       <button onClick={() => { handleDelete(showPdfModal.id, true); setShowPdfModal(null); }} className="bg-error/10 text-error hover:bg-error/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
                           <Trash2 className="w-4 h-4" /> Delete
                        </button>
                        <button onClick={handleDownload} className="bg-surface-variant text-on-surface hover:bg-surface-variant/80 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">
@@ -608,6 +612,19 @@ export default function PrincipalNewsletters() {
                     ) : (
                         <div className="flex-1 p-6 bg-surface-container-low rounded-xl border border-outline-variant/20 overflow-y-auto whitespace-pre-wrap font-body text-on-surface">
                             {showPdfModal.content || "No content available."}
+                        </div>
+                    )}
+                    {showPdfModal.attachments && showPdfModal.attachments.length > 0 && (
+                        <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/20 shrink-0">
+                            <label className="block text-xs font-label font-bold text-on-surface-variant mb-2">Attached Files</label>
+                            <div className="flex flex-wrap gap-2">
+                                {showPdfModal.attachments.map((att: any, i: number) => (
+                                    <a key={i} href={att.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-surface-container hover:bg-surface-variant transition-colors py-2 px-3 rounded-lg border border-outline-variant/30">
+                                        <FileText className="w-4 h-4 text-primary shrink-0" />
+                                        <span className="text-sm font-medium text-primary hover:underline">{att.name}</span>
+                                    </a>
+                                ))}
+                            </div>
                         </div>
                     )}
                     <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/20 shrink-0">
