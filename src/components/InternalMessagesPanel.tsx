@@ -3,6 +3,13 @@ import { Search, Edit, MoreVertical, Paperclip, Send, User as UserIcon, ChevronL
 import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 
+
+const getRealUserId = (id: string | null | undefined) => {
+    if (!id) return null;
+    if (id === 'demo' || id === 'builder_secret') return 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068';
+    return id;
+};
+
 export function InternalMessagesPanel() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -65,7 +72,7 @@ export function InternalMessagesPanel() {
   const fetchMessages = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const currentUserId = currentUser?.id || currentUser?.user_id;
+      const currentUserId = getRealUserId(currentUser?.id || currentUser?.user_id);
       if (!currentUserId) return;
       const { data } = await supabase.from("internal_messages").select("*").or(`sender_id.eq.${currentUserId},recipient_id.eq.${currentUserId}`).order("sent_at", { ascending: true });
       if (data) setMessages(data);
@@ -118,7 +125,7 @@ export function InternalMessagesPanel() {
         if (messagesRes.data) setMessages(messagesRes.data);
 
         // Supabase realtime channel
-        const currentUserId = user.id || user.user_id;
+        const currentUserId = getRealUserId(user.id || user.user_id);
         
         const handlePayload = (payload: any) => {
             if (payload.eventType === 'INSERT') {
@@ -241,7 +248,7 @@ export function InternalMessagesPanel() {
   const handleDeleteConversation = async () => {
     if (!activeChatUserId || !currentUser) return;
     try {
-      const currentUserId = currentUser.id || currentUser.user_id;
+      const currentUserId = getRealUserId(currentUser.id || currentUser.user_id);
       const { error } = await supabase.from('internal_messages')
         .delete()
         .or(`and(sender_id.eq.${currentUserId},recipient_id.eq.${activeChatUserId}),and(sender_id.eq.${activeChatUserId},recipient_id.eq.${currentUserId})`);
@@ -258,7 +265,7 @@ export function InternalMessagesPanel() {
     } catch(e) { console.error(e); }
   };
 
-  const currentUserId = currentUser?.id || currentUser?.user_id;
+  const currentUserId = getRealUserId(currentUser?.id || currentUser?.user_id);
 
   const currentUserObj = allUsers.find(u => u.user_id === currentUserId);
   const currentUserRoles = currentUserObj?.role_names || [];

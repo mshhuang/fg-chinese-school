@@ -4,7 +4,6 @@ import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardNotifications } from "../components/DashboardNotifications";
 import { QRCodeBadge } from "../components/QRCodeBadge";
 import { PhotoCarousel } from "../components/PhotoCarousel";
 import { QrCode } from "lucide-react";
@@ -365,10 +364,7 @@ export default function TeacherDashboard() {
           <div className="flex items-center gap-3.5">
             <div className="relative flex items-center justify-center p-3 rounded-xl bg-amber-500 text-white font-bold shrink-0">
               <Clock className="w-6 h-6" />
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-              </span>
+
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -399,7 +395,6 @@ export default function TeacherDashboard() {
           <PhotoCarousel showTeacherUpload={true} currentUser={user} />
         </section>
 
-        <DashboardNotifications />
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           

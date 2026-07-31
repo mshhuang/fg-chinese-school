@@ -1,12 +1,22 @@
 import { useState, useEffect } from "react";
-import { Search, Filter, Clock, Users, CheckCircle2, XCircle, Newspaper, Eye, X, FileText, Trash2, Upload, Download, Megaphone } from "lucide-react";
+import { Search, Filter, Clock, Users, CheckCircle2, XCircle, Newspaper, Eye, X, FileText, Trash2, Sparkles, Upload, Download, Megaphone } from "lucide-react";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
+
+
+const getRealUserId = (id: string | null | undefined) => {
+    if (!id) return null;
+    if (id === 'demo' || id === 'builder_secret') return 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068';
+    return id;
+};
 
 export default function PrincipalNewsletters() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("Pending Approval");
   const [newsletters, setNewsletters] = useState<any[]>([]);
+  const [readState, setReadState] = useState<Record<string, boolean>>({});
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [readCounts, setReadCounts] = useState<Record<string, number>>({});
   const [showPdfModal, setShowPdfModal] = useState<any>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -40,6 +50,14 @@ export default function PrincipalNewsletters() {
   }, [showPdfModal?.pdfData]);
 
   useEffect(() => {
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+        try {
+            let cid = JSON.parse(userJson).id;
+            if (cid === 'demo') cid = 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068';
+            setCurrentUserId(cid);
+        } catch(e) {}
+    }
     loadNewsletters();
     const fetchClassesAndRoles = async () => {
       try {
@@ -52,7 +70,21 @@ export default function PrincipalNewsletters() {
     fetchClassesAndRoles();
   }, []);
 
-  const loadNewsletters = async () => {
+  const markAsRead = async (id: string | number) => {
+        if (readState[id]) return;
+        if (!currentUserId) return;
+        
+        setReadState(prev => ({ ...prev, [id]: true }));
+        await supabase.from('read_receipts').upsert({
+            user_id: getRealUserId(currentUserId),
+            item_type: 'newsletter',
+            item_id: id,
+            read_at: new Date().toISOString()
+        }, { onConflict: 'user_id, item_type, item_id' });
+        window.dispatchEvent(new Event('news_read_updated'));
+    };
+
+    const loadNewsletters = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase.from('newsletters').select('newsletter_id, title, content, created_at, is_published, author_id, class_id').order('newsletter_id', { ascending: false });
@@ -75,21 +107,15 @@ export default function PrincipalNewsletters() {
                }
            } catch(e) {}
         }
-        if (currentUserId) {
-             const readStateStr = localStorage.getItem(`news_read_${currentUserId}`);
-             const readState = readStateStr ? JSON.parse(readStateStr) : {};
-             let updated = false;
-             data.forEach(item => {
-                 if (item.is_published === true && !readState[item.newsletter_id]) {
-                     readState[item.newsletter_id] = true;
-                     updated = true;
-                 }
-             });
-             if (updated) {
-                 localStorage.setItem(`news_read_${currentUserId}`, JSON.stringify(readState));
-                 window.dispatchEvent(new Event('news_read_updated'));
-             }
+        
+        const uId = currentUserId;
+        if (uId) {
+             const { data: receipts } = await supabase.from('read_receipts').select('item_id').eq('user_id', getRealUserId(uId)).eq('item_type', 'newsletter');
+             const rState = {};
+             receipts?.forEach(r => rState[r.item_id] = true);
+             setReadState(rState);
         }
+    
 
         const parsed = data.map((item: any) => {
            const formattedDate = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
@@ -100,6 +126,21 @@ export default function PrincipalNewsletters() {
            }
         });
         setNewsletters(parsed);
+
+                 supabase.from('read_receipts')
+                   .select('item_id')
+                   .eq('item_type', 'newsletter')
+                   .in('item_id', data.map((n: any) => n.newsletter_id.toString()))
+                   .then(({ data: rc }) => {
+                       if (rc) {
+                           const counts: Record<string, number> = {};
+                           rc.forEach(r => {
+                               counts[r.item_id] = (counts[r.item_id] || 0) + 1;
+                           });
+                           setReadCounts(counts);
+                       }
+                   });
+
       }
     } catch (e: any) {
       console.error(e);
@@ -319,7 +360,8 @@ export default function PrincipalNewsletters() {
           target_class_ids: selectedClasses,
           target_role_ids: selectedRoles,
           target_user_ids: [],
-          created_by: 'ec13df7f-1a4f-422e-abd8-05732ca798d2'
+          created_by: 'ec13df7f-1a4f-422e-abd8-05732ca798d2',
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
       };
       
       const userJson = localStorage.getItem('user');
@@ -410,7 +452,10 @@ export default function PrincipalNewsletters() {
                 <h2 className="font-display text-2xl font-bold text-primary border-b border-outline-variant/30 pb-2">{groupName}</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {groupedNewsletters[groupName].map(news => (
-                     <div key={news.id} className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col hover:shadow-md transition-all shadow-sm">
+                     <div key={news.id} onMouseEnter={() => markAsRead(news.id)}
+                        onTouchStart={() => markAsRead(news.id)}
+                        onClick={() => markAsRead(news.id)}
+                        className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col hover:shadow-md transition-all shadow-sm">
                          <div className="flex justify-between items-start mb-4">
                             <span className={cn(
                                "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label flex items-center gap-1.5",
@@ -454,7 +499,10 @@ export default function PrincipalNewsletters() {
                             </div>
                          </div>
 
-                         <h3 className="font-display text-xl font-bold text-on-surface mb-1">{news.title}</h3>
+                         <h3 className="font-display text-xl font-bold text-on-surface mb-1 flex items-center gap-2">
+            {news.title}
+            {news.author !== getRealUserId(currentUserId) && !readState[news.id] && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary text-on-primary font-bold uppercase tracking-wider"><Sparkles className="w-3 h-3 animate-pulse"/> New</span>}
+        </h3>
                          <p className="font-label text-xs text-on-surface-variant font-bold mb-4">Submitted by {news.author}</p>
                          <p className="font-body text-sm text-on-surface-variant mb-4 line-clamp-3 flex-1">{news.content}</p>
 

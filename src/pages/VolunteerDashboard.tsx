@@ -3,7 +3,6 @@ import { Calendar, CheckCircle2, Clock, MapPin, Megaphone, CheckSquare, Users, B
 import { useNavigate } from "react-router-dom";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
-import { DashboardNotifications } from "../components/DashboardNotifications";
 import { QRCodeBadge } from "../components/QRCodeBadge";
 import { QrCode } from "lucide-react";
 import { formatTeacherName } from "../lib/utils";
@@ -160,7 +159,6 @@ export default function VolunteerDashboard() {
 
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 max-w-7xl mx-auto w-full">
-      <DashboardNotifications />
       {/* Announcement Headline */}
       {announcements.length > 0 && !loading && (
         <div 

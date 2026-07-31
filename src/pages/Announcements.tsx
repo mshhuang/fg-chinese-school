@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Settings, Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2, Paperclip } from "lucide-react";
+import { Settings, Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2, Paperclip, ChevronDown, ChevronUp } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
@@ -7,6 +7,13 @@ import { BuilderIconCustom, AdminIconCustom, StaffIconCustom, VolunteerIconCusto
 import { logSystemActivity } from "../lib/logger";
 import { Video, Link as LinkIcon, Image as ImageIcon, Smile } from "lucide-react";
 import { RichTextEditor } from "../components/RichTextEditor";
+
+
+const getRealUserId = (id: string | null | undefined) => {
+    if (!id) return null;
+    if (id === 'demo' || id === 'builder_secret') return 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068';
+    return id;
+};
 
 export default function Announcements() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -68,10 +75,19 @@ export default function Announcements() {
 
   // Read State
   const [readState, setReadState] = useState<Record<string, { read_at: number, replies: number }>>({});
+  const [readCounts, setReadCounts] = useState<Record<string, number>>({});
 
   // Quick Reply (Inline) UI
   const [replyBody, setReplyBody] = useState<Record<string, string>>({});
   const [isReplying, setIsReplying] = useState<Record<string, boolean>>({});
+
+  // Accordion State
+  const [expandedAnns, setExpandedAnns] = useState<Record<string, boolean>>({});
+
+  const toggleAccordion = (id: string, replies: any[]) => {
+      setExpandedAnns(prev => ({ ...prev, [id]: !prev[id] }));
+      markAsRead(id, replies);
+  };
 
   // Edit/Delete State
   const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
@@ -90,24 +106,38 @@ export default function Announcements() {
 
   useEffect(() => {
     if (user?.id) {
-       try {
-           const stored = localStorage.getItem(`ann_read_${user.id}`);
-           if (stored) setReadState(JSON.parse(stored));
-       } catch(e) {}
+       supabase.from('read_receipts').select('*').eq('user_id', getRealUserId(user.id)).eq('item_type', 'announcement')
+         .then(({ data }) => {
+             if (data) {
+                 const newReadState: Record<string, any> = {};
+                 data.forEach(r => {
+                     newReadState[r.item_id] = { read_at: new Date(r.read_at).getTime() };
+                 });
+                 setReadState(newReadState);
+             }
+         });
     }
   }, [user?.id]);
 
-  const markAsRead = (annId: string, replyCount: number) => {
+  const markAsRead = async (annId: string, replies: any[]) => {
+      const latestReplyTime = replies.length > 0 ? Math.max(...replies.map(r => new Date(r.created_at).getTime())) : 0;
+      
       setReadState(prev => {
           const current = prev[annId];
-          if (current && current.replies >= replyCount) return prev; // Already read up to this point
-          const next = { ...prev, [annId]: { read_at: Date.now(), replies: replyCount } };
+          const hasNew = !current || (latestReplyTime > 0 && current.read_at < latestReplyTime);
+          if (!hasNew) return prev; // Already read up to latest
+          
+          const next = { ...prev, [annId]: { read_at: Date.now(), replies: replies.length } };
+          
           if (user?.id) {
-              localStorage.setItem(`ann_read_${user.id}`, JSON.stringify(next));
-              // Dispatch outside of state updater loop by deferring it
-              setTimeout(() => {
-                  window.dispatchEvent(new Event('ann_read_updated'));
-              }, 0);
+              supabase.from('read_receipts').upsert({
+                  user_id: getRealUserId(user.id),
+                  item_type: 'announcement',
+                  item_id: annId,
+                  read_at: new Date().toISOString()
+              }, { onConflict: 'user_id, item_type, item_id' }).then(() => {
+                 window.dispatchEvent(new Event('ann_read_updated'));
+              });
           }
           return next;
       });
@@ -162,36 +192,51 @@ export default function Announcements() {
         }
       }
 
-      // Load roles, classes, users for the compose dropdown
-      const [rolesRes, classesRes, usersRes] = await Promise.all([
-        supabase.from('roles').select('*'),
-        supabase.from('classes').select('*'),
-        supabase.from('users').select('user_id, first_name, last_name, email, user_roles(roles(role_name))')
+      // Load announcements immediately
+      const parsedUser = userStr ? JSON.parse(userStr) : user;
+      
+      const [finalAnns, rolesRes, classesRes] = await Promise.all([
+          fetchVisibleAnnouncements(parsedUser, currentUserRole),
+          supabase.from('roles').select('*'),
+          supabase.from('classes').select('*')
       ]);
+      
+      // Load users for the compose dropdown in the background
+      supabase.from('users').select('user_id, first_name, last_name, email, user_roles(roles(role_name))').then(({data, error}) => {
+          if (!error && data) {
+              const formattedUsers = data.map(u => ({
+                  ...u,
+                  role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
+              })).filter((u: any) => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
+              setAvailableUsers(formattedUsers);
+          }
+      });
       
       if (rolesRes.error) console.error('rolesRes err', rolesRes.error);
       if (classesRes.error) console.error('classesRes err', classesRes.error);
-      if (usersRes.error) console.error('usersRes err', usersRes.error);
 
       if (rolesRes.data) {
         setRoles(rolesRes.data);
       }
       if (classesRes.data) setClasses(classesRes.data);
-      if (usersRes.data) {
-        const formattedUsers = usersRes.data.map(u => ({
-          ...u,
-          role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
-        })).filter((u: any) => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
-        setAvailableUsers(formattedUsers);
-      }
 
-      // Load announcements and their replies
-      const parsedUser = userStr ? JSON.parse(userStr) : user;
-      const finalAnns = await fetchVisibleAnnouncements(parsedUser, currentUserRole);
       setAnnouncements(finalAnns || []);
+      setLoading(false);
+      
+      if (finalAnns && finalAnns.length > 0) {
+          const ids = finalAnns.map(a => a.announcement_id);
+          supabase.from('read_receipts').select('item_id').eq('item_type', 'announcement').in('item_id', ids).then(({data: rcData}) => {
+              if (rcData) {
+                  const counts: any = {};
+                  rcData.forEach((r: any) => {
+                      counts[r.item_id] = (counts[r.item_id] || 0) + 1;
+                  });
+                  setReadCounts(counts);
+              }
+          });
+      }
     } catch(err) {
       console.error('Error fetching announcements:', err);
-    } finally {
       setLoading(false);
     }
   };
@@ -223,7 +268,8 @@ export default function Announcements() {
        created_by: user?.id,
        target_role_ids: audienceMode === 'roles' ? targetRoleIds : [],
        target_class_ids: audienceMode === 'classes' ? targetClassIds : [],
-       target_user_ids: audienceMode === 'users' ? targetUserIds : []
+       target_user_ids: audienceMode === 'users' ? targetUserIds : [],
+       expires_at: null
     };
 
     const { data, error } = await supabase.from('announcements').insert(payload).select().single();
@@ -460,33 +506,45 @@ export default function Announcements() {
                       } catch(e){}
                   }
 
-                  const isNew = !readState[ann.announcement_id];
-                  const hasNewReplies = readState[ann.announcement_id] ? readState[ann.announcement_id].replies < replies.length : false;
+                  const isNew = ann.created_by !== getRealUserId(user?.id) && !readState[ann.announcement_id];
+                  const latestReplyTime = replies.length > 0 ? Math.max(...replies.map((r: any) => new Date(r.created_at).getTime())) : 0;
+                  const hasNewReplies = readState[ann.announcement_id] && latestReplyTime > 0 ? readState[ann.announcement_id].read_at < latestReplyTime : false;
 
+                  const isExpanded = expandedAnns[ann.announcement_id];
                   return (
                      <div 
                         key={ann.announcement_id} 
-                        onMouseEnter={() => markAsRead(ann.announcement_id, replies.length)}
-                        onTouchStart={() => markAsRead(ann.announcement_id, replies.length)}
-                        onClick={() => markAsRead(ann.announcement_id, replies.length)}
-                        className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30  flex flex-col hover:shadow-md transition-all shadow-sm"
+                        className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30  flex flex-col hover:shadow-md transition-all shadow-sm overflow-hidden"
                      >
-                         <div className="p-6">
+                         <div className="p-6 cursor-pointer hover:bg-surface-variant/20 transition-colors" onClick={() => toggleAccordion(ann.announcement_id, replies)}>
                              <div className="flex justify-between items-start mb-4">
                                  <div className="flex items-center gap-4">
                                      <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg">
                                          {getRoleIcon(authorRole, "w-8 h-8")}
                                      </div>
                                      <div>
-                                        <h3 className="text-2xl font-bold text-on-surface hover:underline cursor-pointer flex items-center gap-2">
-                                           {authorName}
+                                        <h3 className="text-2xl font-bold text-on-surface flex items-center gap-2">
+                                           {ann.title ? ann.title : authorName}
                                            {isNew && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary text-on-primary font-bold uppercase tracking-wider"><Sparkles className="w-3 h-3 animate-pulse"/> New</span>}
                                            {!isNew && hasNewReplies && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-secondary text-on-secondary font-bold uppercase tracking-wider"><Sparkles className="w-3 h-3 animate-pulse"/> New Replies</span>}
                                         </h3>
-                                        <p className="text-xs text-on-surface-variant font-medium mt-0.5">{new Date(ann.created_at || Date.now()).toLocaleDateString('en-US', { timeZone: 'America/New_York' })} • <Users className="w-3 h-3 inline ml-1 mr-0.5"/> To: {audienceInfo}</p>
+                                        
+                                        <p className="text-sm text-on-surface-variant font-medium mt-1">
+                                           {ann.title ? <span className="font-bold mr-2 text-on-surface">{authorName}</span> : null}
+                                           {new Date(ann.created_at || Date.now()).toLocaleDateString('en-US', { timeZone: 'America/New_York' })} • 
+                                           <Users className="w-3 h-3 inline ml-1 mr-0.5"/> To: {audienceInfo}
+                                           {(user?.role === 'admin' || user?.role === 'builder' || user?.role === 'teacher' || ann.created_by === user?.id) && (
+                                               <span className="ml-2 inline-flex items-center gap-1 text-primary" title="Total unique reads">
+                                                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                   {readCounts[ann.announcement_id.toString()] || 0} read
+                                               </span>
+                                           )}
+                                        </p>
+
                                      </div>
                                  </div>
-                                 {(user?.role === 'builder' || ann.created_by === user?.id) && (
+                                 <div className="flex items-center gap-4">
+                                     {(user?.role === 'builder' || ann.created_by === user?.id) && (
                                      <div className="flex items-center gap-2">
                                          <button 
                                             onClick={() => {
@@ -506,7 +564,7 @@ export default function Announcements() {
                                              </div>
                                          ) : (
                                              <button 
-                                                onClick={() => setConfirmDeleteId(ann.announcement_id)}
+                                                onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(ann.announcement_id); }}
                                                 className="px-3 py-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors flex items-center gap-1.5"
                                              >
                                                  <Trash2 className="w-4 h-4" />
@@ -515,8 +573,14 @@ export default function Announcements() {
                                          )}
                                      </div>
                                  )}
+                                     <button className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/50 transition-colors">
+                                         {isExpanded ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
+                                     </button>
+                                 </div>
                              </div>
                              
+                             {isExpanded && (
+                               <div onClick={(e) => e.stopPropagation()} className="cursor-auto pt-2">
                              {editingAnnId === ann.announcement_id ? (
                                  <div className="flex flex-col gap-3 py-2">
                                      <input 
@@ -555,7 +619,7 @@ export default function Announcements() {
                                  </div>
                              ) : (
                                  <>
-                                     {ann.title && <h4 className="font-display text-2xl font-bold text-on-surface mb-3">{ann.title}</h4>}
+                                     
                                      <div className="ql-snow">
                                          <div className="tiptap-editor font-body text-lg text-on-surface-variant mb-2 leading-relaxed prose prose-sm sm:prose-base max-w-none [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-2xl [&_iframe]:my-4 [&_img]:rounded-2xl [&_img]:my-4 [&_img]:max-h-[600px] [&_img]:w-auto px-0 py-0 break-normal" dangerouslySetInnerHTML={{ __html: displayContent }} />
                                      </div>
@@ -570,9 +634,12 @@ export default function Announcements() {
                                      )}
                                  </>
                              )}
+                               </div>
+                             )}
                          </div>
 
                          {/* Replies Section */}
+                         {isExpanded && (
                          <div className="bg-surface-container-low border-t border-outline-variant/20 px-6 py-4 flex flex-col gap-4">
                                {replies.length > 0 && (
                                    <div className="flex flex-col gap-4">
@@ -673,6 +740,7 @@ export default function Announcements() {
                                     </div>
                                 )}
                           </div>
+                         )}
                       </div>
                   )
               })}

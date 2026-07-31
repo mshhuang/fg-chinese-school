@@ -1,6 +1,9 @@
-import { supabase } from './supabase';
+import re
 
-export async function fetchVisibleAnnouncements(user: any, userRole: string, limitCount?: number, fields?: string) {
+with open('src/lib/announcementUtils.ts', 'r') as f:
+    content = f.read()
+
+new_func = """export async function fetchVisibleAnnouncements(user: any, userRole: string, limitCount?: number, fields?: string) {
    if (!user) return [];
    
    try {
@@ -171,4 +174,9 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
      console.error("fetchVisibleAnnouncements error:", e);
      return [];
    }
-}
+}"""
+
+content = re.sub(r'export async function fetchVisibleAnnouncements\([\s\S]*?^}$', new_func, content, flags=re.MULTILINE)
+
+with open('src/lib/announcementUtils.ts', 'w') as f:
+    f.write(content)

@@ -3,7 +3,6 @@ import { Users, BookOpen, Clock, Building2, Save, FileText, Download, Upload, Sh
 import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
-import { DashboardNotifications } from "../components/DashboardNotifications";
 import { formatTeacherName } from "../lib/utils";
 
 export default function AdminDashboard() {
@@ -60,7 +59,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 w-full max-w-7xl mx-auto pb-32 md:pb-8">
-      <DashboardNotifications />
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
            <h1 className="font-display text-4xl text-primary font-bold tracking-tight">

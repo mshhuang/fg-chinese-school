@@ -5,7 +5,6 @@ import { supabase } from "../lib/supabase";
 import { Users, BookOpen, ClipboardCheck, Coins, UserCheck, UserPlus, Megaphone, CheckCircle2, FileText, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-import { DashboardNotifications } from "../components/DashboardNotifications";
 import { formatTeacherName, extractPlainText } from "../lib/utils";
 
 const data = [
@@ -89,7 +88,6 @@ export default function PrincipalDashboard() {
 
   return (
     <div className="p-6 md:p-8 flex flex-col gap-8 w-full">
-      <DashboardNotifications />
       {/* Header */}
       <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>

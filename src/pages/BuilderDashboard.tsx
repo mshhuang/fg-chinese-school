@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Megaphone, Server, TerminalSquare, ShieldAlert, Activity, ArrowRight, Users, Power, AlertTriangle, Download, Upload, Database, CheckCircle, XCircle, Unlock, Clock, MessageSquare, Settings, School, Github } from 'lucide-react';
+import { Megaphone, Server, TerminalSquare, ShieldAlert, Activity, ArrowRight, Users, Power, AlertTriangle, Download, Upload, RefreshCw, Database, CheckCircle, XCircle, Unlock, Clock, MessageSquare, Settings, School, Github } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
@@ -12,6 +12,18 @@ export default function BuilderDashboard() {
   const [isMaintenance, setIsMaintenance] = useState(localStorage.getItem('system_maintenance') === 'true');
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+
+  
+  const forceRefreshClients = async () => {
+      if (confirm("Are you sure you want to force all connected users to refresh their page?")) {
+          await supabase.channel('public:system_commands').send({
+              type: 'broadcast',
+              event: 'force_refresh',
+              payload: {}
+          });
+          alert("Refresh command sent to all users.");
+      }
+  };
 
   const performBackup = async () => {
     setIsBackingUp(true);
@@ -132,6 +144,13 @@ export default function BuilderDashboard() {
              </p>
           </div>
           <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+            <button 
+              onClick={forceRefreshClients}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-label font-bold transition-all shadow-sm bg-amber-500 text-white hover:bg-amber-600 border border-amber-600 justify-center"
+            >
+               <RefreshCw className="w-4 h-4" />
+               Force Client Refresh
+            </button>
             <button 
               onClick={performBackup}
               disabled={isBackingUp}

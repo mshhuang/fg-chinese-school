@@ -389,6 +389,21 @@ export default function Login() {
             </button>
 
           </form>
+
+          {/* Reset State Button */}
+          <div className="mt-6 flex justify-center">
+             <button 
+                onClick={() => {
+                   if (confirm('This will clear all local storage data and reset the app state. Continue?')) {
+                      localStorage.clear();
+                      window.location.reload();
+                   }
+                }}
+                className="text-xs font-bold text-on-surface-variant/50 hover:text-on-surface-variant flex items-center gap-1 transition-colors"
+             >
+                Reset App State
+             </button>
+          </div>
         </div>
       </div>
 
@@ -457,6 +472,7 @@ export default function Login() {
            </div>
         </div>
       )}
+
     </div>
   );
 }

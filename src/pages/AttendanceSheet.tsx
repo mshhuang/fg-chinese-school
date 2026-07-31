@@ -31,6 +31,7 @@ export default function AttendanceSheet() {
     existingRecord: ExistingClockRecord | null;
     onUpdate: (recId: string | number | undefined, timeIso: string, reason?: string) => Promise<void>;
     onCreateNew?: (timeIso: string, reason?: string) => Promise<void>;
+    onDelete?: () => Promise<void>;
   } | null>(null);
 
   useEffect(() => {

@@ -1,12 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Plus, Clock, Edit3, Trash2, Send, CheckCircle2, FileText, X, Eye, AlertCircle, Newspaper, Filter, Users } from "lucide-react";
+import { Search, Plus, Clock, Edit3, Trash2, Sparkles, Send, CheckCircle2, FileText, X, Eye, AlertCircle, Newspaper, Filter, Users } from "lucide-react";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
+
+
+const getRealUserId = (id: string | null | undefined) => {
+    if (!id) return null;
+    if (id === 'demo' || id === 'builder_secret') return 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068';
+    return id;
+};
 
 export default function TeacherNewsletters() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [newsletters, setNewsletters] = useState<any[]>([]);
+  const [readState, setReadState] = useState<Record<string, boolean>>({});
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [readCounts, setReadCounts] = useState<Record<string, number>>({});
   const [showModal, setShowModal] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -24,14 +34,36 @@ export default function TeacherNewsletters() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const userJson = localStorage.getItem('user');
+    if (userJson) {
+        try {
+            let cid = JSON.parse(userJson).id;
+            if (cid === 'demo') cid = 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068';
+            setCurrentUserId(cid);
+        } catch(e) {}
+    }
     loadNewsletters();
   }, []);
 
-  const loadNewsletters = async () => {
+  const markAsRead = async (id: string | number) => {
+        if (readState[id]) return;
+        if (!currentUserId) return;
+        
+        setReadState(prev => ({ ...prev, [id]: true }));
+        await supabase.from('read_receipts').upsert({
+            user_id: getRealUserId(currentUserId),
+            item_type: 'newsletter',
+            item_id: id,
+            read_at: new Date().toISOString()
+        }, { onConflict: 'user_id, item_type, item_id' });
+        window.dispatchEvent(new Event('news_read_updated'));
+    };
+
+    const loadNewsletters = async () => {
     try {
       setLoading(true);
       
-      const userJson = localStorage.getItem('user');
+     const userJson = localStorage.getItem('user');
       let authorId = null;
       if (userJson) {
          try {
@@ -58,21 +90,15 @@ export default function TeacherNewsletters() {
       }
       
       if (data) {
-        if (authorId) {
-             const readStateStr = localStorage.getItem(`news_read_${authorId}`);
-             const readState = readStateStr ? JSON.parse(readStateStr) : {};
-             let updated = false;
-             data.forEach(item => {
-                 if (item.is_published === true && !readState[item.newsletter_id]) {
-                     readState[item.newsletter_id] = true;
-                     updated = true;
-                 }
-             });
-             if (updated) {
-                 localStorage.setItem(`news_read_${authorId}`, JSON.stringify(readState));
-                 window.dispatchEvent(new Event('news_read_updated'));
-             }
+        
+        const uId = authorId;
+        if (uId) {
+             const { data: receipts } = await supabase.from('read_receipts').select('item_id').eq('user_id', getRealUserId(uId)).eq('item_type', 'newsletter');
+             const rState = {};
+             receipts?.forEach(r => rState[r.item_id] = true);
+             setReadState(rState);
         }
+    
 
         const parsed = data.map((item: any) => {
            const formattedDate = item.created_at ? new Date(item.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
@@ -83,6 +109,21 @@ export default function TeacherNewsletters() {
            }
         });
         setNewsletters(parsed);
+
+                 supabase.from('read_receipts')
+                   .select('item_id')
+                   .eq('item_type', 'newsletter')
+                   .in('item_id', data.map((n: any) => n.newsletter_id.toString()))
+                   .then(({ data: rc }) => {
+                       if (rc) {
+                           const counts: Record<string, number> = {};
+                           rc.forEach(r => {
+                               counts[r.item_id] = (counts[r.item_id] || 0) + 1;
+                           });
+                           setReadCounts(counts);
+                       }
+                   });
+
       }
     } catch (e: any) {
       console.error(e);
@@ -161,6 +202,23 @@ export default function TeacherNewsletters() {
                  alert("Could not upload PDF: Upload blocked by storage Row-Level Security policy.");
             }
         }
+     }
+     
+
+     let finalAttachments = [...attachments];
+     for (let i = 0; i < finalAttachments.length; i++) {
+         const att = finalAttachments[i];
+         if (att.fileObj) {
+            const filePath = `${Date.now()}_${att.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+            const { error: uploadError } = await supabase.storage
+                .from('newsletter_pdfs')
+                .upload(filePath, att.fileObj, { cacheControl: '3600', upsert: false });
+            if (!uploadError) {
+                const { data } = supabase.storage.from('newsletter_pdfs').getPublicUrl(filePath);
+                finalAttachments[i].url = data.publicUrl;
+            }
+         }
+         delete finalAttachments[i].fileObj;
      }
      
      const userJson = localStorage.getItem('user');
@@ -317,7 +375,10 @@ export default function TeacherNewsletters() {
        {/* List / Grid */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredNewsletters.map(news => (
-             <div key={news.id} className={cn("bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col hover:shadow-md transition-all shadow-sm", news.status === 'Rejected' && "border-error/30")}>
+             <div key={news.id} onMouseEnter={() => markAsRead(news.id)}
+             onClick={() => markAsRead(news.id)}
+             onTouchStart={() => markAsRead(news.id)}
+             className={cn("bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col hover:shadow-md transition-all shadow-sm", news.status === 'Rejected' && "border-error/30")}>
                  <div className="flex justify-between items-start mb-4">
                     <span className={cn(
                        "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label flex items-center gap-1.5",
@@ -354,7 +415,10 @@ export default function TeacherNewsletters() {
                     </div>
                  </div>
 
-                 <h3 className="font-display text-xl font-bold text-on-surface mb-2">{news.title}</h3>
+                 <h3 className="font-display text-xl font-bold text-on-surface mb-2 flex items-center gap-2">
+            {news.title}
+            {news.author !== getRealUserId(currentUserId) && !readState[news.id] && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary text-on-primary font-bold uppercase tracking-wider"><Sparkles className="w-3 h-3 animate-pulse"/> New</span>}
+        </h3>
                  <p className="font-body text-sm text-on-surface-variant mb-4 line-clamp-3 flex-1">{news.content}</p>
                  
                  {news.pdfName && (

@@ -21,10 +21,17 @@ const ROLE_CONFIGS: Record<string, any> = {
   builder: { name: "Vickie", roleLabel: "Builder", badge: "System", nav: [ { icon: LayoutDashboard, label: "Dashboard", href: "/builder/dashboard" }, { icon: Calendar, label: "Calendar", href: "/builder/calendar" }, { icon: Database, label: "Database", href: "/builder/database" }, { icon: Folder, label: "Storage Viewer", href: "/builder/storage" }, { icon: Megaphone, label: "Announcements", href: "/builder/announcements" }, { icon: MessageSquare, label: "Messages", href: "/builder/messages" }, { icon: Users, label: "User Management", href: "/builder/users" }, { icon: Settings, label: "Management", href: "/builder/management" }, { icon: School, label: "Classes", href: "/builder/classes" }, { icon: ShieldAlert, label: "Password Reminders", href: "/builder/password-reminders" }, { icon: Ticket, label: "Support Tickets", href: "/builder/support-tickets" } ] }
 };
 
+
+const getRealUserId = (id: string | null | undefined) => {
+    if (!id) return null;
+    if (id === 'demo' || id === 'builder_secret') return 'c4d458f8-ba08-4fc1-bbbf-c4c1eac64068';
+    return id;
+};
+
 export default function MainLayout() {
 
 
-  // Idle Timeout (45 minutes)
+  // Idle Timeout (1 hour)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
@@ -32,7 +39,7 @@ export default function MainLayout() {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         handleLogout();
-      }, 45 * 60 * 1000); // 45 minutes
+      }, 60 * 60 * 1000); // 1 hour
     };
 
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
@@ -51,6 +58,36 @@ export default function MainLayout() {
   }, []);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const res = await fetch('/version.json?t=' + Date.now());
+        if (res.ok) {
+           const data = await res.json();
+           const currentVersion = localStorage.getItem('app_version');
+           if (currentVersion && currentVersion !== data.version) {
+               localStorage.setItem('app_version', data.version);
+               console.log("New version detected! Reloading...");
+               window.location.reload();
+           } else if (!currentVersion) {
+               localStorage.setItem('app_version', data.version);
+           }
+        }
+      } catch (e) {}
+    };
+    
+    checkVersion();
+    const interval = setInterval(checkVersion, 10 * 60 * 1000); // 10 mins
+    const onFocus = () => checkVersion();
+    window.addEventListener('focus', onFocus);
+    
+    return () => {
+       clearInterval(interval);
+       window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
 
   const handleLogout = async () => {
        const userStr = localStorage.getItem("user");
@@ -195,14 +232,14 @@ export default function MainLayout() {
 
        // Announcements
        const selectFields = "announcement_id, title, created_at, created_by, target_role_id, target_role_ids, target_class_ids, target_user_ids";
-       const annData = await fetchVisibleAnnouncements(userInfo, localStorage.getItem('current_role') || userRole || '', 20, selectFields);
+       const annData = await fetchVisibleAnnouncements({ ...userInfo, id: getRealUserId(currentUserId) }, localStorage.getItem('current_role') || userRole || '', 20, selectFields);
 
        if (annData) {
-         const stored = localStorage.getItem(`ann_read_${currentUserId}`);
-         const readState = stored ? JSON.parse(stored) : {};
+         const { data: receipts } = await supabase.from('read_receipts').select('item_id').eq('user_id', getRealUserId(currentUserId)).eq('item_type', 'announcement');
+         const readIds = new Set(receipts?.map(r => r.item_id) || []);
          let annUnread = 0;
          annData.forEach((ann: any) => {
-           if (!readState[ann.announcement_id]) {
+           if (ann.created_by !== getRealUserId(currentUserId) && !readIds.has(ann.announcement_id)) {
              annUnread++;
            }
          });
@@ -213,7 +250,7 @@ export default function MainLayout() {
        if (['admin', 'builder', 'teacher'].includes(userRole || '')) {
            let query = supabase
              .from('newsletters')
-             .select('newsletter_id, status');
+             .select('newsletter_id, status, author_id');
            
            if (['admin', 'builder'].includes(userRole || '')) {
                query = query.in('status', ['Approved', 'Pending Approval', 'Published']);
@@ -224,17 +261,11 @@ export default function MainLayout() {
            const { data: newsData } = await query;
 
            if (newsData) {
-             const stored = localStorage.getItem(`news_read_${currentUserId}`);
-             const readState = stored ? JSON.parse(stored) : {};
+             const { data: receipts } = await supabase.from('read_receipts').select('item_id').eq('user_id', getRealUserId(currentUserId)).eq('item_type', 'newsletter');
+             const readIds = new Set(receipts?.map(r => r.item_id) || []);
              let newsUnread = 0;
              newsData.forEach((news: any) => {
-               // For admins/builders, 'Pending Approval' always counts as unread if they haven't explicitly marked it read (or just count all Pending Approval)
-               if (['admin', 'builder'].includes(userRole || '') && news.status === 'Pending Approval') {
-                 // You can either force them to be unread, or still use the readState.
-                 // Let's use readState so it disappears once they view it, or maybe just always show if pending.
-                 // Let's just always show if pending so they know there is pending work.
-                 newsUnread++;
-               } else if (!readState[news.newsletter_id]) {
+               if (news.author_id !== getRealUserId(currentUserId) && !readIds.has(news.newsletter_id)) {
                  newsUnread++;
                }
              });
@@ -249,7 +280,7 @@ export default function MainLayout() {
            const { data: assignData } = await supabase
              .from('assignment_students')
              .select('assignment_student_id, status')
-             .eq('student_id', currentUserId)
+             .eq('student_id', getRealUserId(currentUserId))
              .eq('status', 'pending');
              
            if (assignData) {
@@ -269,7 +300,7 @@ export default function MainLayout() {
            const { data: teacherAssignData } = await supabase
              .from('assignments')
              .select('assignment_id, teacher_id, assignment_students!inner(status)')
-             .eq('teacher_id', currentUserId)
+             .eq('teacher_id', getRealUserId(currentUserId))
              .eq('assignment_students.status', 'submitted');
              
            let teacherUnread = 0;
@@ -290,7 +321,7 @@ export default function MainLayout() {
           const { data: clockData } = await supabase
             .from('staff_clock_ins')
             .select('action_type')
-            .eq('user_id', currentUserId)
+            .eq('user_id', getRealUserId(currentUserId))
             .gte('created_at', startOfDay.toISOString())
             .order('created_at', { ascending: false })
             .limit(1);
@@ -315,6 +346,15 @@ export default function MainLayout() {
 
     fetchUnread();
 
+
+    const systemChannel = supabase
+      .channel('public:system_commands')
+      .on('broadcast', { event: 'force_refresh' }, () => {
+         console.log("Received force_refresh command. Reloading...");
+         window.location.reload();
+      })
+      .subscribe();
+
     const channel = supabase
       .channel('public:internal_messages_layout_' + currentUserId + '_' + Math.random().toString(36).substring(7))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'internal_messages', filter: `recipient_id=eq.${currentUserId}` }, () => {
@@ -332,11 +372,16 @@ export default function MainLayout() {
       .subscribe();
 
     window.addEventListener("clock_status_changed", fetchUnread);
+    window.addEventListener("ann_read_updated", fetchUnread);
+    window.addEventListener("news_read_updated", fetchUnread);
 
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
+      supabase.removeChannel(systemChannel);
       window.removeEventListener("clock_status_changed", fetchUnread);
+      window.removeEventListener("ann_read_updated", fetchUnread);
+      window.removeEventListener("news_read_updated", fetchUnread);
     };
   }, [userInfo]);
 

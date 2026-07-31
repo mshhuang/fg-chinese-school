@@ -4,7 +4,6 @@ import { BookOpen, Check, Volume2, Star, Edit3, Lock, ChevronRight, Megaphone, U
 import { cn } from "../lib/utils";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
-import { DashboardNotifications } from "../components/DashboardNotifications";
 import { QRCodeBadge } from "../components/QRCodeBadge";
 import { PhotoCarousel } from "../components/PhotoCarousel";
 import { QrCode, CheckCircle2 } from "lucide-react";
@@ -198,7 +197,6 @@ export default function StudentPortal() {
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-10 w-full pb-32 md:pb-8">
-      <DashboardNotifications />
       {/* Welcome Hero */}
       <section className="relative overflow-hidden rounded-3xl bg-surface-container border border-surface-variant p-8 md:p-10 flex flex-col md:flex-row items-center gap-8 shadow-sm">
         <div className="absolute -right-8 -top-8 opacity-5 pointer-events-none">

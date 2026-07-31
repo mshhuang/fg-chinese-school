@@ -327,9 +327,8 @@ export default function AdminUsers() {
       await supabase.from('internal_messages').delete().eq('sender_id', id);
       await supabase.from('internal_messages').delete().eq('recipient_id', id);
       await supabase.from('newsletters').delete().eq('author_id', id);
-      await supabase.from('announcements').delete().eq('author_id', id);
       await supabase.from('announcements').delete().eq('created_by', id);
-      await supabase.from('announcement_replies').delete().eq('author_id', id);
+      await supabase.from('announcement_replies').delete().eq('user_id', id);
       await supabase.from('assignments').delete().eq('teacher_id', id);
       await supabase.from('system_logs').delete().eq('user_id', id);
       await supabase.from('error_logs').delete().eq('user_id', id);

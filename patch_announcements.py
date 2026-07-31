@@ -3,34 +3,69 @@ import re
 with open('src/pages/Announcements.tsx', 'r') as f:
     content = f.read()
 
-# 1. Update font list to include kaiti
-target_fonts1 = "Font.whitelist = ['sans-serif', 'serif', 'monospace', 'comic-sans', 'inter', 'roboto', 'display'];"
-replace_fonts1 = "Font.whitelist = ['sans-serif', 'serif', 'monospace', 'comic-sans', 'inter', 'roboto', 'display', 'kaiti'];"
-content = content.replace(target_fonts1, replace_fonts1)
+bad_logic = """      // Load roles, classes, users for the compose dropdown
+      const [rolesRes, classesRes, usersRes] = await Promise.all([
+        supabase.from('roles').select('*'),
+        supabase.from('classes').select('*'),
+        supabase.from('users').select('user_id, first_name, last_name, email, user_roles(roles(role_name))')
+      ]);"""
 
-target_fonts2 = "[{ 'font': ['sans-serif', 'serif', 'monospace', 'comic-sans', 'inter', 'roboto', 'display'] }"
-replace_fonts2 = "[{ 'font': ['sans-serif', 'serif', 'monospace', 'comic-sans', 'inter', 'roboto', 'display', 'kaiti'] }"
-content = content.replace(target_fonts2, replace_fonts2)
+good_logic = """      // Load announcements immediately
+      const parsedUser = userStr ? JSON.parse(userStr) : user;
+      
+      const [finalAnns, rolesRes, classesRes] = await Promise.all([
+          fetchVisibleAnnouncements(parsedUser, currentUserRole),
+          supabase.from('roles').select('*'),
+          supabase.from('classes').select('*')
+      ]);
+      
+      // Load users for the compose dropdown in the background
+      supabase.from('users').select('user_id, first_name, last_name, email, user_roles(roles(role_name))').then(({data, error}) => {
+          if (!error && data) {
+              const formattedUsers = data.map(u => ({
+                  ...u,
+                  role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
+              })).filter((u: any) => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
+              setAvailableUsers(formattedUsers);
+          }
+      });"""
 
-# 2. Remove Emoji from toolbar
-content = content.replace("['table', 'emoji']", "['table']")
-# Remove emoji handler
-emoji_handler_target = """      emoji: function() {
-        document.dispatchEvent(new CustomEvent('open-quill-emoji-modal', { detail: { quill: this.quill } }));
-      },"""
-content = content.replace(emoji_handler_target, "")
+content = content.replace(bad_logic, good_logic)
 
-# 3. Add table handler
-table_handler = """      table: function() {
-        document.dispatchEvent(new CustomEvent('open-quill-table-modal', { detail: { quill: this.quill } }));
-      },"""
-content = content.replace("handlers: {", "handlers: {\n" + table_handler)
+# Remove the old metaRes processing block that we moved/modified
+old_meta_process = """
+      if (rolesRes.error) console.error('rolesRes err', rolesRes.error);
+      if (classesRes.error) console.error('classesRes err', classesRes.error);
+      if (usersRes.error) console.error('usersRes err', usersRes.error);
+      
+      if (rolesRes.data) {
+        setRoles(rolesRes.data);
+      }
+      if (classesRes.data) setClasses(classesRes.data);
+      
+      if (usersRes.data) {
+        const formattedUsers = usersRes.data.map(u => ({
+          ...u,
+          role_names: (u.user_roles || []).map((ur: any) => ur.roles?.role_name).filter(Boolean)
+        })).filter((u: any) => !(u.first_name === 'Youlin' && u.last_name === 'Venerable'));
+        setAvailableUsers(formattedUsers);
+      }
+      
+      // Load announcements and their replies
+      const parsedUser = userStr ? JSON.parse(userStr) : user;
+      const finalAnns = await fetchVisibleAnnouncements(parsedUser, currentUserRole);"""
 
-# 4. Add table in modules if not there, wait, the user didn't mention enabling table in modules explicitly but it might need it.
-# `table: true` in `modules`
-target_magic_url = "  magicUrl: true"
-replace_magic_url = "  magicUrl: true,\n  table: true"
-content = content.replace(target_magic_url, replace_magic_url)
+new_meta_process = """
+      if (rolesRes.error) console.error('rolesRes err', rolesRes.error);
+      if (classesRes.error) console.error('classesRes err', classesRes.error);
+      
+      if (rolesRes.data) {
+        setRoles(rolesRes.data);
+      }
+      if (classesRes.data) setClasses(classesRes.data);
+"""
+content = content.replace(old_meta_process, new_meta_process)
 
 with open('src/pages/Announcements.tsx', 'w') as f:
     f.write(content)
+

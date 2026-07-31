@@ -1,0 +1,164 @@
+                      } catch(e){}
+                  }
+
+                  const isNew = ann.created_by !== getRealUserId(user?.id) && !readState[ann.announcement_id];
+                  const latestReplyTime = replies.length > 0 ? Math.max(...replies.map((r: any) => new Date(r.created_at).getTime())) : 0;
+                  const hasNewReplies = readState[ann.announcement_id] && latestReplyTime > 0 ? readState[ann.announcement_id].read_at < latestReplyTime : false;
+
+                  const isExpanded = expandedAnns[ann.announcement_id];
+                  return (
+                     <div 
+                        key={ann.announcement_id} 
+                        className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30  flex flex-col hover:shadow-md transition-all shadow-sm overflow-hidden"
+                     >
+                         <div className="p-6 cursor-pointer hover:bg-surface-variant/20 transition-colors" onClick={() => toggleAccordion(ann.announcement_id, replies)}>
+                             <div className="flex justify-between items-start mb-4">
+                                 <div className="flex items-center gap-4">
+                                     <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg">
+                                         {getRoleIcon(authorRole, "w-8 h-8")}
+                                     </div>
+                                     <div>
+                                        <h3 className="text-2xl font-bold text-on-surface hover:underline cursor-pointer flex items-center gap-2">
+                                           {authorName}
+                                           {isNew && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary text-on-primary font-bold uppercase tracking-wider"><Sparkles className="w-3 h-3 animate-pulse"/> New</span>}
+                                           {!isNew && hasNewReplies && <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-secondary text-on-secondary font-bold uppercase tracking-wider"><Sparkles className="w-3 h-3 animate-pulse"/> New Replies</span>}
+                                        </h3>
+                                        
+                                        <p className="text-xs text-on-surface-variant font-medium mt-0.5">
+                                           {new Date(ann.created_at || Date.now()).toLocaleDateString('en-US', { timeZone: 'America/New_York' })} • 
+                                           <Users className="w-3 h-3 inline ml-1 mr-0.5"/> To: {audienceInfo}
+                                           {(user?.role === 'admin' || user?.role === 'builder' || user?.role === 'teacher' || ann.created_by === user?.id) && (
+                                               <span className="ml-2 inline-flex items-center gap-1 text-primary" title="Total unique reads">
+                                                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                                   {readCounts[ann.announcement_id.toString()] || 0} read
+                                               </span>
+                                           )}
+                                        </p>
+
+                                     </div>
+                                 </div>
+                                 <div className="flex items-center gap-4">
+                                     {(user?.role === 'builder' || ann.created_by === user?.id) && (
+                                     <div className="flex items-center gap-2">
+                                         <button 
+                                            onClick={() => {
+                                                setEditingAnnId(ann.announcement_id); 
+                                                setEditAnnTitleStr(ann.title); 
+                                                setEditAnnContentStr(displayContent);
+                                            }}
+                                            className="px-3 py-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-full transition-colors flex items-center gap-1.5"
+                                         >
+                                             <Edit2 className="w-4 h-4" />
+                                             <span className="text-xs font-bold">Edit</span>
+                                         </button>
+                                         {confirmDeleteId === ann.announcement_id ? (
+                                             <div className="flex items-center gap-1">
+                                                 <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-bold text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
+                                                 <button onClick={() => handleDeleteAnnouncement(ann.announcement_id, true)} className="text-xs font-bold text-error bg-error/10 hover:bg-error/20 px-3 py-1 rounded-full">Delete</button>
+                                             </div>
+                                         ) : (
+                                             <button 
+                                                onClick={() => setConfirmDeleteId(ann.announcement_id)}
+                                                className="px-3 py-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors flex items-center gap-1.5"
+                                             >
+                                                 <Trash2 className="w-4 h-4" />
+                                                 <span className="text-xs font-bold">Delete</span>
+                                             </button>
+                                         )}
+                                     </div>
+                                 )}
+                                     <button className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/50 transition-colors">
+                                         {isExpanded ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
+                                     </button>
+                                 </div>
+                             </div>
+                             
+                             {isExpanded && (
+                               <div onClick={(e) => e.stopPropagation()} className="cursor-auto pt-2">
+                             {editingAnnId === ann.announcement_id ? (
+                                 <div className="flex flex-col gap-3 py-2">
+                                     <input 
+                                         className="w-full px-4 py-2 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary font-bold text-lg outline-none"
+                                         value={editAnnTitleStr} onChange={(e) => setEditAnnTitleStr(e.target.value)}
+                                     />
+                                     <div className="bg-surface rounded-xl border border-outline-variant/50 ">
+                                       <RichTextEditor value={editAnnContentStr} onChange={setEditAnnContentStr} className="h-[400px]" />
+                                     </div>
+                                     {user?.availableRoles && user.availableRoles.length > 1 && (
+                                         <div className="mt-2">
+                                             <label className="block font-label text-sm uppercase tracking-wider font-bold text-on-surface-variant mb-2">Change Posting Role</label>
+                                             <div className="flex gap-2 flex-wrap">
+                                                 {user.availableRoles.map((r: string) => (
+                                                     <button
+                                                         key={r}
+                                                         type="button"
+                                                         onClick={() => setSelectedPostingRole(r)}
+                                                         className={cn(
+                                                             "px-3 py-1.5 rounded-lg font-label text-xs font-bold capitalize transition-all border",
+                                                             selectedPostingRole === r || (!selectedPostingRole && authorRole === r)
+                                                               ? "bg-primary text-on-primary border-primary"
+                                                               : "bg-surface text-on-surface hover:bg-surface-variant border-outline-variant/30"
+                                                         )}
+                                                     >
+                                                         {r}
+                                                     </button>
+                                                 ))}
+                                             </div>
+                                         </div>
+                                     )}
+                                     <div className="flex gap-2 justify-end mt-2">
+                                         <button onClick={() => { setEditingAnnId(null); setSelectedPostingRole(""); }} className="px-4 py-2 rounded-full font-label text-sm hover:bg-surface-variant">Cancel</button>
+                                         <button onClick={() => { handleEditAnnouncementSub(ann.announcement_id, authorRole, isSystem, attachments); setSelectedPostingRole(""); }} className="bg-primary text-on-primary px-5 py-2 rounded-full font-label font-bold text-sm">Save</button>
+                                     </div>
+                                 </div>
+                             ) : (
+                                 <>
+                                     {ann.title && <h4 className="font-display text-2xl font-bold text-on-surface mb-3">{ann.title}</h4>}
+                                     <div className="ql-snow">
+                                         <div className="tiptap-editor font-body text-lg text-on-surface-variant mb-2 leading-relaxed prose prose-sm sm:prose-base max-w-none [&_p]:mb-2 [&_a]:text-primary [&_a]:underline [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-2xl [&_iframe]:my-4 [&_img]:rounded-2xl [&_img]:my-4 [&_img]:max-h-[600px] [&_img]:w-auto px-0 py-0 break-normal" dangerouslySetInnerHTML={{ __html: displayContent }} />
+                                     </div>
+                                     {attachments.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-4">
+                                            {attachments.map((att: any, i: number) => (
+                                                <a key={i} href={att.url} download={att.name} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 bg-surface-variant/30 px-3 py-2 rounded-lg border border-outline-variant/30 text-sm font-label hover:bg-surface-variant transition-colors text-primary">
+                                                    <span className="truncate max-w-[200px]">{att.name}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                     )}
+                                 </>
+                             )}
+                               </div>
+                             )}
+                         </div>
+
+                         {/* Replies Section */}
+                         {isExpanded && (
+                         <div className="bg-surface-container-low border-t border-outline-variant/20 px-6 py-4 flex flex-col gap-4">
+                               {replies.length > 0 && (
+                                   <div className="flex flex-col gap-4">
+                                       <p className="font-bold text-xs uppercase tracking-wider text-on-surface-variant">{replies.length} class comment{replies.length !== 1 ? 's' : ''}</p>
+                                       <div className="flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2">
+                                           {replies.map((r: any) => (
+                                               <div key={r.reply_id} className="flex gap-3 text-sm group">
+                                                   <div className="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center shrink-0 mt-1 cursor-pointer">
+                                                       {getRoleIcon(getPrimaryRole(r.users), "w-6 h-6")}
+                                                   </div>
+                                                   <div className="flex-1 mt-1">
+                                                       <div className="flex justify-between items-start">
+                                                           <div>
+                                                               <p className="font-bold text-lg text-on-surface mb-0.5 flex items-center gap-2">
+                                                                   {(() => {
+                                                                      const isReplyTeacher = r.users?.user_roles?.some((ur: any) => ur.roles?.role_name === 'Teacher');
+                                                                      return r.users ? (isReplyTeacher ? formatTeacherName(r.users.first_name, r.users.last_name) : `${r.users.first_name} ${r.users.last_name}`) : "Unknown";
+                                                                   })()}
+                                                                   <span className="font-normal text-xs text-on-surface-variant group-hover:text-on-surface-variant/70 transition-colors">
+                                                                       {new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'America/New_York' })}
+                                                                   </span>
+                                                               </p>
+                                                           </div>
+                                                           {(user?.role === 'builder' || r.user_id === user?.id) && (
+                                                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                   <button 
+                                                                       onClick={() => {
+                                                                           setEditingReplyId(r.reply_id);
