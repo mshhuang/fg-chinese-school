@@ -49,7 +49,7 @@ export default function AdminReports() {
         const { data: usersData } = await supabase.from('users').select('user_id, first_name, last_name, email');
         const { data: rolesData } = await supabase.from('roles').select('role_id, role_name');
         const { data: userRolesData } = await supabase.from('user_roles').select('user_id, role_id');
-        const { data: classData, error: classError } = await supabase.from('classes').select('class_id, class_name, program_id');
+        const { data: classData, error: classError } = await supabase.from('classes').select('class_id, class_name');
         if (classError) console.error("Class fetch error:", classError);
         const { data: enrollmentsData, error: enrollmentsError } = await supabase.from('enrollments').select('enrollment_id, student_id, class_id, status, program_id');
         if (enrollmentsError) console.error("Enrollments fetch error:", enrollmentsError);

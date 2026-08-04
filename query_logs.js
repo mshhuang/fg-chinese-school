@@ -1,12 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+const envFile = fs.readFileSync('.env.example', 'utf-8');
+const urlMatch = envFile.match(/VITE_SUPABASE_URL=(.*)/);
+const keyMatch = envFile.match(/VITE_SUPABASE_ANON_KEY=(.*)/);
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-async function test() {
-  const { data, error } = await supabase.from('system_logs').select('*').order('created_at', { ascending: false }).limit(20);
-  console.log(data);
-}
-test();
+// Need to read actual env vars if available. But maybe I can just query it through the app's db script?

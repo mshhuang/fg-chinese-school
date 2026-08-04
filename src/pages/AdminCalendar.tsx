@@ -4,8 +4,12 @@ import { cn } from "../lib/utils";
 import { SchoolEvent, fetchSchoolEvents, createSchoolEvent, deleteSchoolEvent, updateSchoolEvent } from "../lib/events";
 import { format, parseISO, parse } from "date-fns";
 import { EventCalendar } from "../components/EventCalendar";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function AdminCalendar() {
+  const { t } = useLanguage();
+
   const [events, setEvents] = useState<SchoolEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -116,7 +120,7 @@ export default function AdminCalendar() {
     <div className="w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col gap-8 pb-32 md:pb-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="font-display text-4xl text-primary font-bold tracking-tight">School Calendar</h1>
+          <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t("School Calendar")}</h1>
           <p className="font-body text-lg text-on-surface-variant mt-2">Manage events across all roles.</p>
         </div>
         <button 
@@ -165,8 +169,8 @@ export default function AdminCalendar() {
                   </button>
                   {confirmDeleteId === event.id ? (
                     <div className="flex items-center gap-1">
-                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-bold text-on-surface-variant hover:text-on-surface px-2 py-1">Cancel</button>
-                        <button onClick={() => handleDelete(event.id, true)} className="text-xs font-bold text-error bg-error/10 hover:bg-error/20 px-3 py-1 rounded-full">Delete</button>
+                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs font-bold text-on-surface-variant hover:text-on-surface px-2 py-1">{t('Cancel')}</button>
+                        <button onClick={() => handleDelete(event.id, true)} className="text-xs font-bold text-error bg-error/10 hover:bg-error/20 px-3 py-1 rounded-full">{t('Delete')}</button>
                     </div>
                   ) : (
                     <button 
@@ -263,7 +267,7 @@ export default function AdminCalendar() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="font-label text-sm font-bold text-on-surface">Location</label>
+                  <label className="font-label text-sm font-bold text-on-surface">{t('Location')}</label>
                   <input 
                     type="text" 
                     value={location}
@@ -298,7 +302,7 @@ export default function AdminCalendar() {
               </div>
 
               <div className="space-y-2">
-                <label className="font-label text-sm font-bold text-on-surface">Description</label>
+                <label className="font-label text-sm font-bold text-on-surface">{t('Description')}</label>
                 <textarea 
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}

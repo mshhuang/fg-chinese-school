@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, Filter, Clock, Users, CheckCircle2, XCircle, Newspaper, Eye, X, FileText, Trash2, Sparkles, Upload, Download, Megaphone , ArrowLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/i18n";
 
 
 const getRealUserId = (id: string | null | undefined) => {
@@ -11,6 +12,7 @@ const getRealUserId = (id: string | null | undefined) => {
 };
 
 export default function PrincipalNewsletters() {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("Pending Approval");
   const [newsletters, setNewsletters] = useState<any[]>([]);
@@ -419,8 +421,8 @@ export default function PrincipalNewsletters() {
        {/* Header */}
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
          <div>
-           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Review Newsletters</h1>
-           <p className="font-body text-lg text-on-surface-variant mt-2">Approve or reject newsletters submitted by teachers.</p>
+           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t("Review Newsletters")}</h1>
+           <p className="font-body text-lg text-on-surface-variant mt-2">{t("Approve or reject newsletters submitted by teachers.")}</p>
          </div>
        </header>
 
@@ -439,7 +441,7 @@ export default function PrincipalNewsletters() {
                       : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
                   )}
                 >
-                   {status}
+                   {t(status)}
                 </button>
              ))}
           </div>
@@ -449,7 +451,7 @@ export default function PrincipalNewsletters() {
              <Search className="w-5 h-5 text-on-surface-variant" />
              <input 
                type="text" 
-               placeholder="Search by title or author..." 
+               placeholder={t("Search by title or author...")} 
                className="bg-transparent border-none outline-none font-body text-sm w-full"
                value={searchQuery}
                onChange={(e) => setSearchQuery(e.target.value)}
@@ -480,7 +482,7 @@ export default function PrincipalNewsletters() {
                                "bg-tertiary-container/30 text-tertiary-dim border border-tertiary/20"
                             )}>
                                {news.status === "Approved" ? <CheckCircle2 className="w-3 h-3" /> : news.status === "Published" ? <CheckCircle2 className="w-3 h-3" /> : news.status === "Rejected" ? <XCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                               {news.status}
+                               {t(news.status)}
                             </span>
                             <div className="flex gap-2">
                                <button onClick={() => openViewer(news)} className="w-8 h-8 rounded-full hover:bg-surface-variant flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
@@ -554,7 +556,7 @@ export default function PrincipalNewsletters() {
           {filteredNewsletters.length === 0 && (
              <div className="col-span-full flex flex-col items-center justify-center p-12 bg-surface-container-low border border-dashed border-outline-variant/40 rounded-3xl">
                 <Newspaper className="w-12 h-12 text-on-surface-variant opacity-50 mb-4" />
-                <p className="font-body text-lg text-on-surface font-medium">No newsletters awaiting review</p>
+                <p className="font-body text-lg text-on-surface font-medium">{t("No newsletters awaiting review")}</p>
              </div>
           )}
        </div>
@@ -562,10 +564,15 @@ export default function PrincipalNewsletters() {
        {/* PDF Viewer Modal */}
        {showPdfModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl w-full max-w-4xl h-[90vh] shadow-xl flex flex-col overflow-hidden mx-auto">
-                <div className="flex items-center justify-between p-4 border-b border-outline-variant/20 bg-surface-container-low">
-                   <h2 className="text-lg font-display font-bold text-on-surface">{showPdfModal.title}</h2>
-                   <div className="flex gap-2">
+             <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl w-full max-w-[95vw] md:max-w-7xl h-[95vh] shadow-xl flex flex-col overflow-hidden mx-auto">
+                <div className="flex items-center justify-between p-4 border-b border-outline-variant/20 bg-surface-container-low flex-wrap gap-4">
+                   <div className="flex items-center gap-3">
+                       <button onClick={() => setShowPdfModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant shrink-0" title="Back to previous page">
+                           <ArrowLeft className="w-5 h-5" />
+                       </button>
+                       <h2 className="text-lg font-display font-bold text-on-surface line-clamp-1">{showPdfModal.title}</h2>
+                   </div>
+                   <div className="flex gap-2 flex-wrap">
                        {showPdfModal.status === "Pending Approval" && (
                          <>
                            <button onClick={async () => { await handleApprove(showPdfModal.id); setShowPdfModal(null); }} className="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-1.5 px-4 rounded-full transition-colors text-sm flex items-center gap-2">

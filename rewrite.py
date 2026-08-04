@@ -1,87 +1,206 @@
 import re
 
-with open('target.txt', 'r') as f:
+with open('src/lib/announcementUtils.ts', 'r') as f:
     content = f.read()
 
-# I will replace the main return with a modified version
-# First, insert the `const isExpanded = expandedAnns[ann.announcement_id];`
-# And add the toggle chevron
+func_start = content.find('export async function fetchVisibleAnnouncements')
+func_end = len(content)
 
-new_content = content.replace(
-    'return (\n                     <div \n                        key={ann.announcement_id} \n                        onMouseEnter={() => markAsRead(ann.announcement_id, replies)}\n                        onTouchStart={() => markAsRead(ann.announcement_id, replies)}\n                        onClick={() => markAsRead(ann.announcement_id, replies)}\n                        className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30  flex flex-col hover:shadow-md transition-all shadow-sm"\n                     >',
-    '''const isExpanded = expandedAnns[ann.announcement_id];
-                  return (
-                     <div 
-                        key={ann.announcement_id} 
-                        className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30  flex flex-col hover:shadow-md transition-all shadow-sm overflow-hidden"
-                     >'''
-)
+new_func = """
+export async function fetchVisibleAnnouncements(user: any, userRole: string, limitCount?: number, fields?: string) {
+   if (!user) return [];
+   
+   try {
+     userRole = userRole || 'student';
+     const realUserId = getRealUserId(user.id);
+     
+     const selectQuery = fields || `
+        announcement_id,
+        title,
+        content,
+        created_at,
+        created_by,
+        target_role_id,
+        target_role_ids,
+        target_class_ids,
+        target_user_ids,
+        users:created_by ( first_name, last_name, email ),
+        roles:target_role_id ( role_name )
+     `;
+     
+     // 1. Fetch roles and classIds first so we can build an optimized OR query
+     const rolesPromise = supabase.from('roles').select('*');
+     
+     let classIdsPromise: any = Promise.resolve([]);
+     if (userRole === 'student') {
+         classIdsPromise = supabase.from('enrollments').select('class_id').eq('student_id', realUserId)
+            .then(res => (res.data?.map(e => e.class_id) || []) as string[]);
+     } else if (userRole === 'parent') {
+         classIdsPromise = supabase.from('parent_child').select('child_id').eq('parent_id', realUserId)
+            .then(res => {
+                const childIds = res.data?.map(c => c.child_id) || [];
+                if (childIds.length > 0) {
+                    return supabase.from('enrollments').select('class_id').in('student_id', childIds)
+                        .then(r => (r.data?.map(e => e.class_id) || []) as string[]);
+                }
+                return [];
+            });
+     } else if (userRole === 'teacher') {
+         classIdsPromise = supabase.from('classes').select('class_id')
+            .or(`primary_teacher_id.eq.${realUserId},co_teacher_id.eq.${realUserId},co_teachers.cs.{${realUserId}}`)
+            .then(res => (res.data?.map(c => c.class_id) || []) as string[]);
+     }
+     
+     const [{ data: rolesData }, userClassIds] = await Promise.all([
+         rolesPromise,
+         classIdsPromise
+     ]);
 
-# Replace <div className="p-6"> with header and collapse wrapper
-# Actually let's just make the top part clickable.
-new_content = new_content.replace(
-    '<div className="p-6">',
-    '''<div className="p-6 cursor-pointer hover:bg-surface-variant/20 transition-colors" onClick={() => toggleAccordion(ann.announcement_id, replies)}>'''
-)
+     // 2. Build optimized OR conditions
+     let annsPromise = supabase.from('announcements')
+         .select(selectQuery)
+         .order('created_at', { ascending: false })
+         .limit(limitCount ? Math.max(limitCount, 20) : 50);
 
-# To add the Chevron, I will inject it before the action buttons.
-new_content = new_content.replace(
-    '''                                 {(user?.role === 'builder' || ann.created_by === user?.id) && (''',
-    '''                                 <div className="flex items-center gap-4">
-                                     {(user?.role === 'builder' || ann.created_by === user?.id) && ('''
-)
+     if (userRole !== 'admin' && userRole !== 'principal' && userRole !== 'builder') {
+         const orConditions: string[] = [];
+         orConditions.push(`created_by.eq.${realUserId}`);
+         
+         const userRoleId = rolesData?.find(r => r.role_name?.toLowerCase() === userRole.toLowerCase())?.role_id;
+         if (userRoleId) {
+             orConditions.push(`target_role_ids.cs.{${userRoleId}}`);
+             orConditions.push(`target_role_id.eq.${userRoleId}`);
+         }
+         
+         orConditions.push(`target_user_ids.cs.{${realUserId}}`);
+         
+         if (userClassIds && userClassIds.length > 0) {
+             const classIdsStr = userClassIds.join(',');
+             orConditions.push(`target_class_ids.ov.{${classIdsStr}}`);
+         }
+         
+         // "All Audiences" announcements
+         orConditions.push(`and(target_role_id.is.null,target_role_ids.eq.{},target_class_ids.eq.{},target_user_ids.eq.{})`);
+         
+         annsPromise = annsPromise.or(orConditions.join(','));
+     }
 
-# And close the div and add chevron
-new_content = new_content.replace(
-    '''                                 )}
-                             </div>
-                             
-                             {editingAnnId === ann.announcement_id ? (''',
-    '''                                 )}
-                                     <button className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/50 transition-colors">
-                                         {isExpanded ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
-                                     </button>
-                                 </div>
-                             </div>
-                             
-                             {isExpanded && (
-                               <div onClick={(e) => e.stopPropagation()} className="cursor-auto pt-2">
-                             {editingAnnId === ann.announcement_id ? ('''
-)
+     const { data: primaryData, error: primaryErr } = await annsPromise;
+     
+     let anns: any[] | null = primaryData;
+     let error: any = null;
+     
+     if (primaryErr || !primaryData) {
+         console.warn("fetchVisibleAnnouncements query failed:", primaryErr?.message || primaryErr);
+         const fallbackQuery = fields || '*';
+         const { data: fallbackData, error: fallbackErr } = await supabase.from('announcements')
+             .select(fallbackQuery)
+             .order('created_at', { ascending: false })
+             .limit(limitCount ? Math.max(limitCount, 20) : 50);
+         if (!fallbackErr && fallbackData) {
+             anns = fallbackData;
+         } else {
+             error = fallbackErr;
+         }
+     }
+     
+     if (anns && !fields) {
+         // Fetch replies for these announcements
+         const annIds = anns.map(a => a.announcement_id);
+         if (annIds.length > 0) {
+             const repliesPromise = supabase.from('announcement_replies')
+                 .select('reply_id, announcement_id, content, created_at, user_id, users(first_name, last_name, email)')
+                 .in('announcement_id', annIds);
+                 
+             const { data: repliesData } = await repliesPromise;
+             
+             if (repliesData) {
+                 const repliesMap: Record<string, any[]> = {};
+                 repliesData.forEach(r => {
+                     if (!repliesMap[r.announcement_id]) repliesMap[r.announcement_id] = [];
+                     repliesMap[r.announcement_id].push(r);
+                 });
+                 anns.forEach(a => {
+                     a.announcement_replies = repliesMap[a.announcement_id] || [];
+                 });
+             }
+         }
+         const userIds = new Set<string>();
+         (anns as any[]).forEach(a => {
+             if (a.created_by) userIds.add(a.created_by);
+             a.announcement_replies?.forEach((r: any) => {
+                 if (r.user_id) userIds.add(r.user_id);
+             });
+         });
+         
+         const uIdArray = Array.from(userIds);
+         if (uIdArray.length > 0) {
+             const [rolesRes, usersRes] = await Promise.all([
+                 supabase.from('user_roles').select('user_id, roles(role_name)').in('user_id', uIdArray),
+                 supabase.from('users').select('user_id, first_name, last_name, email').in('user_id', uIdArray)
+             ]);
+             const roleMap: Record<string, any[]> = {};
+             rolesRes.data?.forEach(ur => {
+                 if (!roleMap[ur.user_id]) roleMap[ur.user_id] = [];
+                 roleMap[ur.user_id].push(ur);
+             });
+             
+             const userMap: Record<string, any> = {};
+             usersRes.data?.forEach(u => {
+                 userMap[u.user_id] = u;
+             });
+             (anns as any[]).forEach(a => {
+                 if (!a.users && a.created_by && userMap[a.created_by]) {
+                     a.users = userMap[a.created_by];
+                 }
+                 if (a.users) (a.users as any).user_roles = roleMap[a.created_by] || [];
+                 
+                 a.announcement_replies?.forEach((r: any) => {
+                     if (!r.users && r.user_id && userMap[r.user_id]) {
+                         r.users = userMap[r.user_id];
+                     }
+                     if (r.users) (r.users as any).user_roles = roleMap[r.user_id] || [];
+                 });
+             });
+         }
+     }
+     if (error) {
+         console.warn("fetchVisibleAnnouncements notice:", error);
+         return [];
+     }
+     
+     let allAnns: any[] = (anns as any[]) || [];
+     allAnns = allAnns.filter(a => a.title !== 'SYSTEM_SCHOOL_SCHEDULE_URL');
+     if (userRole === 'admin' || userRole === 'principal' || userRole === 'builder') {
+         return limitCount ? allAnns.slice(0, limitCount) : allAnns;
+     }
+     const userRoleId = rolesData?.find(r => r.role_name?.toLowerCase() === userRole.toLowerCase())?.role_id;
+     const filteredAnns = allAnns.filter(a => {
+         if (a.created_by === realUserId) return true;
+         
+         const noTargets = !a.target_role_ids?.length && !a.target_class_ids?.length && !a.target_user_ids?.length && !a.target_role_id;
+         if (noTargets) return true;
+         
+         if (userRoleId && a.target_role_ids?.includes(userRoleId)) return true;
+         if (userRoleId && a.target_role_id === userRoleId) return true;
+         if (a.target_user_ids?.includes(realUserId)) return true;
+         
+         if (a.target_class_ids && a.target_class_ids.length > 0) {
+             if (a.target_class_ids.some((cId: string) => userClassIds.includes(cId))) {
+                 return true;
+             }
+         }
+         
+         return false;
+     });
+     return limitCount ? filteredAnns.slice(0, limitCount) : filteredAnns;
+   } catch (e) {
+     console.error("fetchVisibleAnnouncements error:", e);
+     return [];
+   }
+}
+"""
 
-# And wrap the bottom with closing tags
-new_content = new_content.replace(
-    '''                                 </>
-                             )}
-                         </div>''',
-    '''                                 </>
-                             )}
-                               </div>
-                             )}
-                         </div>'''
-)
-
-new_content = new_content.replace(
-    '''                         {/* Replies Section */}
-                         <div className="bg-surface-container-low border-t border-outline-variant/20 px-6 py-4 flex flex-col gap-4">''',
-    '''                         {/* Replies Section */}
-                         {isExpanded && (
-                         <div className="bg-surface-container-low border-t border-outline-variant/20 px-6 py-4 flex flex-col gap-4">'''
-)
-
-new_content = new_content.replace(
-    '''                                    </div>
-                                )}
-                          </div>
-                      </div>
-                  )''',
-    '''                                    </div>
-                                )}
-                          </div>
-                         )}
-                      </div>
-                  )'''
-)
-
-with open('target_new.txt', 'w') as f:
+new_content = content[:func_start] + new_func
+with open('src/lib/announcementUtils.ts', 'w') as f:
     f.write(new_content)

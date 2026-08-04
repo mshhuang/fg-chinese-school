@@ -1,10 +1,18 @@
 import { supabase } from './supabase';
 
+function getRealUserId(id: string | null | undefined) {
+    if (!id) return id;
+    if (id.startsWith('demo_')) return '9a5e12f8-0c6f-474c-836e-1d57f9202a6c';
+    return id;
+}
+
+
 export async function fetchVisibleAnnouncements(user: any, userRole: string, limitCount?: number, fields?: string) {
    if (!user) return [];
    
    try {
      userRole = userRole || 'student';
+     const realUserId = getRealUserId(user.id);
      
      const selectQuery = fields || `
         announcement_id,
@@ -15,24 +23,18 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
         target_role_id,
         target_role_ids,
         target_class_ids,
-        target_user_ids,
-        users:created_by ( first_name, last_name, email ),
-        roles:target_role_id ( role_name )
+        target_user_ids
      `;
      
-     const annsPromise = supabase.from('announcements')
-         .select(selectQuery)
-         .order('created_at', { ascending: false })
-         .limit(200);
-         
+     // 1. Fetch roles and classIds first so we can build an optimized OR query
      const rolesPromise = supabase.from('roles').select('*');
      
-     let classIdsPromise: Promise<string[]> = Promise.resolve([]);
+     let classIdsPromise: any = Promise.resolve([]);
      if (userRole === 'student') {
-         classIdsPromise = supabase.from('enrollments').select('class_id').eq('student_id', user.id)
+         classIdsPromise = supabase.from('enrollments').select('class_id').eq('student_id', realUserId)
             .then(res => (res.data?.map(e => e.class_id) || []) as string[]);
      } else if (userRole === 'parent') {
-         classIdsPromise = supabase.from('parent_child').select('child_id').eq('parent_id', user.id)
+         classIdsPromise = supabase.from('parent_child').select('child_id').eq('parent_id', realUserId)
             .then(res => {
                 const childIds = res.data?.map(c => c.child_id) || [];
                 if (childIds.length > 0) {
@@ -43,26 +45,56 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
             });
      } else if (userRole === 'teacher') {
          classIdsPromise = supabase.from('classes').select('class_id')
-            .or(`primary_teacher_id.eq.${user.id},co_teacher_id.eq.${user.id},co_teachers.cs.{${user.id}}`)
+            .or(`primary_teacher_id.eq.${realUserId},co_teacher_id.eq.${realUserId},co_teachers.cs.{${realUserId}}`)
             .then(res => (res.data?.map(c => c.class_id) || []) as string[]);
      }
      
-     let [{ data: primaryData, error: primaryErr }, { data: rolesData }, userClassIds] = await Promise.all([
-         annsPromise,
+     const [{ data: rolesData }, userClassIds] = await Promise.all([
          rolesPromise,
          classIdsPromise
      ]);
+
+     // 2. Build optimized OR conditions
+     let annsPromise = supabase.from('announcements')
+         .select(selectQuery)
+         .order('created_at', { ascending: false })
+         .limit(limitCount ? Math.max(limitCount, 20) : 50);
+
+     if (userRole !== 'admin' && userRole !== 'principal' && userRole !== 'builder') {
+         const orConditions: string[] = [];
+         orConditions.push(`created_by.eq.${realUserId}`);
+         
+         const userRoleId = rolesData?.find(r => r.role_name?.toLowerCase() === userRole.toLowerCase())?.role_id;
+         if (userRoleId) {
+             orConditions.push(`target_role_ids.cs.{${userRoleId}}`);
+             orConditions.push(`target_role_id.eq.${userRoleId}`);
+         }
+         
+         orConditions.push(`target_user_ids.cs.{${realUserId}}`);
+         
+         if (userClassIds && userClassIds.length > 0) {
+             const classIdsStr = userClassIds.join(',');
+             orConditions.push(`target_class_ids.ov.{${classIdsStr}}`);
+         }
+         
+         // "All Audiences" announcements
+         orConditions.push(`and(target_role_id.is.null,target_role_ids.eq.{},target_class_ids.eq.{},target_user_ids.eq.{})`);
+         
+         annsPromise = annsPromise.or(orConditions.join(','));
+     }
+
+     const { data: primaryData, error: primaryErr } = await annsPromise;
      
      let anns: any[] | null = primaryData;
      let error: any = null;
      
      if (primaryErr || !primaryData) {
-         console.warn("fetchVisibleAnnouncements join query failed:", primaryErr?.message || primaryErr);
+         console.warn("fetchVisibleAnnouncements query failed:", primaryErr?.message || primaryErr);
          const fallbackQuery = fields || '*';
          const { data: fallbackData, error: fallbackErr } = await supabase.from('announcements')
              .select(fallbackQuery)
              .order('created_at', { ascending: false })
-             .limit(200);
+             .limit(limitCount ? Math.max(limitCount, 20) : 50);
          if (!fallbackErr && fallbackData) {
              anns = fallbackData;
          } else {
@@ -77,7 +109,7 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
              const repliesPromise = supabase.from('announcement_replies')
                  .select('reply_id, announcement_id, content, created_at, user_id, users(first_name, last_name, email)')
                  .in('announcement_id', annIds);
-             
+                 
              const { data: repliesData } = await repliesPromise;
              
              if (repliesData) {
@@ -91,7 +123,6 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
                  });
              }
          }
-
          const userIds = new Set<string>();
          (anns as any[]).forEach(a => {
              if (a.created_by) userIds.add(a.created_by);
@@ -116,7 +147,6 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
              usersRes.data?.forEach(u => {
                  userMap[u.user_id] = u;
              });
-
              (anns as any[]).forEach(a => {
                  if (!a.users && a.created_by && userMap[a.created_by]) {
                      a.users = userMap[a.created_by];
@@ -132,7 +162,6 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
              });
          }
      }
-
      if (error) {
          console.warn("fetchVisibleAnnouncements notice:", error);
          return [];
@@ -140,22 +169,19 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
      
      let allAnns: any[] = (anns as any[]) || [];
      allAnns = allAnns.filter(a => a.title !== 'SYSTEM_SCHOOL_SCHEDULE_URL');
-
      if (userRole === 'admin' || userRole === 'principal' || userRole === 'builder') {
          return limitCount ? allAnns.slice(0, limitCount) : allAnns;
      }
-
      const userRoleId = rolesData?.find(r => r.role_name?.toLowerCase() === userRole.toLowerCase())?.role_id;
-
      const filteredAnns = allAnns.filter(a => {
-         if (a.created_by === user.id) return true;
+         if (a.created_by === realUserId) return true;
          
          const noTargets = !a.target_role_ids?.length && !a.target_class_ids?.length && !a.target_user_ids?.length && !a.target_role_id;
          if (noTargets) return true;
          
          if (userRoleId && a.target_role_ids?.includes(userRoleId)) return true;
          if (userRoleId && a.target_role_id === userRoleId) return true;
-         if (a.target_user_ids?.includes(user.id)) return true;
+         if (a.target_user_ids?.includes(realUserId)) return true;
          
          if (a.target_class_ids && a.target_class_ids.length > 0) {
              if (a.target_class_ids.some((cId: string) => userClassIds.includes(cId))) {
@@ -165,7 +191,6 @@ export async function fetchVisibleAnnouncements(user: any, userRole: string, lim
          
          return false;
      });
-
      return limitCount ? filteredAnns.slice(0, limitCount) : filteredAnns;
    } catch (e) {
      console.error("fetchVisibleAnnouncements error:", e);

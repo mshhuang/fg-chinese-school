@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { MessageSquare, ArrowLeft, Loader2, Calendar, Search, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from "../lib/i18n";
+
 
 export default function BuilderInternalMessages() {
+  const { t } = useLanguage();
+
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -124,11 +128,11 @@ export default function BuilderInternalMessages() {
             <table className="w-full min-w-[1000px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-outline-variant/30 bg-surface-container-lowest">
-                  <th className="py-4 px-6 font-label font-bold text-on-surface-variant">Date</th>
+                  <th className="py-4 px-6 font-label font-bold text-on-surface-variant">{t('Date')}</th>
                   <th className="py-4 px-6 font-label font-bold text-on-surface-variant">Sender</th>
                   <th className="py-4 px-6 font-label font-bold text-on-surface-variant">Recipient</th>
-                  <th className="py-4 px-6 font-label font-bold text-on-surface-variant">Message</th>
-                  <th className="py-4 px-6 font-label font-bold text-on-surface-variant">Status</th>
+                  <th className="py-4 px-6 font-label font-bold text-on-surface-variant">{t('Message')}</th>
+                  <th className="py-4 px-6 font-label font-bold text-on-surface-variant">{t('Status')}</th>
                   <th className="py-4 px-6 font-label font-bold text-on-surface-variant text-right">Actions</th>
                 </tr>
               </thead>

@@ -5,8 +5,12 @@ import { supabase } from "../lib/supabase";
 import { EventCalendar } from "../components/EventCalendar";
 import { SchoolEvent, fetchSchoolEvents } from "../lib/events";
 import { format, parse, isAfter, startOfDay } from "date-fns";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function StudentSchedule() {
+  const { t } = useLanguage();
+
   const [classesWithImages, setClassesWithImages] = useState<any[]>([]);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [events, setEvents] = useState<SchoolEvent[]>([]);
@@ -27,7 +31,7 @@ export default function StudentSchedule() {
        const classIds = enrollData.map((e:any) => e.class_id).filter(Boolean);
        if (classIds.length === 0) return;
 
-       const { data: clsData } = await supabase.from('classes').select('*').in('class_id', classIds);
+       const { data: clsData } = await supabase.from('classes').select('class_id, class_name, primary_teacher_id, co_teacher_id, co_teachers').in('class_id', classIds);
        
        if (clsData) {
          setClassesWithImages(clsData.filter((c: any) => c.schedule_image_url));
@@ -83,7 +87,7 @@ export default function StudentSchedule() {
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
          <div>
            <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Schedule</h1>
-           <p className="font-body text-lg text-on-surface-variant mt-2">View your daily timetable and upcoming events.</p>
+           <p className="font-body text-lg text-on-surface-variant mt-2">{t("View your daily timetable and upcoming events.")}</p>
          </div>
        </header>
 
@@ -108,7 +112,7 @@ export default function StudentSchedule() {
                 </div>
               ) : (
                 <div className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-8 shadow-sm text-center">
-                   <p className="text-on-surface-variant font-body">No schedule image available.</p>
+                   <p className="text-on-surface-variant font-body">{t("No schedule image available.")}</p>
                 </div>
               )}
            </div>
@@ -119,8 +123,8 @@ export default function StudentSchedule() {
              
              <div className="flex flex-col items-center justify-center py-4 relative z-10 mb-2">
                  <div className="relative flex flex-col items-center font-display uppercase font-black text-[#0b1f3f] leading-[0.85] text-3xl md:text-5xl">
-                     <span className="tracking-tight z-10">UPCOMING</span>
-                     <span className="tracking-tight z-10">EVENTS</span>
+                     <span className="tracking-tight z-10">{t("UPCOMING")}</span>
+                     <span className="tracking-tight z-10">{t("EVENTS")}</span>
                  </div>
              </div>
              

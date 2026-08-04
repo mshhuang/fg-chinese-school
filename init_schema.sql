@@ -248,3 +248,14 @@ BEGIN
         EXECUTE 'CREATE POLICY "Enable all for ' || tname || '" ON ' || tname || ' FOR ALL USING (true) WITH CHECK (true);';
     END LOOP;
 END $$;
+CREATE TABLE IF NOT EXISTS error_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    error_message TEXT,
+    error_code TEXT,
+    error_details TEXT,
+    request_url TEXT,
+    request_method TEXT,
+    user_id UUID,
+    browser_info TEXT
+);

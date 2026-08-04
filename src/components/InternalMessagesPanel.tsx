@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Edit, MoreVertical, Paperclip, Send, User as UserIcon, ChevronLeft, ChevronDown, Loader2, Trash2, Edit2, RefreshCw, X, ImageIcon } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/i18n";
 
 
 const getRealUserId = (id: string | null | undefined) => {
@@ -11,6 +12,7 @@ const getRealUserId = (id: string | null | undefined) => {
 };
 
 export function InternalMessagesPanel() {
+  const { t } = useLanguage();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [parentChildRelations, setParentChildRelations] = useState<any[]>([]);
@@ -396,7 +398,7 @@ export function InternalMessagesPanel() {
                <Search className="w-5 h-5 text-on-surface-variant absolute left-3" />
                <input 
                  type="text" 
-                 placeholder="Search recent chats..." 
+                 placeholder={t("Search recent chats...")} 
                  className="w-full bg-transparent border-none outline-none font-body text-on-surface placeholder:text-on-surface-variant/50 pl-9"
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
@@ -426,11 +428,11 @@ export function InternalMessagesPanel() {
                   <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
                      <Search className="w-8 h-8" />
                   </div>
-                  <h3 className="font-label text-lg text-on-surface mb-2">No conversations found</h3>
+                  <h3 className="font-label text-lg text-on-surface mb-2">{t("No conversations found")}</h3>
                   <p className="font-body text-sm text-on-surface-variant">
                      {!searchQuery.trim() 
-                        ? "Search for users above to start a new conversation." 
-                        : "No users matched your search."}
+                        ? t("Search for users above to start a new conversation.") 
+                        : t("No users matched your search.")}
                   </p>
                </div>
             ) : (
@@ -600,11 +602,11 @@ export function InternalMessagesPanel() {
                <div className="w-16 h-16 bg-surface-variant rounded-full flex items-center justify-center text-on-surface-variant mb-2">
                   <Edit2 className="w-8 h-8 opacity-50" />
                </div>
-               <h3 className="font-label text-xl text-on-surface">Compose Message</h3>
-               <p className="font-body text-on-surface-variant mb-6">Select a user below to start a conversation</p>
+               <h3 className="font-label text-xl text-on-surface">{t("Compose Message")}</h3>
+               <p className="font-body text-on-surface-variant mb-6">{t("Select a user below to start a conversation")}</p>
                
                <div className="w-full text-left relative">
-                  <label className="block text-sm font-medium text-on-surface-variant mb-2">Select Recipient</label>
+                  <label className="block text-sm font-medium text-on-surface-variant mb-2">{t("Select Recipient")}</label>
                   <select 
                     className="w-full bg-surface border border-outline-variant rounded-xl p-3 text-on-surface outline-none focus:border-primary transition-colors appearance-none pr-10"
                     value=""
@@ -613,7 +615,7 @@ export function InternalMessagesPanel() {
                        setShowCompose(false);
                     }}
                   >
-                    <option value="" disabled>Choose a user...</option>
+                    <option value="" disabled>{t("Choose a user...")}</option>
                     {(() => {
                       const desiredOrder = ['Admin', 'Teacher', 'Staff', 'Volunteer', 'Parent', 'Student'];
                       

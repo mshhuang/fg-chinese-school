@@ -7,8 +7,12 @@ import { supabase } from "../lib/supabase";
 import { QRCodeBadge } from "../components/QRCodeBadge";
 import { PhotoCarousel } from "../components/PhotoCarousel";
 import { QrCode, CheckCircle2 } from "lucide-react";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function StudentPortal() {
+  const { t } = useLanguage();
+
   const [userName, setUserName] = useState("");
   const [showQrCode, setShowQrCode] = useState(false);
   const [userId, setUserId] = useState("");
@@ -99,7 +103,7 @@ export default function StudentPortal() {
                     const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
                     setProgramDays(diff >= 0 ? diff : 0);
                  } else {
-                    const { data: userData } = await supabase.from('users').select('created_at').eq('id', user.id).single();
+                    const { data: userData } = await supabase.from('users').select('created_at').eq('user_id', user.id).single();
                     if (userData?.created_at) {
                        const start = new Date(userData.created_at);
                        const now = new Date();
@@ -112,7 +116,7 @@ export default function StudentPortal() {
                const { data: userData } = await supabase
                  .from('users')
                  .select('created_at')
-                 .eq('id', user.id)
+                 .eq('user_id', user.id)
                  .single();
                if (userData?.created_at) {
                   const start = new Date(userData.created_at);
@@ -215,13 +219,12 @@ export default function StudentPortal() {
         </div>
         
         <div className="flex-1 text-center md:text-left z-10">
-          <h1 className="font-title text-2xl md:text-4xl text-primary font-bold mb-2">Welcome back, {userName}!</h1>
+          <h1 className="font-title text-2xl md:text-4xl text-primary font-bold mb-2">{t('Welcome back,')} {userName}!</h1>
           <p className="font-body text-lg text-on-surface-variant mb-4">Your journey of knowledge continues. You're doing great!</p>
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-4">
             <button onClick={() => setShowQrCode(true)} className="font-caption text-sm bg-primary-container hover:bg-primary-container/80 text-on-primary-container px-4 py-1.5 rounded-full flex items-center gap-2 transition-colors font-bold shadow-sm">
-              <QrCode className="w-4 h-4" /> Student ID Badge
-            </button>
+              <QrCode className="w-4 h-4" />{t('Student ID Badge')}</button>
             <span className={`font-caption text-sm px-4 py-1.5 rounded-full flex items-center gap-2 font-bold ${checkInStatus === 'checked_in' ? 'bg-[#E8F5E9] text-[#2E7D32] border border-[#2E7D32]/30' : checkInStatus === 'checked_out' ? 'bg-[#FFF3E0] text-[#E65100] border border-[#E65100]/30' : 'bg-surface-variant text-on-surface-variant border border-outline-variant/30'}`}>
               <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
                 if (!checkInTime) return `${userName} is in the school`;
@@ -235,7 +238,7 @@ export default function StudentPortal() {
                 const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' }) + ' EST';
                 const dateStr = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
                 return `${userName} is ready to go home。${timeStr} on ${dateStr}`;
-              })() : 'Not Checked In'}
+              })() : t('Not Checked In')}
             </span>
           </div>
 
@@ -271,15 +274,13 @@ export default function StudentPortal() {
            
            <div className="flex-1">
               <div className="flex items-center gap-3 mb-1">
-                 <h3 className="font-label text-base text-on-surface font-bold">School Announcements</h3>
+                 <h3 className="font-label text-base text-on-surface font-bold">{t('School Announcements')}</h3>
                  <span className="font-caption text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-sm uppercase tracking-wide font-bold">New</span>
               </div>
               <p className="font-body text-on-surface-variant text-sm">{announcement.title}</p>
            </div>
            
-           <Link to="/student/announcements" className="font-label text-sm text-primary font-bold hover:underline shrink-0">
-              Read More
-           </Link>
+           <Link to="/student/announcements" className="font-label text-sm text-primary font-bold hover:underline shrink-0">{t('Read More')}</Link>
         </div>
         )}
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, {  useState, useEffect  } from 'react';
+import { useLanguage } from '../lib/i18n';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ChevronLeft,
@@ -56,6 +57,7 @@ export function PhotoCarousel({
   viewerRole = 'all',
   compact = false
 }: PhotoCarouselProps) {
+  const { t } = useLanguage();
   const [photos, setPhotos] = useState<ClassPhotoItem[]>([]);
   const [allRolePhotos, setAllRolePhotos] = useState<ClassPhotoItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -99,11 +101,54 @@ export function PhotoCarousel({
     setTimeout(() => setNotificationMsg(null), 3000);
   };
 
-  const loadPhotos = async () => {
-    const roleAll = await getPhotos(viewerRole, 'all_unfiltered');
-    setAllRolePhotos(roleAll);
+        const loadPhotos = async () => {
+    let roleAll = await getPhotos(viewerRole, 'all_unfiltered');
+    let data = await getPhotos(viewerRole, selectedClassFilter);
+    
+    // Additional filtering for teachers
+    if (viewerRole === 'teacher' && currentUser) {
+        try {
+            const currentUserId = currentUser.id || currentUser.user_id;
+            const realUserId = currentUserId?.startsWith('user_') ? currentUserId.replace('user_', '') : currentUserId;
+            
+            // Fetch all classes and filter locally to avoid Supabase array syntax issues
+            const { data: clsData } = await supabase.from('classes').select('class_name, primary_teacher_id, co_teacher_id, co_teachers');
+                
+            if (clsData) {
+                const teacherClasses = clsData.filter((c: any) => {
+                    if (c.primary_teacher_id === realUserId || c.co_teacher_id === realUserId) return true;
+                    if (c.co_teachers && Array.isArray(c.co_teachers) && c.co_teachers.includes(realUserId)) return true;
+                    return false;
+                });
+                const teacherClassNames = teacherClasses.map((c: any) => c.class_name);
+                
+                const filterTeacherPhotos = (photos: any[]) => {
+                    return photos.filter(p => {
+                        if (p.audience_type === 'all') return true;
+                        
+                        // Check if photo belongs to teacher's classes
+                        if (p.class_names && Array.isArray(p.class_names)) {
+                            if (p.class_names.some((cn: string) => teacherClassNames.includes(cn))) return true;
+                        }
+                        if (p.class_name) {
+                            const parts = p.class_name.split(',').map((s: string) => s.trim());
+                            if (parts.some((cn: string) => teacherClassNames.includes(cn))) return true;
+                        }
+                        
+                        return false;
+                    });
+                };
+                
+                roleAll = filterTeacherPhotos(roleAll);
+                data = filterTeacherPhotos(data);
+            }
 
-    const data = await getPhotos(viewerRole, selectedClassFilter);
+        } catch (e) {
+            console.error("Error filtering teacher classes", e);
+        }
+    }
+    
+    setAllRolePhotos(roleAll);
     setPhotos(data);
     if (data.length > 0 && currentIndex >= data.length) {
       setCurrentIndex(0);
@@ -111,11 +156,22 @@ export function PhotoCarousel({
   };
 
   useEffect(() => {
-    async function fetchClasses() {
+        async function fetchClasses() {
       try {
-        const { data } = await supabase.from('classes').select('class_name');
+        const { data } = await supabase.from('classes').select('class_name, primary_teacher_id, co_teacher_id, co_teachers');
         if (data) {
-          const names = data.map((c: any) => c.class_name).filter(Boolean);
+          let filteredClasses = data;
+          if (viewerRole === 'teacher' && currentUser) {
+              const currentUserId = currentUser.id || currentUser.user_id;
+              const realUserId = currentUserId?.startsWith('user_') ? currentUserId.replace('user_', '') : currentUserId;
+              
+              filteredClasses = data.filter((c: any) => {
+                  if (c.primary_teacher_id === realUserId || c.co_teacher_id === realUserId) return true;
+                  if (c.co_teachers && Array.isArray(c.co_teachers) && c.co_teachers.includes(realUserId)) return true;
+                  return false;
+              });
+          }
+          const names = filteredClasses.map((c: any) => c.class_name).filter(Boolean);
           setDbClasses(names);
         }
       } catch (e) {}
@@ -125,7 +181,7 @@ export function PhotoCarousel({
     const handleUpdate = () => loadPhotos();
     window.addEventListener('photos_updated', handleUpdate);
     return () => window.removeEventListener('photos_updated', handleUpdate);
-  }, [viewerRole, selectedClassFilter]);
+  }, [viewerRole, selectedClassFilter, currentUser]);
 
   // Rotate timer (5s interval)
   useEffect(() => {
@@ -158,7 +214,7 @@ export function PhotoCarousel({
   };
 
   const selectAllClasses = () => {
-    const allCls = Array.from(new Set([...SCHOOL_CLASSES, ...dbClasses]));
+    const allCls = viewerRole === "teacher" ? dbClasses : Array.from(new Set([...SCHOOL_CLASSES, ...dbClasses]));
     setSelectedClasses(allCls);
   };
 
@@ -187,11 +243,11 @@ export function PhotoCarousel({
       setAudienceTarget('class');
       const existingClasses = photo.class_names && photo.class_names.length > 0
         ? photo.class_names
-        : (photo.class_name ? photo.class_name.split(',').map(s => s.trim()).filter(Boolean) : [SCHOOL_CLASSES[0]]);
+        : (photo.class_name ? photo.class_name.split(',').map(s => s.trim()).filter(Boolean) : (viewerRole === "teacher" && dbClasses.length > 0 ? [dbClasses[0]] : [SCHOOL_CLASSES[0]]));
       
       setSelectedClasses(existingClasses);
 
-      const predefined = new Set([...SCHOOL_CLASSES, ...dbClasses]);
+      const predefined = new Set(viewerRole === "teacher" ? dbClasses : [...SCHOOL_CLASSES, ...dbClasses]);
       const customItems = existingClasses.filter(c => !predefined.has(c));
       if (customItems.length > 0) {
         setCustomClass(customItems.join(', '));
@@ -462,7 +518,7 @@ export function PhotoCarousel({
 
   const filterClassOptions = isStudentOrParent
     ? availableClassesInRolePhotos
-    : Array.from(new Set([...SCHOOL_CLASSES, ...dbClasses, ...availableClassesInRolePhotos])).filter(c => c !== 'School-Wide');
+    : Array.from(new Set(viewerRole === "teacher" ? [...dbClasses, ...availableClassesInRolePhotos] : [...SCHOOL_CLASSES, ...dbClasses, ...availableClassesInRolePhotos])).filter(c => c !== 'School-Wide');
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
@@ -489,13 +545,13 @@ export function PhotoCarousel({
           </div>
           <div>
             <h2 className="font-title text-lg font-bold text-on-surface flex items-center gap-2">
-              Classroom Photo Highlights
+              {t("Classroom Photo Highlights")}
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-label font-bold">
-                Rotating Carousel
+                {t("Rotating Carousel")}
               </span>
             </h2>
             <p className="text-xs text-on-surface-variant">
-              Classroom activities, student projects & more
+              {t("Classroom activities, student projects & more")}
             </p>
           </div>
         </div>
@@ -509,7 +565,7 @@ export function PhotoCarousel({
               onChange={(e) => setSelectedClassFilter(e.target.value)}
               className="bg-transparent border-none outline-none font-bold text-xs text-on-surface cursor-pointer pr-1"
             >
-              <option value="all">All Classes & Audience</option>
+              <option value="all">{t("All Classes & Audience")}</option>
               {filterClassOptions.map(cls => (
                 <option key={cls} value={cls}>{cls}</option>
               ))}
@@ -744,7 +800,7 @@ export function PhotoCarousel({
             <div className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-primary shrink-0" />
               <h4 className="font-title font-bold text-base text-on-surface">
-                Photo Information
+                {t("Photo Information")}
               </h4>
             </div>
             <div className="flex items-center gap-2 text-xs text-on-surface-variant font-medium">
@@ -935,7 +991,7 @@ export function PhotoCarousel({
               <div className="flex justify-between items-center border-b border-outline-variant/20 pb-4">
                 <h2 className="font-title text-xl font-bold text-on-surface flex items-center gap-2">
                   {editingPhotoId ? <Edit3 className="w-5 h-5 text-primary" /> : <Upload className="w-5 h-5 text-primary" />}
-                  {editingPhotoId ? 'Edit Photo Highlight' : 'Post Photo Highlight'}
+                  {editingPhotoId ? t("Edit Photo Highlight") : t("Post Photo")}
                 </h2>
                 <button
                   onClick={() => setShowUploadModal(false)}
@@ -1021,17 +1077,14 @@ export function PhotoCarousel({
                       className="pt-2 flex flex-col gap-2.5"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-on-surface">
-                          Select Specific Classes ({selectedClasses.length} selected):
+                        <span className="text-xs font-bold text-on-surface">{t("Select Specific Classes")} ({selectedClasses.length} selected):
                         </span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={selectAllClasses}
                             className="text-[11px] text-primary font-bold hover:underline"
-                          >
-                            Select All
-                          </button>
+                          >{t("Select All")}</button>
                           <span className="text-outline-variant">•</span>
                           <button
                             type="button"
@@ -1045,7 +1098,7 @@ export function PhotoCarousel({
 
                       {/* Class Choice Chips / Checkboxes */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1.5 border border-outline-variant/30 rounded-2xl bg-surface-container-low">
-                        {Array.from(new Set([...SCHOOL_CLASSES, ...dbClasses])).map(cls => {
+                        {Array.from(new Set(viewerRole === "teacher" ? dbClasses : [...SCHOOL_CLASSES, ...dbClasses])).map(cls => {
                           const isSelected = selectedClasses.includes(cls);
                           return (
                             <button

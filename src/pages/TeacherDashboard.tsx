@@ -8,9 +8,11 @@ import { QRCodeBadge } from "../components/QRCodeBadge";
 import { PhotoCarousel } from "../components/PhotoCarousel";
 import { QrCode } from "lucide-react";
 import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";
+import { useLanguage } from "../lib/i18n";
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [latestAnnouncement, setLatestAnnouncement] = useState<any>(null);
   const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
@@ -43,9 +45,9 @@ export default function TeacherDashboard() {
     }
     
     const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning");
-    else if (hour < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
+    if (hour < 12) setGreeting(t("Good morning"));
+    else if (hour < 18) setGreeting(t("Good afternoon"));
+    else setGreeting(t("Good evening"));
 
     fetchLatestAnnouncement();
     fetchRecentSubmissions(currentUser);
@@ -237,7 +239,7 @@ export default function TeacherDashboard() {
         setUsersMap(uMap);
      }
      
-     const { data } = await supabase.from('classes').select('*, users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name), co_teachers');
+     const { data } = await supabase.from('classes').select('class_id, class_name, primary_teacher_id, co_teacher_id, co_teachers, users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)');
      if (data) {
         data.sort((a, b) => {
            if (a.primary_teacher_id === teacherId && b.primary_teacher_id !== teacherId) return -1;
@@ -324,16 +326,16 @@ export default function TeacherDashboard() {
            <h2 className="font-display text-4xl text-on-surface font-bold">
               {greeting}, {formatTeacherName(user?.first_name, user?.last_name, 'Teacher')}
            </h2>
-           <p className="font-body text-lg text-on-surface-variant mt-2">You have {assignedClasses.filter(c => c.primary_teacher_id === (user?.user_id || user?.id)).length} homeroom classes and {assignedClasses.filter(c => c.primary_teacher_id !== (user?.user_id || user?.id)).length} co-teacher classes.</p>
+           <p className="font-body text-lg text-on-surface-variant mt-2">{t("You have")} {assignedClasses.filter(c => c.primary_teacher_id === (user?.user_id || user?.id)).length} {t("homeroom classes and")} {assignedClasses.filter(c => c.primary_teacher_id !== (user?.user_id || user?.id)).length} {t("co-teacher classes.")}</p>
         </div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
             <button onClick={() => setShowQrCode(true)} className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-label font-bold transition-colors shadow-sm bg-primary-container text-on-primary-container hover:bg-primary-container/80">
                <QrCode className="w-5 h-5" /> 
-               Teacher ID Badge
+               {t("Teacher ID Badge")}
             </button>
             <button onClick={() => navigate('/teacher/scanner')} className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-label font-bold transition-colors shadow-sm bg-secondary-container text-on-secondary-container hover:bg-secondary-container/80">
                <CheckCircle2 className="w-5 h-5" /> 
-               QR Scanner
+               {t("QR Scanner")}
             </button>
             <div className="relative flex-1 md:flex-none">
                {clockStatus === 'clocked_in' && (
@@ -352,7 +354,7 @@ export default function TeacherDashboard() {
                    }`}
                >
                   <Clock className="w-5 h-5 fill-current opacity-80" /> 
-                  {clockStatus === 'loading' ? 'Loading...' : clockStatus === 'clocked_in' ? 'Clock Out' : 'Clock In'}
+                  {clockStatus === 'loading' ? 'Loading...' : clockStatus === 'clocked_in' ? t("Clock Out") : t("Clock In")}
                </button>
             </div>
         </div>
@@ -368,7 +370,7 @@ export default function TeacherDashboard() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="font-title text-base font-bold text-on-surface">Active Clock-In Session Detected</h4>
+                <h4 className="font-title text-base font-bold text-on-surface">{t("Active Clock-In Session Detected")}</h4>
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                   Clock-Out Pending
@@ -384,7 +386,7 @@ export default function TeacherDashboard() {
             className="shrink-0 px-5 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-label font-bold text-sm transition-all shadow-sm hover:shadow flex items-center gap-2"
           >
             <Clock className="w-4 h-4" />
-            Clock Out Now
+            {t("Clock Out Now")}
           </button>
         </div>
       )}
@@ -392,7 +394,7 @@ export default function TeacherDashboard() {
       <div className="flex flex-col gap-6">
         {/* Classroom Rotating Photo Carousel */}
         <section className="w-full">
-          <PhotoCarousel showTeacherUpload={true} currentUser={user} />
+          <PhotoCarousel showTeacherUpload={true} currentUser={user} viewerRole="teacher" />
         </section>
 
 
@@ -403,9 +405,7 @@ export default function TeacherDashboard() {
              {/* My Programs */}
              <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] flex flex-col gap-6">
                <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
-                  <BookOpen className="text-primary w-6 h-6" />
-                  Assigned Programs
-               </h3>
+                  <BookOpen className="text-primary w-6 h-6" />{t("Assigned Programs")}</h3>
                <div className="flex flex-col gap-3">
                   {assignedClasses.length > 0 ? assignedClasses.map(cls => (
                      <div key={cls.class_id} className="flex flex-col gap-2 p-4 rounded-xl bg-surface-container-low border border-outline-variant/30">
@@ -452,7 +452,7 @@ export default function TeacherDashboard() {
                         </div>
                      </div>
                   )) : (
-                     <p className="text-sm text-on-surface-variant italic">No classes assigned yet.</p>
+                     <p className="text-sm text-on-surface-variant italic">{t("No classes assigned yet.")}</p>
                   )}
                </div>
             </div>
@@ -460,9 +460,7 @@ export default function TeacherDashboard() {
              <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] relative overflow-hidden opacity-50 grayscale pointer-events-none">
                  <div className="flex justify-between items-center z-10 relative mb-8 border-b border-surface-variant pb-4">
                     <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
-                       <Calendar className="text-primary w-6 h-6" />
-                       Today's Schedule
-                    </h3>
+                       <Calendar className="text-primary w-6 h-6" />{t("Today's Schedule")}</h3>
                     <span className="font-caption text-sm text-on-surface-variant font-bold">
                        {new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York',  weekday: 'long', month: 'short', day: 'numeric' })}
                     </span>
@@ -636,7 +634,7 @@ export default function TeacherDashboard() {
             studentId={(user?.user_id || user?.id)} 
             studentName={formatTeacherName(user?.first_name, user?.last_name, 'Teacher')} 
             onClose={() => setShowQrCode(false)} 
-            title="Teacher ID Badge"
+            title={t("Teacher ID Badge")}
          />
       )}
 

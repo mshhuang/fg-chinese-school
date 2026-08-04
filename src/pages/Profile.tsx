@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { User, Phone, MapPin, Edit3, HeartPulse, Save, X, CheckCircle2, AlertCircle, Loader2, KeyRound } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { cn } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
+
 
 const toProperCase = (str: string) => {
   if (!str) return '';
@@ -10,6 +12,8 @@ const toProperCase = (str: string) => {
 };
 
 export default function Profile() {
+  const { t } = useLanguage();
+
   const [profile, setProfile] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<any>(null);
@@ -139,8 +143,8 @@ export default function Profile() {
     <div className="p-6 md:p-8 max-w-4xl mx-auto space-y-8 w-full pb-32 md:pb-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="font-display text-4xl text-primary font-bold tracking-tight mb-2">My Information</h1>
-          <p className="font-body text-lg text-on-surface-variant">View and edit your personal details and contact information.</p>
+          <h1 className="font-display text-4xl text-primary font-bold tracking-tight mb-2">{t("My Information")}</h1>
+          <p className="font-body text-lg text-on-surface-variant">{t("View and edit your personal details and contact information.")}</p>
         </div>
         {!isEditing ? (
           <div className="flex items-center gap-3 shrink-0">
@@ -148,7 +152,7 @@ export default function Profile() {
               onClick={() => setIsEditing(true)}
               className="flex items-center gap-2 px-6 py-2.5 bg-primary text-on-primary font-label text-sm font-bold rounded-full hover:bg-primary/90 transition-colors shadow-sm shrink-0"
             >
-              <Edit3 className="w-4 h-4" /> Edit Profile
+              <Edit3 className="w-4 h-4" /> {t("Edit Profile")}
             </button>
           </div>
         ) : (
@@ -184,11 +188,11 @@ export default function Profile() {
 
       <div className={cn("bg-surface-container-lowest p-8 rounded-3xl border shadow-sm relative overflow-hidden transition-colors", isEditing ? "border-primary/40 ring-1 ring-primary/20" : "border-outline-variant/40")}>
         <h2 className="font-title text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
-           <User className="w-5 h-5 text-primary" /> Personal Details
+           <User className="w-5 h-5 text-primary" /> {t("Personal Details")}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">First Name</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('First Name')}</p>
               {isEditing ? (
                  <input type="text" name="first_name" value={formData.first_name || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
@@ -196,7 +200,7 @@ export default function Profile() {
               )}
            </div>
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Last Name</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('Last Name')}</p>
               {isEditing ? (
                  <input type="text" name="last_name" value={formData.last_name || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
@@ -204,7 +208,7 @@ export default function Profile() {
               )}
            </div>
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Email</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('Email')}</p>
               {isEditing ? (
                  <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
@@ -212,11 +216,11 @@ export default function Profile() {
               )}
            </div>
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Username</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t("Username")}</p>
               <p className="font-body text-on-surface-variant text-lg bg-surface-variant/30 px-4 py-2 rounded-xl inline-block border border-outline-variant/20">{profile.user_name || '-'}</p>
            </div>
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Date of Birth</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('Date of Birth')}</p>
               {isEditing ? (
                  <input type="date" name="dob" value={formData.dob || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
@@ -224,7 +228,7 @@ export default function Profile() {
               )}
            </div>
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">School</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('School')}</p>
               {isEditing ? (
                  <input type="text" name="school" value={formData.school || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
@@ -232,7 +236,7 @@ export default function Profile() {
               )}
            </div>
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Grade</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('Grade')}</p>
               {isEditing ? (
                  <input type="text" name="grade" value={formData.grade || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
@@ -244,11 +248,11 @@ export default function Profile() {
 
       <div className={cn("bg-surface-container-lowest p-8 rounded-3xl border shadow-sm relative overflow-hidden transition-colors", isEditing ? "border-primary/40 ring-1 ring-primary/20" : "border-outline-variant/40")}>
         <h2 className="font-title text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
-           <Phone className="w-5 h-5 text-primary" /> Contact Information
+           <Phone className="w-5 h-5 text-primary" /> {t("Contact Information")}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Primary Phone</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t("Primary Phone")}</p>
               {isEditing ? (
                  <input type="text" name="phone1" value={formData.phone1 || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
@@ -256,7 +260,7 @@ export default function Profile() {
               )}
            </div>
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Secondary Phone</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t("Secondary Phone")}</p>
               {isEditing ? (
                  <input type="text" name="phone2" value={formData.phone2 || ''} onChange={handleChange} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
@@ -264,7 +268,7 @@ export default function Profile() {
               )}
            </div>
            <div className="md:col-span-2">
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Address</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('Address')}</p>
               {isEditing ? (
                  <textarea name="address" value={formData.address || ''} onChange={handleChange} rows={2} className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base"></textarea>
               ) : (
@@ -276,23 +280,23 @@ export default function Profile() {
 
       <div className={cn("bg-surface-container-lowest p-8 rounded-3xl border shadow-sm relative overflow-hidden transition-colors", isEditing ? "border-primary/40 ring-1 ring-primary/20" : "border-outline-variant/40")}>
         <h2 className="font-title text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
-           <HeartPulse className="w-5 h-5 text-error" /> Health & Emergency
+           <HeartPulse className="w-5 h-5 text-error" /> {t("Health & Emergency")}
         </h2>
         <div className="grid grid-cols-1 gap-6">
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Emergency Contact</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('Emergency Contact')}</p>
               {isEditing ? (
                  <input type="text" name="emergency_contact" value={formData.emergency_contact || ''} onChange={handleChange} placeholder="Name & Phone" className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base" />
               ) : (
-                 <p className="font-body text-on-surface text-lg">{profile.emergency_contact || 'None specified'}</p>
+                 <p className="font-body text-on-surface text-lg">{profile.emergency_contact || t('None specified')}</p>
               )}
            </div>
            <div>
-              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">Medical Conditions / Allergies</p>
+              <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant mb-2 font-bold">{t('Medical Conditions / Allergies')}</p>
               {isEditing ? (
                  <textarea name="medical_condition" value={formData.medical_condition || ''} onChange={handleChange} rows={3} placeholder="List any medical conditions or allergies..." className="w-full px-4 py-2.5 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none font-body text-base"></textarea>
               ) : (
-                 <p className="font-body text-on-surface text-lg">{profile.medical_condition || 'None specified'}</p>
+                 <p className="font-body text-on-surface text-lg">{profile.medical_condition || t('None specified')}</p>
               )}
            </div>
         </div>
@@ -300,10 +304,10 @@ export default function Profile() {
 
       <div className={cn("bg-surface-container-lowest p-8 rounded-3xl border border-outline-variant/40 shadow-sm relative overflow-hidden transition-colors", !isBuilder && "opacity-50 grayscale pointer-events-none")}>
         <h2 className="font-title text-xl font-bold text-on-surface mb-6 flex items-center gap-2">
-           <KeyRound className="w-5 h-5 text-primary" /> Account Security
+           <KeyRound className="w-5 h-5 text-primary" /> {t('Account Security')}
         </h2>
         <div className="flex flex-col gap-4">
-           <p className="font-body text-on-surface-variant text-base">Keep your account secure by updating your password regularly.</p>
+           <p className="font-body text-on-surface-variant text-base">{t('Keep your account secure by updating your password regularly.')}</p>
            <Link to="/change-password" className="px-6 py-2.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant/50 text-on-surface-variant hover:text-on-surface font-label font-bold rounded-full transition-colors flex items-center gap-2 w-fit">
               <KeyRound className="w-4 h-4" /> Change Password
            </Link>

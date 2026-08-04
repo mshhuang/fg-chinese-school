@@ -4,8 +4,12 @@ import { Calendar, Clock, MapPin, Loader2 } from "lucide-react";
 import { SchoolEvent, fetchSchoolEvents } from "../lib/events";
 import { format, parse } from "date-fns";
 import { cn } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function TeacherCalendar() {
+  const { t } = useLanguage();
+
   const [events, setEvents] = useState<SchoolEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,15 +59,15 @@ export default function TeacherCalendar() {
     <div className="w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col gap-8 pb-32 md:pb-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="font-display text-4xl text-primary font-bold tracking-tight">School Calendar</h1>
-          <p className="font-body text-lg text-on-surface-variant mt-2">View upcoming events, holidays, and academic schedules.</p>
+          <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t("School Calendar")}</h1>
+          <p className="font-body text-lg text-on-surface-variant mt-2">{t("View upcoming events, holidays, and academic schedules.")}</p>
         </div>
       </header>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         <div className="xl:col-span-7 bg-surface-container-lowest rounded-3xl border border-surface-variant p-6 md:p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] flex flex-col gap-6">
           <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold mb-2 uppercase tracking-wider">
-             <Calendar className="text-primary w-6 h-6" /> Event Calendar
+             <Calendar className="text-primary w-6 h-6" /> {t("Event Calendar")}
           </h3>
           <EventCalendar roleFilter={["Staff", "Teacher", "Academic", "School", "Holiday", "Extracurricular", "Volunteer"]} />
         </div>
@@ -71,12 +75,12 @@ export default function TeacherCalendar() {
         <div className="xl:col-span-5 flex flex-col gap-2 w-full max-w-md mx-auto">
            <div className="flex flex-col items-center justify-center py-2 relative shrink-0">
                <span className="font-label text-xs font-bold tracking-[0.2em] text-on-surface uppercase mb-3">
-                  EVENTS
+                  {t("EVENTS")}
                </span>
                <div className="relative">
                   <span className="absolute -left-6 top-0 text-base opacity-60">✦</span>
                   <h3 className="font-display text-xl text-on-surface font-medium text-center leading-tight">
-                     Upcoming<br />schedule
+                     {t("Upcoming")}<br />{t("schedule")}
                   </h3>
                   <span className="absolute -right-6 bottom-0 text-base opacity-60">✦</span>
                </div>
@@ -104,9 +108,7 @@ export default function TeacherCalendar() {
                       </div>
                   ))
                ) : (
-                  <div className="text-center py-6 text-on-surface-variant">
-                      No upcoming events.
-                  </div>
+                  <div className="text-center py-6 text-on-surface-variant"> {t("No upcoming events.")} </div>
                )}
            </div>
         </div>

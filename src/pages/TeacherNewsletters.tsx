@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Search, Plus, Clock, Edit3, Trash2, Sparkles, Send, CheckCircle2, FileText, X, Eye, AlertCircle, Newspaper, Filter, Users , ArrowLeft } from "lucide-react";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/i18n";
 
 
 const getRealUserId = (id: string | null | undefined) => {
@@ -11,6 +12,7 @@ const getRealUserId = (id: string | null | undefined) => {
 };
 
 export default function TeacherNewsletters() {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
   const [newsletters, setNewsletters] = useState<any[]>([]);
@@ -347,11 +349,11 @@ export default function TeacherNewsletters() {
        {/* Header */}
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
          <div>
-           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Class Newsletters</h1>
-           <p className="font-body text-lg text-on-surface-variant mt-2">Create newsletters and submit them for approval.</p>
+           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t("Class Newsletters")}</h1>
+           <p className="font-body text-lg text-on-surface-variant mt-2">{t("Create newsletters and submit them for approval.")}</p>
          </div>
          <button onClick={() => { setEditingNewsletterId(null); setTitle(""); setContent(""); setPdfFile(null); setPdfFileObj(null); setPdfName(""); setShowModal(true); }} className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label font-bold hover:bg-primary/90 transition-colors shadow-md w-full md:w-auto justify-center">
-            <Plus className="w-5 h-5" /> Create Newsletter
+            <Plus className="w-5 h-5" /> {t("Create Newsletter")}
          </button>
        </header>
 
@@ -370,7 +372,7 @@ export default function TeacherNewsletters() {
                       : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
                   )}
                 >
-                   {status}
+                   {t(status)}
                 </button>
              ))}
           </div>
@@ -380,7 +382,7 @@ export default function TeacherNewsletters() {
              <Search className="w-5 h-5 text-on-surface-variant" />
              <input 
                type="text" 
-               placeholder="Search newsletters..." 
+               placeholder={t("Search newsletters...")} 
                className="bg-transparent border-none outline-none font-body text-sm w-full"
                value={searchQuery}
                onChange={(e) => setSearchQuery(e.target.value)}
@@ -409,7 +411,7 @@ export default function TeacherNewsletters() {
                         news.status === "Pending Approval" ? <Clock className="w-3 h-3" /> :
                         news.status === "Rejected" ? <AlertCircle className="w-3 h-3" /> :
                         <Edit3 className="w-3 h-3" />}
-                       {news.status}
+                       {t(news.status)}
                     </span>
                     <div className="flex gap-2">
                        <button onClick={() => openViewer(news)} className="w-8 h-8 rounded-full hover:bg-primary/10 hover:text-primary flex items-center justify-center text-on-surface-variant transition-colors" title="View Full">
@@ -492,7 +494,7 @@ export default function TeacherNewsletters() {
           {filteredNewsletters.length === 0 && (
              <div className="col-span-full flex flex-col items-center justify-center p-12 bg-surface-container-low border border-dashed border-outline-variant/40 rounded-3xl">
                 <Newspaper className="w-12 h-12 text-on-surface-variant opacity-50 mb-4" />
-                <p className="font-body text-lg text-on-surface font-medium">No newsletters found</p>
+                <p className="font-body text-lg text-on-surface font-medium">{t("No newsletters found")}</p>
              </div>
           )}
        </div>
@@ -502,7 +504,7 @@ export default function TeacherNewsletters() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm animate-in fade-in duration-200">
              <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-xl flex flex-col max-h-[90vh]">
                 <div className="flex items-center justify-between mb-6">
-                   <h2 className="text-2xl font-display font-bold text-on-surface">Create Newsletter</h2>
+                   <h2 className="text-2xl font-display font-bold text-on-surface">{t("Create Newsletter")}</h2>
                    <button onClick={() => setShowModal(false)} disabled={isUploading} className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant">
                       <X className="w-5 h-5" />
                    </button>
@@ -602,7 +604,7 @@ export default function TeacherNewsletters() {
        {/* PDF Viewer Modal */}
        {showPdfModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface/80 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl w-full max-w-4xl h-[90vh] shadow-xl flex flex-col overflow-hidden mx-auto">
+             <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-3xl w-full max-w-[95vw] md:max-w-7xl h-[95vh] shadow-xl flex flex-col overflow-hidden mx-auto">
                 <div className="flex items-center justify-between p-4 border-b border-outline-variant/20 bg-surface-container-low">
                    <div className="flex items-center gap-3">
                        <button onClick={() => setShowPdfModal(null)} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-surface-variant text-on-surface-variant" title="Back to previous page">

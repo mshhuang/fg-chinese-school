@@ -3,8 +3,12 @@ import { cn } from "../lib/utils";
 import { ComposeMessageModal } from "../components/ComposeMessageModal";
 import { InternalMessagesPanel } from "../components/InternalMessagesPanel";
 import { GmailPanel } from "../components/GmailPanel";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function StaffMessages() {
+  const { t } = useLanguage();
+
   const [chatType, setChatType] = useState<"internal" | "external">("internal");
   const [showCompose, setShowCompose] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
@@ -24,7 +28,7 @@ export default function StaffMessages() {
   return (
     <div className="w-full max-w-[1600px] mx-auto flex flex-col lg:h-screen lg:overflow-hidden bg-background">
        <header className="px-6 md:px-8 py-8 md:py-10 pb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-         <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Messages</h1>
+         <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t("Messages")}</h1>
          
          {/* Internal / External Toggle */}
          {userRole === 'builder' && (

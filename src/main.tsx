@@ -63,11 +63,15 @@ console.warn = (...args) => {
     });
 };
 
+import { LanguageProvider } from './lib/i18n';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ErrorDisplay><App /></ErrorDisplay>
+        <LanguageProvider>
+          <ErrorDisplay><App /></ErrorDisplay>
+        </LanguageProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,

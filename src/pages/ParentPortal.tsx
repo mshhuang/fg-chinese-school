@@ -7,8 +7,12 @@ import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { ParentChatbot } from "../components/ParentChatbot";
 import { PhotoCarousel } from "../components/PhotoCarousel";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function ParentPortal() {
+  const { t } = useLanguage();
+
   const [activeChild, setActiveChild] = useState<string>("mei");
   const [children, setChildren] = useState<any[]>([]);
   const [announcement, setAnnouncement] = useState<any>(null);
@@ -173,9 +177,7 @@ export default function ParentPortal() {
               </p>
            </div>
            
-           <a href="/parent/announcements" className="font-label text-sm text-primary font-bold hover:underline shrink-0 px-4">
-              Read More
-           </a>
+           <a href="/parent/announcements" className="font-label text-sm text-primary font-bold hover:underline shrink-0 px-4">{t('Read More')}</a>
         </div>
         )}
 
@@ -185,13 +187,10 @@ export default function ParentPortal() {
            
            <div className="flex justify-between items-center z-10 relative mb-8">
               <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
-                 <Sun className="text-primary w-6 h-6" />
-                 Daily Snapshot
-              </h3>
+                 <Sun className="text-primary w-6 h-6" />{t('Daily Snapshot')}</h3>
               <div className="flex items-center gap-3">
                  <button onClick={() => setShowQrCode(true)} className="font-caption text-sm bg-primary/10 hover:bg-primary/20 text-primary px-4 py-1.5 rounded-full flex items-center gap-2 transition-colors font-bold">
-                    <QrCode className="w-4 h-4" /> Student ID Badge
-                 </button>
+                    <QrCode className="w-4 h-4" />{t('Student ID Badge')}</button>
                  <span className={`font-caption text-sm px-4 py-1.5 rounded-full flex items-center gap-2 border font-bold ${checkInStatus === 'checked_in' ? 'bg-[#E8F5E9] text-[#2E7D32] border-[#2E7D32]/30' : checkInStatus === 'checked_out' ? 'bg-[#FFF3E0] text-[#E65100] border-[#E65100]/30' : 'bg-surface-variant text-on-surface-variant border-outline-variant/30'}`}>
                     <CheckCircle2 className="w-4 h-4" /> {checkInStatus === 'loading' ? 'Loading...' : checkInStatus === 'checked_in' ? (() => {
                        const cName = children.find(c => c.user_id === activeChild)?.first_name || (activeChild === 'mei' ? 'Mei' : activeChild === 'wei' ? 'Wei' : 'Student');
@@ -207,7 +206,7 @@ export default function ParentPortal() {
                         const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' }) + ' EST';
                         const dateStr = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
                         return `${cName} is ready to go home。${timeStr} on ${dateStr}`;
-                    })() : 'Not Checked In'}
+                    })() : t('Not Checked In')}
                  </span>
               </div>
            </div>
@@ -216,7 +215,7 @@ export default function ParentPortal() {
               {/* Homework */}
               <div className="bg-surface-container-low p-6 rounded-2xl border-b-4 border-primary-container/40 hover:border-primary-container transition-colors shadow-sm">
                  <div className="flex items-start justify-between mb-4">
-                    <span className="font-label text-sm text-on-surface-variant">Homework</span>
+                    <span className="font-label text-sm text-on-surface-variant">{t('Homework')}</span>
                     <FileText className="text-secondary-container w-5 h-5" />
                  </div>
                  <p className="font-display text-2xl font-bold text-on-surface">2 Pending</p>
@@ -239,9 +238,7 @@ export default function ParentPortal() {
         <div className="md:col-span-4 bg-surface-container-lowest rounded-3xl border border-surface-variant p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] flex flex-col gap-6">
            <div className="flex justify-between items-center">
               <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
-                 <MessageSquare className="text-primary w-6 h-6" />
-                 Messages
-              </h3>
+                 <MessageSquare className="text-primary w-6 h-6" />{t('Messages')}</h3>
               <div className="w-6 h-6 bg-error-container text-on-error-container rounded-full flex items-center justify-center font-label text-xs font-bold shadow-sm">1</div>
            </div>
            

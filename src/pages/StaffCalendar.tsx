@@ -4,8 +4,12 @@ import { Calendar, Clock, MapPin, Loader2 } from "lucide-react";
 import { SchoolEvent, fetchSchoolEvents } from "../lib/events";
 import { format, parse } from "date-fns";
 import { cn } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function StaffCalendar() {
+  const { t } = useLanguage();
+
   const [events, setEvents] = useState<SchoolEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,19 +47,19 @@ export default function StaffCalendar() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Staff Calendar</h1>
-          <p className="font-body text-lg text-on-surface-variant mt-2">View upcoming events, shifts, and school activities.</p>
+          <p className="font-body text-lg text-on-surface-variant mt-2">{t("View upcoming events, shifts, and school activities.")}</p>
         </div>
       </header>
 
       <div className="bg-surface-container-lowest rounded-3xl border border-surface-variant p-6 md:p-8 shadow-[0_4px_20px_rgba(212,175,55,0.05)] flex flex-col gap-6">
         <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold mb-2">
-           <Calendar className="text-primary w-6 h-6" /> Event Calendar
+           <Calendar className="text-primary w-6 h-6" /> {t("Event Calendar")}
         </h3>
         <EventCalendar roleFilter={["Staff", "School", "Holiday"]} />
       </div>
 
       <div className="flex flex-col gap-6 mt-4">
-        <h2 className="font-display text-2xl font-bold text-on-surface">Upcoming Events</h2>
+        <h2 className="font-display text-2xl font-bold text-on-surface">{t("Upcoming Events")}</h2>
         {loading ? (
         <div className="flex justify-center items-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />

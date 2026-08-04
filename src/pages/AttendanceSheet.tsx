@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { ClipboardEdit, Search, Loader2, ArrowLeft, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useLanguage } from "../lib/i18n";
 import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";
 
 export default function AttendanceSheet() {
+  const { t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
   const stateClass = location.state?.class;
@@ -250,9 +252,9 @@ export default function AttendanceSheet() {
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto w-full">
-      <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">Attendance Sheet</h1>
+      <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">{t("Attendance Sheet")}</h1>
       <p className="font-body text-on-surface-variant max-w-2xl text-lg mb-8">
-        Submit the student attendance by class for today's sessions.
+        {t("Submit the student attendance by class for today\'s sessions.")}
       </p>
 
       <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-[0_8px_30px_rgba(212,175,55,0.05)]">
@@ -260,9 +262,7 @@ export default function AttendanceSheet() {
           <>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <h2 className="font-title text-2xl text-on-surface font-bold flex items-center gap-3">
-                 <ClipboardEdit className="text-secondary w-6 h-6" /> 
-                 Select a Class
-              </h2>
+                 <ClipboardEdit className="text-secondary w-6 h-6" /> {t("Select a Class")} </h2>
               <div className="relative w-full md:w-64">
                 <Search className="w-4 h-4 absolute left-3 top-3 text-on-surface-variant" />
                 <input 
@@ -345,7 +345,7 @@ export default function AttendanceSheet() {
                         className="bg-primary text-on-primary px-6 py-1.5 rounded-xl font-label text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
                      >
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                        {saving ? 'Saving...' : 'Submit'}
+                        {saving ? 'Saving...' : t("Submit")}
                      </button>
                   )}
                </div>
@@ -367,10 +367,10 @@ export default function AttendanceSheet() {
                        <thead className="bg-surface-container-low border-b border-outline-variant/30">
                          <tr>
                            <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider w-16 text-center">#</th>
-                                                      <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">Student Name</th>
-                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider w-64 text-center">Building Status</th>
-                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider w-48 text-center">Attendance</th>
-                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider min-w-[200px]">Notes</th>
+                                                      <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider">{t("Student Name")}</th>
+                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider w-64 text-center">{t("Building Status")}</th>
+                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider w-48 text-center">{t("Attendance")}</th>
+                           <th className="py-3 px-4 font-label font-bold text-sm text-on-surface-variant uppercase tracking-wider min-w-[200px]">{t("Notes")}</th>
                          </tr>
                        </thead>
                        <tbody className="divide-y divide-outline-variant/10">
@@ -396,9 +396,7 @@ export default function AttendanceSheet() {
                                         <button
                                            onClick={() => toggleClockIn(s.student_id, 'checked_in')}
                                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${clockIns[s.student_id] === 'checked_out' ? 'bg-amber-500 border-amber-600 text-white shadow-md scale-105' : 'bg-surface-variant border-outline-variant/30 text-on-surface-variant hover:bg-surface-variant/80'}`}
-                                        >
-                                           Ready to Go Home
-                                        </button>
+                                        > {t("Ready to Go Home")} </button>
                                      </div>
                                      <span className={`text-[11px] font-label ${clockIns[s.student_id] === 'checked_in' ? 'text-[#2E7D32]' : clockIns[s.student_id] === 'checked_out' ? 'text-[#2E7D32] font-bold' : 'text-on-surface-variant'}`}>
                                         {clockIns[s.student_id] === 'checked_in'

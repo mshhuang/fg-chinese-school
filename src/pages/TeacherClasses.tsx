@@ -1,3 +1,4 @@
+import { useLanguage } from "../lib/i18n";
 import React, { useState, useEffect } from "react";
 import { Search, Filter, Users, BookOpen, Clock, X, ArrowRight, Calendar, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -5,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { cn, formatTeacherName } from "../lib/utils";
 
 export default function TeacherClasses() {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [classesData, setClassesData] = useState<any[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, any>>({});
@@ -50,7 +52,7 @@ export default function TeacherClasses() {
           setSchoolScheduleUrl(settingsData.content);
        }
        
-       const { data: clsData } = await supabase.from('classes').select('*, enrollments(count), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name), co_teachers');
+       const { data: clsData } = await supabase.from('classes').select('class_id, class_name, primary_teacher_id, co_teacher_id, co_teachers, enrollments(count), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)');
        
        if (clsData) {
          setClassesData(clsData);
@@ -72,8 +74,8 @@ export default function TeacherClasses() {
        {/* Header */}
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
          <div>
-           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Classes</h1>
-           <p className="font-body text-lg text-on-surface-variant mt-2">Manage your classes and students.</p>
+           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t("Classes")}</h1>
+           <p className="font-body text-lg text-on-surface-variant mt-2">{t("Manage your classes and students.")}</p>
          </div>
        </header>
 
@@ -89,7 +91,7 @@ export default function TeacherClasses() {
                    : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
                )}
              >
-                My Classes
+                {t("My Classes")}
              </button>
              <button
                onClick={() => setViewMode('all_classes')}
@@ -100,14 +102,14 @@ export default function TeacherClasses() {
                    : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
                )}
              >
-                All Classes
+                {t("All Classes")}
              </button>
              <button
                onClick={() => setSchoolScheduleModalOpen(true)}
                className="whitespace-nowrap px-6 py-2.5 rounded-full font-label text-sm transition-all border font-bold shrink-0 bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50 flex items-center gap-2"
              >
                 <Calendar className="w-4 h-4" />
-                School Schedule
+                {t("School Schedule")}
              </button>
           </div>
 
@@ -144,7 +146,7 @@ export default function TeacherClasses() {
                                   ? "bg-primary-container text-on-primary-container"
                                   : "bg-secondary-container text-on-secondary-container"
                            )}>
-                              {cls.primary_teacher_id === currentUserId ? "Homeroom Teacher" : "Co-Teacher"}
+                              {cls.primary_teacher_id === currentUserId ? t("Homeroom Teacher") : t("Co-Teacher")}
                            </span>
                        </div>
                        <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider font-label bg-primary-container/20 text-primary border border-primary/20">
@@ -159,7 +161,7 @@ export default function TeacherClasses() {
                              <span className="text-on-surface font-medium">{formatTeacherName(cls.users?.first_name, cls.users?.last_name, 'Teacher')}</span>
                           </div>
                                                     <div className="text-sm">
-                            <span className="font-bold text-on-surface-variant">Co-Teacher: </span>
+                            <span className="font-bold text-on-surface-variant">{t("Co-Teacher")}: </span>
                             <span className="text-on-surface font-medium">
                                {(() => {
                                   const allCoTeachers = [
@@ -190,11 +192,11 @@ export default function TeacherClasses() {
                        </div>
                        <div className="flex items-center gap-3 text-on-surface-variant">
                          <Clock className="w-4 h-4 shrink-0" />
-                         <span className="font-body text-sm">Schedule TBD</span>
+                         <span className="font-body text-sm">{t("Schedule TBD")}</span>
                        </div>
                        <div className="flex items-center gap-3 text-on-surface-variant">
                          <BuildingIcon className="w-4 h-4 shrink-0" />
-                         <span className="font-body text-sm">Room TBD</span>
+                         <span className="font-body text-sm">{t("Room TBD")}</span>
                        </div>
                     </div>
 
@@ -207,7 +209,7 @@ export default function TeacherClasses() {
                     <div className="flex items-center justify-between pt-4 border-t border-outline-variant/20 mt-auto">
                        <div className="flex items-center gap-2 text-on-surface-variant">
                           <Users className="w-4 h-4 shrink-0" />
-                          <span className="font-label text-sm font-bold">{cls.enrollments?.[0]?.count || 0} Students Enrolled</span>
+                          <span className="font-label text-sm font-bold">{cls.enrollments?.[0]?.count || 0} {t("Students Enrolled")}</span>
                        </div>
                        <div className="flex items-center gap-4">
                           {cls.primary_teacher_id === currentUserId && (
@@ -226,8 +228,8 @@ export default function TeacherClasses() {
              {filteredClasses.length === 0 && (
                 <div className="col-span-full flex flex-col items-center justify-center p-12 bg-surface-container-low border border-dashed border-outline-variant/40 rounded-3xl text-center">
                    <BookOpen className="w-12 h-12 text-on-surface-variant opacity-50 mb-4" />
-                   <p className="font-display text-2xl font-bold text-on-surface mb-2">No Classes Assigned</p>
-                   <p className="font-body text-on-surface-variant max-w-md">You are not currently assigned as a primary or co-teacher for any classes. If you believe this is an error, please contact the administration.</p>
+                   <p className="font-display text-2xl font-bold text-on-surface mb-2">{t("No Classes Assigned")}</p>
+                   <p className="font-body text-on-surface-variant max-w-md">{t("You are not currently assigned as a primary or co-teacher for any classes. If you believe this is an error, please contact the administration.")}</p>
                 </div>
              )}
           </div>
@@ -251,7 +253,7 @@ export default function TeacherClasses() {
              >
                <X className="w-6 h-6" />
              </button>
-             <h2 className="text-2xl font-display font-bold text-on-surface mb-6">School-wide Schedule</h2>
+             <h2 className="text-2xl font-display font-bold text-on-surface mb-6">{t("School-wide Schedule")}</h2>
              
              {schoolScheduleUrl ? (
                <div className="flex flex-col gap-6">

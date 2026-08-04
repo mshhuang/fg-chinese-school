@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Settings, Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2, Paperclip, ChevronDown, ChevronUp } from "lucide-react";
+import { Settings, Megaphone, Search, Filter, Plus, Clock, Users, Reply, X, Loader2, MessageSquare, Send, BookOpen, GraduationCap, User, Home, Briefcase, Heart, Wrench, Sparkles, Edit2, Trash2, Paperclip, ChevronDown, ChevronUp, UserSquare2, Check } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
 import { fetchVisibleAnnouncements } from "../lib/announcementUtils";
 import { supabase } from "../lib/supabase";
 import { BuilderIconCustom, AdminIconCustom, StaffIconCustom, VolunteerIconCustom, TeacherIconCustom, StudentIconCustom } from "../components/icons";
@@ -28,6 +29,7 @@ export default function Announcements() {
 
   // Compose Modal UI
   const [showCompose, setShowCompose] = useState(false);
+  const { t } = useLanguage();
   const [composeTitle, setComposeTitle] = useState("");
   const [composeContent, setComposeContent] = useState("");
   const [composeAttachments, setComposeAttachments] = useState<{name: string, url: string}[]>([]);
@@ -93,6 +95,12 @@ export default function Announcements() {
   const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
   const [editAnnTitleStr, setEditAnnTitleStr] = useState("");
   const [editAnnContentStr, setEditAnnContentStr] = useState("");
+  const [editAudienceMode, setEditAudienceMode] = useState("all");
+  const [editTargetRoleIds, setEditTargetRoleIds] = useState<string[]>([]);
+  const [editTargetClassIds, setEditTargetClassIds] = useState<string[]>([]);
+  const [editTargetUserIds, setEditTargetUserIds] = useState<string[]>([]);
+  const [editUserSearchQuery, setEditUserSearchQuery] = useState("");
+
   
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
   const [editReplyContentStr, setEditReplyContentStr] = useState("");
@@ -196,9 +204,9 @@ export default function Announcements() {
       const parsedUser = userStr ? JSON.parse(userStr) : user;
       
       const [finalAnns, rolesRes, classesRes] = await Promise.all([
-          fetchVisibleAnnouncements(parsedUser, currentUserRole),
+          fetchVisibleAnnouncements({ ...parsedUser, id: getRealUserId(parsedUser.id) }, currentUserRole),
           supabase.from('roles').select('*'),
-          supabase.from('classes').select('*')
+          supabase.from('classes').select('class_id, class_name')
       ]);
       
       // Load users for the compose dropdown in the background
@@ -265,7 +273,7 @@ export default function Announcements() {
     const payload = {
        title: composeTitle,
        content: encodedContent,
-       created_by: user?.id,
+       created_by: getRealUserId(user?.id),
        target_role_ids: audienceMode === 'roles' ? targetRoleIds : [],
        target_class_ids: audienceMode === 'classes' ? targetClassIds : [],
        target_user_ids: audienceMode === 'users' ? targetUserIds : [],
@@ -312,7 +320,7 @@ export default function Announcements() {
 
     const { error } = await supabase.from('announcement_replies').insert({
        announcement_id: announcementId,
-       user_id: user?.id,
+       user_id: getRealUserId(user?.id),
        content: content.trim()
     });
 
@@ -361,7 +369,14 @@ export default function Announcements() {
       if (attachments && attachments.length > 0) {
           encodedContent += `\n\n---ATTACHMENTS---\n${JSON.stringify(attachments)}`;
       }
-      await supabase.from('announcements').update({ title: editAnnTitleStr, content: encodedContent }).eq('announcement_id', annId);
+      await supabase.from('announcements').update({ 
+          title: editAnnTitleStr, 
+          content: encodedContent,
+          target_role_ids: editAudienceMode === 'roles' ? editTargetRoleIds : [],
+          target_class_ids: editAudienceMode === 'classes' ? editTargetClassIds : [],
+          target_user_ids: editAudienceMode === 'users' ? editTargetUserIds : [],
+          target_role_id: null
+      }).eq('announcement_id', annId);
       
       logSystemActivity(
          "Announcements",
@@ -396,7 +411,7 @@ export default function Announcements() {
       if (ann.target_role_ids?.length > 0) auds.push(ann.target_role_ids.length + " Roles");
       if (ann.target_class_ids?.length > 0) auds.push(ann.target_class_ids.length + " Classes");
       if (ann.target_user_ids?.length > 0) auds.push(ann.target_user_ids.length + " Users");
-      if (ann.roles?.role_name) auds.push(ann.roles.role_name); // legacy
+      if (ann.target_role_id) { const r = roles.find(r => r.role_id === ann.target_role_id); if (r) auds.push(r.role_name); }
       
       if (auds.length > 0) return auds.join(', ');
       return "All Audiences";
@@ -406,15 +421,16 @@ export default function Announcements() {
       if (ann.target_role_ids?.length > 0) return "Targeted Roles";
       if (ann.target_class_ids?.length > 0) return "Targeted Classes";
       if (ann.target_user_ids?.length > 0) return "Targeted Users";
-      if (ann.roles?.role_name) return ann.roles.role_name;
+      if (ann.target_role_id) { const r = roles.find(r => r.role_id === ann.target_role_id); if (r) return r.role_name; }
       return "All Audiences";
   }
 
   const dynamicFilters = ["All", "Targeted Roles", "Targeted Classes", "Targeted Users", "All Audiences"];
 
   const filteredAnnouncements = announcements.filter(a => {
-    const matchesSearch = a.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          a.content?.toLowerCase().includes(searchQuery.toLowerCase());
+    const titleMatch = a.title ? a.title.toLowerCase().includes(searchQuery.toLowerCase()) : false;
+    const contentMatch = a.content ? a.content.toLowerCase().includes(searchQuery.toLowerCase()) : false;
+    const matchesSearch = titleMatch || contentMatch;
     const aud = extractAudienceFilter(a);
     const matchesFilter = activeFilter === "All" || aud === activeFilter;
     return matchesSearch && matchesFilter;
@@ -424,16 +440,16 @@ export default function Announcements() {
     <div className="w-full max-w-[1600px] mx-auto p-6 md:p-8 flex flex-col gap-8 pb-32 md:pb-8 relative">
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
          <div>
-           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Announcements</h1>
+           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t("Announcements")}</h1>
            <p className="font-body text-lg text-on-surface-variant mt-2">
-             {canCreate ? "Create and manage broadcast communications." : "Read the latest updates from your school."}
+             {canCreate ? t("Create and manage broadcast communications.") : t("Read the latest updates from your school.")}
            </p>
          </div>
          {canCreate && (
              <button 
                 onClick={() => setShowCompose(true)}
                 className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label font-bold hover:bg-primary/90 transition-colors shadow-md w-full md:w-auto justify-center">
-                <Plus className="w-5 h-5" /> New Announcement
+                <Plus className="w-5 h-5" /> {t("New Announcement")}
              </button>
          )}
        </header>
@@ -451,7 +467,7 @@ export default function Announcements() {
                       : "bg-surface text-on-surface-variant border-outline-variant/40 hover:bg-surface-variant/50"
                   )}
                 >
-                   {aud}
+                   {t(aud)}
                 </button>
              ))}
           </div>
@@ -460,7 +476,7 @@ export default function Announcements() {
              <Search className="w-5 h-5 text-on-surface-variant" />
              <input 
                type="text" 
-               placeholder="Search announcements..." 
+               placeholder={t("Search announcements...")} 
                className="bg-transparent border-none outline-none font-body text-sm w-full"
                value={searchQuery}
                onChange={(e) => setSearchQuery(e.target.value)}
@@ -533,7 +549,7 @@ export default function Announcements() {
                                            {ann.title ? <span className="font-bold mr-2 text-on-surface">{authorName}</span> : null}
                                            {new Date(ann.created_at || Date.now()).toLocaleDateString('en-US', { timeZone: 'America/New_York' })} • 
                                            <Users className="w-3 h-3 inline ml-1 mr-0.5"/> To: {audienceInfo}
-                                           {(user?.role === 'admin' || user?.role === 'builder' || user?.role === 'teacher' || ann.created_by === user?.id) && (
+                                           {(user?.role === 'admin' || user?.role === 'builder' || user?.role === 'teacher' || ann.created_by === getRealUserId(user?.id)) && (
                                                <span className="ml-2 inline-flex items-center gap-1 text-primary" title="Total unique reads">
                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                                                    {readCounts[ann.announcement_id.toString()] || 0} read
@@ -544,13 +560,36 @@ export default function Announcements() {
                                      </div>
                                  </div>
                                  <div className="flex items-center gap-4">
-                                     {(user?.role === 'builder' || ann.created_by === user?.id) && (
+                                     {(user?.role === 'builder' || ann.created_by === getRealUserId(user?.id)) && (
                                      <div className="flex items-center gap-2">
                                          <button 
                                             onClick={() => {
                                                 setEditingAnnId(ann.announcement_id); 
                                                 setEditAnnTitleStr(ann.title); 
                                                 setEditAnnContentStr(displayContent);
+                                                
+                                                if (ann.target_role_ids?.length > 0 || ann.target_role_id) {
+                                                    setEditAudienceMode('roles');
+                                                    setEditTargetRoleIds(ann.target_role_ids?.length ? ann.target_role_ids : [ann.target_role_id].filter(Boolean));
+                                                    setEditTargetClassIds([]);
+                                                    setEditTargetUserIds([]);
+                                                } else if (ann.target_class_ids?.length > 0) {
+                                                    setEditAudienceMode('classes');
+                                                    setEditTargetClassIds(ann.target_class_ids);
+                                                    setEditTargetRoleIds([]);
+                                                    setEditTargetUserIds([]);
+                                                } else if (ann.target_user_ids?.length > 0) {
+                                                    setEditAudienceMode('users');
+                                                    setEditTargetUserIds(ann.target_user_ids);
+                                                    setEditTargetRoleIds([]);
+                                                    setEditTargetClassIds([]);
+                                                } else {
+                                                    setEditAudienceMode('all');
+                                                    setEditTargetRoleIds([]);
+                                                    setEditTargetClassIds([]);
+                                                    setEditTargetUserIds([]);
+                                                }
+
                                             }}
                                             className="px-3 py-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-full transition-colors flex items-center gap-1.5"
                                          >
@@ -612,7 +651,119 @@ export default function Announcements() {
                                              </div>
                                          </div>
                                      )}
-                                     <div className="flex gap-2 justify-end mt-2">
+
+                                     <div className="mt-4">
+                                         <label className="block font-label text-sm uppercase tracking-wider font-bold text-on-surface-variant mb-3">Change Audience</label>
+                                         <div className="flex flex-wrap gap-2 mb-4">
+                                            {['all', 'roles', 'classes', 'users'].map(mode => (
+                                                <button
+                                                    key={mode}
+                                                    type="button"
+                                                    onClick={() => setEditAudienceMode(mode)}
+                                                    className={cn(
+                                                        "px-4 py-2 rounded-full font-label text-xs font-bold capitalize transition-colors border",
+                                                        editAudienceMode === mode
+                                                           ? "bg-primary text-on-primary border-primary"
+                                                           : "bg-surface border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant"
+                                                    )}
+                                                >
+                                                    {mode === 'all' ? t('Everyone') : t('Specific ' + mode)}
+                                                </button>
+                                            ))}
+                                         </div>
+                                         <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant/30 text-sm max-h-48 overflow-y-auto">
+                                             {editAudienceMode === 'all' && (
+                                                 <p className="text-on-surface-variant">This announcement will be visible to everyone.</p>
+                                             )}
+                                             
+                                             {editAudienceMode === 'roles' && (
+                                                 <div className="grid grid-cols-2 gap-3">
+                                                     {roles.map(r => (
+                                                         <label key={r.role_id} className="flex items-center gap-2 cursor-pointer text-on-surface">
+                                                             <input
+                                                                 type="checkbox"
+                                                                 className="rounded border-outline-variant/50 text-primary focus:ring-primary"
+                                                                checked={editTargetRoleIds.includes(r.role_id)}
+                                                                onChange={() => toggleMultiSelect(setEditTargetRoleIds, r.role_id)}
+                                                             />
+                                                             {r.role_name}
+                                                         </label>
+                                                     ))}
+                                                 </div>
+                                             )}
+                                             {editAudienceMode === 'classes' && (
+                                                 <div className="grid grid-cols-2 gap-3">
+                                                     {classes.length === 0 ? <p className="text-on-surface-variant">No classes available.</p> : classes.map(c => (
+                                                         <label key={c.class_id} className="flex items-center gap-2 cursor-pointer text-on-surface">
+                                                             <input
+                                                                 type="checkbox"
+                                                                 className="rounded border-outline-variant/50 text-primary focus:ring-primary"
+                                                                checked={editTargetClassIds.includes(c.class_id)}
+                                                                onChange={() => toggleMultiSelect(setEditTargetClassIds, c.class_id)}
+                                                             />
+                                                             {c.class_name}
+                                                         </label>
+                                                     ))}
+                                                 </div>
+                                             )}
+                                             {editAudienceMode === 'users' && (
+                                                 <div className="flex flex-col gap-3">
+                                                     <div className="relative">
+                                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50" />
+                                                         <input 
+                                                             type="text" 
+                                                             placeholder="Search users to tag..."
+                                                             value={editUserSearchQuery}
+                                                             onChange={(e) => setEditUserSearchQuery(e.target.value)}
+                                                             className="w-full pl-9 pr-4 py-2 bg-surface rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body text-sm"
+                                                         />
+                                                     </div>
+                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                         {availableUsers
+                                                             .filter(u => `${u.first_name} ${u.last_name} ${u.email}`.toLowerCase().includes(editUserSearchQuery.toLowerCase()))
+                                                             .slice(0, 10)
+                                                             .map(u => {
+                                                                 const isSelected = editTargetUserIds.includes(u.user_id);
+                                                                 const getPrimaryRole = (roles: string[]) => {
+                                                                     if (!roles || roles.length === 0) return 'Others';
+                                                                     const priority = ['Admin', 'Principal', 'Teacher', 'Staff', 'Parent', 'Student'];
+                                                                     let bestIdx = 999;
+                                                                     for (const r of roles) {
+                                                                         const idx = priority.indexOf(r);
+                                                                         if (idx !== -1 && idx < bestIdx) bestIdx = idx;
+                                                                     }
+                                                                     if (bestIdx === 999) return roles[0];
+                                                                     return priority[bestIdx];
+                                                                 };
+                                                                 return (
+                                                                     <div 
+                                                                         key={u.user_id} 
+                                                                         onClick={() => toggleMultiSelect(setEditTargetUserIds, u.user_id)}
+                                                                         className={cn(
+                                                                             "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
+                                                                             isSelected ? "bg-primary/10 border-primary shadow-sm" : "bg-surface border-outline-variant/50 hover:bg-surface-variant"
+                                                                         )}
+                                                                     >
+                                                                         <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center shrink-0">
+                                                                             <UserSquare2 className="w-4 h-4 text-on-surface-variant" />
+                                                                         </div>
+                                                                         <div className="flex-1 min-w-0">
+                                                                             <p className="font-title text-sm font-bold text-on-surface truncate">{u.first_name} {u.last_name}</p>
+                                                                             <p className="text-xs text-on-surface-variant truncate">{getPrimaryRole(u.role_names)} • {u.email}</p>
+                                                                         </div>
+                                                                         <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0", isSelected ? "bg-primary border-primary text-on-primary" : "border-outline-variant/50")}>
+                                                                             {isSelected && <Check className="w-3 h-3" />}
+                                                                         </div>
+                                                                     </div>
+                                                                 );
+                                                             })}
+                                                     </div>
+                                                 </div>
+                                             )}
+                                         </div>
+                                     </div>
+
+                                     <div className="flex gap-2 justify-end mt-4">
                                          <button onClick={() => { setEditingAnnId(null); setSelectedPostingRole(""); }} className="px-4 py-2 rounded-full font-label text-sm hover:bg-surface-variant">Cancel</button>
                                          <button onClick={() => { handleEditAnnouncementSub(ann.announcement_id, authorRole, isSystem, attachments); setSelectedPostingRole(""); }} className="bg-primary text-on-primary px-5 py-2 rounded-full font-label font-bold text-sm">Save</button>
                                      </div>
@@ -663,7 +814,7 @@ export default function Announcements() {
                                                                    </span>
                                                                </p>
                                                            </div>
-                                                           {(user?.role === 'builder' || r.user_id === user?.id) && (
+                                                           {(user?.role === 'builder' || r.user_id === getRealUserId(user?.id)) && (
                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                    <button 
                                                                        onClick={() => {
@@ -759,7 +910,7 @@ export default function Announcements() {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                <div className="bg-surface-container-lowest w-full max-w-7xl rounded-3xl shadow-2xl  flex flex-col max-h-[90vh]">
                    <div className="px-6 py-4 border-b border-outline-variant/20 flex justify-between items-center bg-surface shrink-0">
-                       <h2 className="font-title text-xl font-bold text-on-surface flex items-center gap-2"><Plus className="w-5 h-5 text-primary"/> Compose Announcement</h2>
+                       <h2 className="font-title text-xl font-bold text-on-surface flex items-center gap-2"><Plus className="w-5 h-5 text-primary"/> {t("Compose Announcement")}</h2>
                        <button onClick={() => setShowCompose(false)} className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors"><X className="w-5 h-5" /></button>
                    </div>
                    <form onSubmit={handleCreateAnnouncement} className="p-6 flex flex-col gap-6 overflow-y-auto flex-1">
@@ -820,7 +971,7 @@ export default function Announcements() {
                                             : "bg-surface border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant"
                                       )}
                                   >
-                                      {mode === 'all' ? 'Everyone' : `Specific ${mode}`}
+                                      {mode === 'all' ? t('Everyone') : t('Specific ' + mode)}
                                   </button>
                               ))}
                            </div>

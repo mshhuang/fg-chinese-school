@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { ExternalLink, Save, FileText, LayoutDashboard, UserSquare2, RefreshCw, Info, Sparkles } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatTeacherName } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
 
 export default function MyLessonPlans() {
+  const { t } = useLanguage();
   const [user, setUser] = useState<any>(null);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
@@ -203,9 +205,9 @@ export default function MyLessonPlans() {
        {/* Header */}
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shrink-0">
          <div>
-           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{isAdmin ? 'Teacher Lesson Plans' : 'My Lesson Plans'}</h1>
+           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{isAdmin ? 'Teacher Lesson Plans' : t('My Lesson Plans')}</h1>
            <p className="font-body text-lg text-on-surface-variant mt-2">
-             {isAdmin ? 'View lesson plans submitted by teachers.' : 'Manage and collaborate on your curriculum via Google Docs or Slides.'}
+             {isAdmin ? 'View lesson plans submitted by teachers.' : t('Manage and collaborate on your curriculum via Google Docs or Slides.')}
            </p>
          </div>
        </header>
@@ -233,12 +235,12 @@ export default function MyLessonPlans() {
          <>
            <div className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-6 flex flex-col gap-4 shrink-0 shadow-sm">
              <div className="font-title text-lg text-on-surface font-bold flex items-center gap-2 relative">
-               <FileText className="w-5 h-5 text-primary" /> Google Doc or Slide Link
+               <FileText className="w-5 h-5 text-primary" /> {t('Google Doc or Slide Link')}
                {!isAdmin && (
                  <div className="relative group flex items-center">
                    <div className="flex items-center gap-1.5 bg-blue-100 text-blue-700 px-3 py-1 rounded-full cursor-help hover:bg-blue-200 transition-colors border border-blue-200 ml-2">
                      <Info className="w-4 h-4 animate-pulse" />
-                     <span className="text-xs font-bold font-label uppercase tracking-wider">Help</span>
+                     <span className="text-xs font-bold font-label uppercase tracking-wider">{t('Help')}</span>
                    </div>
                    <div className="absolute right-0 top-full mt-3 hidden group-hover:block w-80 bg-surface-container-highest text-on-surface text-sm p-5 rounded-2xl shadow-xl border border-outline-variant/50 z-[100] pointer-events-none transform transition-all duration-200 origin-top-right">
                       <div className="absolute -top-2 right-6 w-4 h-4 bg-surface-container-highest border-t border-l border-outline-variant/50 rotate-45"></div>
@@ -255,7 +257,7 @@ export default function MyLessonPlans() {
                )}
              </div>
              <p className="font-body text-sm text-on-surface-variant">
-               {isAdmin ? 'View the Google Doc/Slide link provided by the selected teacher.' : 'Share a Google Doc or Slide link for administrators to view your curriculum.'}
+               {isAdmin ? 'View the Google Doc/Slide link provided by the selected teacher.' : t('Share a Google Doc or Slide link for administrators to view your curriculum.')}
              </p>
 
              <div className="flex items-center gap-4 mt-2">

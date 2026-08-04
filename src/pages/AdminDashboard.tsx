@@ -4,8 +4,12 @@ import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
 import { supabase } from "../lib/supabase";
 import { formatTeacherName } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function AdminDashboard() {
+  const { t } = useLanguage();
+
   const [greeting, setGreeting] = useState("Good morning");
   const [user, setUser] = useState<any>(null);
 

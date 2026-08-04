@@ -3,8 +3,10 @@ import { Calendar as CalendarIcon, Clock, MapPin, Loader2, ChevronLeft, ChevronR
 import { SchoolEvent, fetchSchoolEvents } from "../lib/events";
 import { format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, isToday, parse } from "date-fns";
 import { cn } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
 
 export const EventCalendar: React.FC<{ roleFilter?: string[] }> = ({ roleFilter }) => {
+  const { t } = useLanguage();
   const [events, setEvents] = useState<SchoolEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -233,7 +235,7 @@ export const EventCalendar: React.FC<{ roleFilter?: string[] }> = ({ roleFilter 
                            </div>
                        ))
                    ) : (
-                       <p className="text-blue-300/70 text-center py-8 font-medium">No events scheduled for this cosmic day.</p>
+                       <p className="text-blue-300/70 text-center py-8 font-medium">{t("No events scheduled for this cosmic day.")}</p>
                    )}
                 </div>
             </div>

@@ -3,6 +3,8 @@ import { Calendar, Clock, MapPin } from "lucide-react";
 import { cn } from "../lib/utils";
 import { EventCalendar } from "../components/EventCalendar";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/i18n";
+
 
 const SCHEDULE: Record<string, any[]> = {
   mei: [
@@ -24,6 +26,8 @@ const SCHEDULE: Record<string, any[]> = {
 };
 
 export default function ParentSchedule() {
+  const { t } = useLanguage();
+
   const [activeChild, setActiveChild] = useState<string>("mei");
   const [children, setChildren] = useState<any[]>([]);
 

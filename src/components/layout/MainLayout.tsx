@@ -5,6 +5,8 @@ import {
   Menu, X, FileText, Ticket
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useLanguage } from "../../lib/i18n";
+import { Globe } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { fetchVisibleAnnouncements } from "../../lib/announcementUtils";
 import { supabase } from "../../lib/supabase";
@@ -57,6 +59,7 @@ export default function MainLayout() {
     };
   }, []);
   const location = useLocation();
+  const { t, language, setLanguage } = useLanguage();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -103,6 +106,7 @@ export default function MainLayout() {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [passcodeVal, setPasscodeVal] = useState("");
@@ -181,6 +185,7 @@ export default function MainLayout() {
     const handleClickOutside = (e: MouseEvent) => {
         if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
             setIsRoleMenuOpen(false);
+            setIsLangMenuOpen(false);
         }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -206,7 +211,7 @@ export default function MainLayout() {
   const currentRole = ROLE_CONFIGS[currentRoleKey] || ROLE_CONFIGS["admin"];
 
   useEffect(() => {
-     if (userInfo && !hasAccessToPathRole) {
+     console.log("hasAccessToPathRole:", hasAccessToPathRole, userInfo, userRole, location.pathname); if (userInfo && !hasAccessToPathRole) {
         if (userRole === "teacher") {
            navigate("/teacher/classes");
         } else {
@@ -408,7 +413,7 @@ export default function MainLayout() {
                         <div key={idx} className="flex items-center justify-between px-4 py-3 rounded-full text-sm font-label font-bold transition-all text-on-surface-variant/50 cursor-not-allowed">
                             <div className="flex items-center gap-3">
                                <item.icon className="w-5 h-5 opacity-50" />
-                               {item.label}
+                               {t(item.label)}
                             </div>
                         </div>
                     );
@@ -417,7 +422,7 @@ export default function MainLayout() {
                 <NavLink key={idx} to={item.href} className={({isActive}) => cn("flex items-center justify-between px-4 py-3 rounded-full text-sm font-label font-bold transition-all", isActive ? "bg-secondary-container text-on-secondary-container" : "text-on-surface hover:bg-surface-variant/50")}>
                     <div className="flex items-center gap-3">
                        <item.icon className="w-5 h-5" />
-                       {item.label}
+                       {t(item.label)}
                     </div>
                     {item.label === 'Dashboard' && hasActiveClockIn && (
                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-500/30 shrink-0">
@@ -489,10 +494,17 @@ export default function MainLayout() {
                </div>
                <ChevronDown className="w-4 h-4 text-on-surface-variant" />
             </button>
-            <div className="mt-2">
+            <div className="mt-2 flex flex-col gap-1">
+               {/* 
+               <div className="flex w-full bg-surface-container-high rounded-xl p-1 gap-1 mb-2">
+                   <button onClick={() => setLanguage('en')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'en' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>Eng</button>
+                   <button onClick={() => setLanguage('zh-CN')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'zh-CN' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>简体</button>
+                   <button onClick={() => setLanguage('zh-TW')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'zh-TW' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>繁體</button>
+               </div>
+               */}
                <button onClick={handleLogout} className="flex items-center w-full gap-3 px-4 py-3 rounded-full text-error hover:bg-error-container/20 transition-all font-label font-bold">
                  <LogOut className="w-5 h-5" />
-                 Sign Out
+                 {t('Logout')}
                </button>
             </div>
          </div>
@@ -513,7 +525,7 @@ export default function MainLayout() {
                               <div key={idx} className="flex items-center justify-between px-4 py-3 rounded-full text-sm font-label font-bold transition-all text-on-surface-variant/50 cursor-not-allowed">
                                   <div className="flex items-center gap-3">
                                      <item.icon className="w-5 h-5 opacity-50" />
-                                     {item.label}
+                                     {t(item.label)}
                                   </div>
                               </div>
                           );
@@ -522,7 +534,7 @@ export default function MainLayout() {
                       <NavLink key={idx} onClick={() => setIsMobileMenuOpen(false)} to={item.href} className={({isActive}) => cn("flex items-center justify-between px-4 py-3 rounded-full text-sm font-label font-bold transition-all", isActive ? "bg-secondary-container text-on-secondary-container" : "text-on-surface hover:bg-surface-variant/50")}>
                           <div className="flex items-center gap-3">
                              <item.icon className="w-5 h-5" />
-                             {item.label}
+                             {t(item.label)}
                           </div>
                           {item.label === 'Dashboard' && hasActiveClockIn && (
                              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-500/30 shrink-0">
@@ -576,10 +588,17 @@ export default function MainLayout() {
                          ))}
                    </div>
                    
-                   <div className="mt-4 pt-4 border-t border-outline-variant/20">
+                   <div className="mt-4 pt-4 border-t border-outline-variant/20 flex flex-col gap-2">
+                       {/*
+                       <div className="flex w-full bg-surface-container-high rounded-xl p-1 gap-1 mb-2 mt-1">
+                           <button onClick={() => { setLanguage('en'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'en' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>Eng</button>
+                           <button onClick={() => { setLanguage('zh-CN'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'zh-CN' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>简体</button>
+                           <button onClick={() => { setLanguage('zh-TW'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'zh-TW' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>繁體</button>
+                       </div>
+                       */}
                      <button onClick={handleLogout} className="flex items-center w-full gap-3 px-3 py-3 rounded-xl text-error hover:bg-error-container/20 transition-all font-label font-bold">
                        <LogOut className="w-5 h-5" />
-                       Sign Out
+                       {t('Logout')}
                      </button>
                    </div>
                </div>

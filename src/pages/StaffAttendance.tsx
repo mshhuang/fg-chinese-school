@@ -3,9 +3,11 @@ import { Search, Filter, Users, ClipboardCheck, ClipboardList, FileText, Trendin
 import { supabase } from "../lib/supabase";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn, formatTeacherName } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
 
 export default function StaffAttendance() {
   const location = useLocation();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const stateClass = location.state?.class;
 
@@ -29,7 +31,7 @@ export default function StaffAttendance() {
         try {
           const parsedUser = JSON.parse(userStr);
           
-          let query = supabase.from('classes').select('*, users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)').order('class_name');
+          let query = supabase.from('classes').select('class_id, class_name, primary_teacher_id, co_teacher_id, co_teachers, users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)').order('class_name');
           
           const { data: roles } = await supabase.from('user_roles')
             .select('roles(role_name)')
@@ -172,8 +174,8 @@ export default function StaffAttendance() {
              <div className="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-6">
                 <BookOpen className="w-8 h-8 text-on-surface-variant/50" />
              </div>
-             <h2 className="text-2xl font-display font-bold text-on-surface mb-4">No Classes Assigned</h2>
-             <p className="text-on-surface-variant font-body">You are not currently assigned as a primary or co-teacher for any classes. If you believe this is an error, please contact the administration.</p>
+             <h2 className="text-2xl font-display font-bold text-on-surface mb-4">{t('No Classes Assigned')}</h2>
+             <p className="text-on-surface-variant font-body">{t('no_classes_assigned_desc')}</p>
           </div>
        </div>
      );
@@ -214,11 +216,11 @@ export default function StaffAttendance() {
                <div className="flex items-center gap-6 text-sm font-label font-bold text-on-surface-variant mb-6">
                  <div className="flex items-center gap-2">
                    <DoorOpen className="w-4 h-4 text-secondary" />
-                   Room {selectedClass.room_number || "TBD"}
+                   {t('Room')} {selectedClass.room_number || t('TBD')}
                  </div>
                  <div className="flex items-center gap-2">
                    <Users className="w-4 h-4 text-secondary" />
-                   {students.length} Students
+                   {students.length} {t('Students')}
                  </div>
                </div>
 
@@ -226,16 +228,16 @@ export default function StaffAttendance() {
                <div className="inline-flex items-center gap-4 bg-white border border-outline-variant/30 rounded-full p-2 pr-6 shadow-sm">
                  <div className="flex items-center gap-2 text-sm font-label px-3">
                     <User className="w-4 h-4 text-primary" />
-                    <span className="font-bold text-primary">Teaching Team</span>
+                    <span className="font-bold text-primary">{t('Teaching Team')}</span>
                  </div>
                  <div className="flex items-center gap-2 text-sm bg-surface-container-lowest border border-outline-variant/30 rounded-full px-4 py-1.5">
                     <User className="w-3.5 h-3.5 text-on-surface-variant" />
-                    <span className="font-bold text-on-surface-variant">Lead:</span> 
+                    <span className="font-bold text-on-surface-variant">{t('Lead:')}</span> 
                     <span>{formatTeacherName(selectedClass.users?.first_name, selectedClass.users?.last_name, "Teacher")}</span>
                  </div>
                  <div className="flex items-center gap-2 text-sm bg-surface-container-lowest border border-outline-variant/30 rounded-full px-4 py-1.5">
                     <User className="w-3.5 h-3.5 text-on-surface-variant" />
-                                        <span className="font-bold text-on-surface-variant">Co-Teacher:</span> 
+                                        <span className="font-bold text-on-surface-variant">{t('Co-teacher:')}</span> 
                     <span>
                        {(() => {
                           const allCoTeachers = [
@@ -250,7 +252,7 @@ export default function StaffAttendance() {
                              if (userStr) {
                                 try {
                                     const parsedUser = JSON.parse(userStr);
-                                    if (id === parsedUser.id) return `You (${formatTeacherName(parsedUser.first_name, parsedUser.last_name, "Teacher")})`;
+                                    if (id === parsedUser.id) return `${t('You')} (${formatTeacherName(parsedUser.first_name, parsedUser.last_name, "Teacher")})`;
                                 } catch (e) {}
                              }
                              
@@ -274,30 +276,30 @@ export default function StaffAttendance() {
                   <div className="w-5 h-5 border-[2px] border-dashed border-primary rounded-md flex items-center justify-center opacity-70">
                     <div className="w-1.5 h-1.5 bg-primary rounded-full" />
                   </div>
-                  Management Tools
+                  {t('Management Tools')}
                </div>
                <div className="flex flex-wrap gap-4">
                  <ToolCard 
                     icon={<ClipboardCheck className="w-6 h-6 text-primary" />} 
-                    title="Attendance" 
-                    subtitle="Track & View Sheets" 
+                    title={t('Attendance')} 
+                    subtitle={t('Track & view sheets')} 
                     onClick={() => navigate('/teacher/attendance-sheet')}
                  />
                  <ToolCard 
                     icon={<ClipboardList className="w-6 h-6 text-secondary" />} 
-                    title="Assignments" 
-                    subtitle="Manage Tasks" 
+                    title={t('Assignments')} 
+                    subtitle={t('Manage tasks')} 
                     onClick={() => navigate('/teacher/assignments')}
                  />
                  <ToolCard 
                     icon={<FileText className="w-6 h-6 text-tertiary" />} 
-                    title="Class Notes" 
-                    subtitle="Observations" 
+                    title={t('Class Notes')} 
+                    subtitle={t('Observations')} 
                  />
                  <ToolCard 
                     icon={<TrendingUp className="w-6 h-6 text-primary" />} 
-                    title="Performance" 
-                    subtitle="Class Metrics" 
+                    title={t('Performance')} 
+                    subtitle={t('Class metrics')} 
                  />
                </div>
             </div>
@@ -307,14 +309,14 @@ export default function StaffAttendance() {
                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                  <div className="flex items-center gap-2 font-bold text-primary">
                     <Users className="w-5 h-5" />
-                    Student Roster
+                    {t('Student Roster')}
                  </div>
                  <div className="flex items-center gap-3">
                     <div className="relative flex items-center bg-surface border border-outline-variant/30 rounded-full px-4 py-2 w-64 focus-within:border-primary focus-within:bg-white transition-colors">
                        <Search className="w-4 h-4 text-on-surface-variant mr-2" />
                        <input 
                          type="text" 
-                         placeholder="Search students..." 
+                         placeholder={t('Search students...')} 
                          value={searchQuery}
                          onChange={(e) => setSearchQuery(e.target.value)}
                          className="bg-transparent border-none outline-none text-sm w-full placeholder-[#8A8476] text-on-surface-variant"
@@ -347,25 +349,25 @@ export default function StaffAttendance() {
                                        const d = new Date(clockInTimes[student.student_id]);
                                        const timeStr = d.toLocaleTimeString('en-US', { timeZone: 'America/New_York',  hour: 'numeric', minute: '2-digit' }) + ' EST';
                                        const dateStr = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`;
-                                       displayStatus = `${student.first_name} arrived at school at ${timeStr} on ${dateStr}`;
+                                       displayStatus = t('arrived_at').replace('{name}', student.first_name).replace('{time}', timeStr).replace('{date}', dateStr);
                                     } else {
-                                       displayStatus = 'Present (In School)';
+                                       displayStatus = t('Present (In School)');
                                     }
                                     statusColor = 'bg-[#2E7D32]'; // Green
                                  } else if (status === 'Checked Out') {
-                                    displayStatus = 'Checked Out (Left School)';
+                                    displayStatus = t('Checked Out (Left School)');
                                     statusColor = 'bg-[#E65100]'; // Orange
                                  } else if (status === 'Absent') {
-                                    displayStatus = 'Absent';
+                                    displayStatus = t('Absent');
                                     statusColor = 'bg-[#D32F2F]'; // Red
                                  } else if (status === 'Not Arrived') {
-                                    displayStatus = 'Not Arrived';
+                                    displayStatus = t('Not Arrived');
                                     statusColor = 'bg-[#78909C]'; // slate gray
                                  } else if (status === 'Late') {
-                                    displayStatus = 'Late';
+                                    displayStatus = t('Late');
                                     statusColor = 'bg-[#FBC02D]'; // Yellow
                                  } else if (status === 'Excused') {
-                                    displayStatus = 'Excused';
+                                    displayStatus = t('Excused');
                                     statusColor = 'bg-[#0288D1]'; // Blue
                                  }
                                  
@@ -401,7 +403,7 @@ export default function StaffAttendance() {
                               {filteredStudents.length > visibleCount && (
                                 <div className="flex justify-center mt-4 w-full">
                                    <button onClick={() => setVisibleCount(prev => prev + 9)} className="px-8 py-3 rounded-full border border-primary text-primary font-bold font-label hover:bg-primary hover:text-white transition-colors">
-                                      Load More Students
+                                      {t('Load More Students')}
                                    </button>
                                 </div>
                               )}

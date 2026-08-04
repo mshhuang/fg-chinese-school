@@ -4,8 +4,12 @@ import { Megaphone, Server, TerminalSquare, ShieldAlert, Activity, ArrowRight, U
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
+import { useLanguage } from "../lib/i18n";
+
 
 export default function BuilderDashboard() {
+  const { t } = useLanguage();
+
   const navigate = useNavigate();
   const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
   const [totalUsersCount, setTotalUsersCount] = useState<number>(0);

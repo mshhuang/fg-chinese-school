@@ -1,15 +1,14 @@
-import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
+import dotenv from 'dotenv'
 
-const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
-async function run() {
-  const { count: sysCount } = await supabase.from('system_logs').select('*', { count: 'exact', head: true });
-  console.log("system_logs count:", sysCount);
-  
-  const { count: errCount } = await supabase.from('error_logs').select('*', { count: 'exact', head: true });
-  console.log("error_logs count:", errCount);
-  
-  const { count: msgCount } = await supabase.from('internal_messages').select('*', { count: 'exact', head: true });
-  console.log("internal_messages count:", msgCount);
+dotenv.config()
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+async function test() {
+    const { data: logs } = await supabase.from('error_logs').select('*').order('created_at', { ascending: false }).limit(20);
+    console.log("Error Logs:", logs);
 }
-run();
+test()

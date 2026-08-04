@@ -3,8 +3,10 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { BookOpen, Plus, Save, X, Edit, Trash2, Calendar, FileText, CheckCircle2, Circle, Users, XCircle, Search, Image as ImageIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useLanguage } from '../lib/i18n';
 
 export default function TeacherAssignmentBoard() {
+  const { t } = useLanguage();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const initialClassId = searchParams.get('classId') || '';
@@ -250,25 +252,25 @@ export default function TeacherAssignmentBoard() {
     <div className="p-6 md:p-8 max-w-7xl mx-auto flex flex-col gap-8 pb-32 md:pb-8">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Assignments</h1>
-          <p className="font-body text-lg text-on-surface-variant mt-2">Manage homework and assignments for your classes.</p>
+          <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t('Assignments')}</h1>
+          <p className="font-body text-lg text-on-surface-variant mt-2">{t('Manage homework and assignments for your classes.')}</p>
         </div>
       </header>
 
       <div className="bg-surface-container rounded-3xl p-6 border border-outline-variant/30 flex items-center gap-4">
-        <label className="font-label font-bold text-on-surface">Select Class:</label>
+        <label className="font-label font-bold text-on-surface">{t('Select Class:')}</label>
         <select 
           value={selectedClassId} 
           onChange={(e) => setSelectedClassId(e.target.value)}
           className="flex-1 max-w-sm px-4 py-2.5 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface"
         >
-          <option value="">-- Choose a class --</option>
-                    <optgroup label="My Classes (Lead & Co-Teacher)">
+          <option value="">-- {t('Choose a class')} --</option>
+                    <optgroup label={t('My Classes (Lead & Co-Teacher)')}>
             {classes.filter(c => c.primary_teacher_id === user?.id || c.co_teacher_id === user?.id || (c.co_teachers || []).includes(user?.id)).map(c => (
               <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
             ))}
           </optgroup>
-          <optgroup label="Other Classes">
+          <optgroup label={t('Other Classes')}>
             {classes.filter(c => c.primary_teacher_id !== user?.id && c.co_teacher_id !== user?.id && !(c.co_teachers || []).includes(user?.id)).map(c => (
               <option key={c.class_id} value={c.class_id}>{c.class_name}</option>
             ))}
@@ -281,22 +283,22 @@ export default function TeacherAssignmentBoard() {
             className="ml-auto bg-primary text-on-primary px-6 py-2.5 rounded-full font-label font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors"
           >
             {showAdd ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-            {showAdd ? 'Cancel' : 'New Assignment'}
+            {showAdd ? t('Cancel') : t('New Assignment')}
           </button>
         )}
       </div>
 
       {showAdd && selectedClassId && (
         <form onSubmit={handleSubmit} className="bg-surface-container-low rounded-3xl p-6 md:p-8 border border-outline-variant/40 shadow-sm flex flex-col gap-6">
-          <h2 className="font-title text-xl font-bold text-on-surface">{editingId ? 'Edit Assignment' : 'Create New Assignment'}</h2>
+          <h2 className="font-title text-xl font-bold text-on-surface">{editingId ? t('Edit Assignment') : t('Create New Assignment')}</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col gap-2">
-              <label className="font-label text-sm font-bold text-on-surface-variant">Title</label>
+              <label className="font-label text-sm font-bold text-on-surface-variant">{t('Title')}</label>
               <input required type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface" placeholder="e.g. Essay on Tang Dynasty" />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="font-label text-sm font-bold text-on-surface-variant">Type</label>
+              <label className="font-label text-sm font-bold text-on-surface-variant">{t("Type")}</label>
               <select value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface">
                 <option value="Writing">Writing</option>
                 <option value="Reading">Reading</option>
@@ -306,11 +308,11 @@ export default function TeacherAssignmentBoard() {
               </select>
             </div>
             <div className="flex flex-col gap-2 md:col-span-2">
-              <label className="font-label text-sm font-bold text-on-surface-variant">Description (Optional)</label>
-              <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface min-h-[100px]" placeholder="Detailed instructions..." />
+              <label className="font-label text-sm font-bold text-on-surface-variant">{t("Description (Optional)")}</label>
+              <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface min-h-[300px]" placeholder="Detailed instructions..." />
             </div>
             <div className="flex flex-col gap-2 md:col-span-2">
-              <label className="font-label text-sm font-bold text-on-surface-variant">Attachments</label>
+              <label className="font-label text-sm font-bold text-on-surface-variant">{t("Attachments")}</label>
               <div className="flex flex-col gap-3 p-4 bg-surface rounded-xl border border-outline-variant/30">
                  {attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -325,23 +327,23 @@ export default function TeacherAssignmentBoard() {
                  )}
                  <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-outline-variant/50 hover:border-primary/50 bg-surface-container-lowest hover:bg-surface-container-low transition-colors py-6 rounded-xl cursor-pointer">
                     <Plus className="w-5 h-5 text-primary" />
-                    <span className="font-label font-bold text-primary">Add File Attachment</span>
+                    <span className="font-label font-bold text-primary">{t("Add File Attachment")}</span>
                     <input type="file" className="hidden" onChange={handleFileUpload} />
                  </label>
-                 <p className="text-xs text-on-surface-variant font-body text-center">Max size 2MB</p>
+                 <p className="text-xs text-on-surface-variant font-body text-center">{t("Max size 2MB")}</p>
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              <label className="font-label text-sm font-bold text-on-surface-variant">Due Date</label>
+              <label className="font-label text-sm font-bold text-on-surface-variant">{t("Due Date")}</label>
               <input type="datetime-local" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} className="px-4 py-3 rounded-xl border border-outline-variant/50 focus:border-primary outline-none font-body bg-surface text-on-surface" />
             </div>
           </div>
 
           <div className="mt-4 pt-6 border-t border-outline-variant/30">
             <div className="flex items-center justify-between mb-4">
-              <label className="font-label font-bold text-on-surface">Assign To Students</label>
+              <label className="font-label font-bold text-on-surface">{t("Assign To Students")}</label>
               <button type="button" onClick={handleSelectAll} className="text-primary font-label text-sm font-bold hover:underline">
-                {selectedStudents.length === students.length ? 'Deselect All' : 'Select All'}
+                {selectedStudents.length === students.length ? t("Deselect All") : t("Select All")}
               </button>
             </div>
             
@@ -368,10 +370,10 @@ export default function TeacherAssignmentBoard() {
 
           <div className="pt-4 flex gap-4">
              <button type="submit" disabled={loading} className="bg-primary text-on-primary px-8 py-3 rounded-full font-label font-bold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
-               {loading ? 'Saving...' : 'Save Assignment'}
+               {loading ? t("Saving...") : t("Save Assignment")}
              </button>
              <button type="button" onClick={() => { setShowAdd(false); setEditingId(null); setFormData({title: '', description: '', due_date: '', type: 'Writing'}); setAttachments([]); setSelectedStudents([]); }} className="border border-outline-variant px-8 py-3 rounded-full font-label font-bold text-on-surface-variant hover:bg-surface-variant transition-colors">
-               Cancel
+               {t("Cancel")}
              </button>
           </div>
         </form>
@@ -380,8 +382,8 @@ export default function TeacherAssignmentBoard() {
       {selectedClassId && !showAdd && (
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-4 border-b border-outline-variant/30 pb-2 mb-4">
-            <button onClick={() => setActiveTab('active')} className={`font-title text-xl font-bold px-4 py-2 ${activeTab === 'active' ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>Active</button>
-            <button onClick={() => setActiveTab('history')} className={`font-title text-xl font-bold px-4 py-2 ${activeTab === 'history' ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>History</button>
+            <button onClick={() => setActiveTab('active')} className={`font-title text-xl font-bold px-4 py-2 ${activeTab === 'active' ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{t("Active")}</button>
+            <button onClick={() => setActiveTab('history')} className={`font-title text-xl font-bold px-4 py-2 ${activeTab === 'history' ? 'text-primary border-b-2 border-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{t("History")}</button>
           </div>
           
           {(() => {
@@ -390,7 +392,7 @@ export default function TeacherAssignmentBoard() {
               return (
                 <div className="bg-surface-container-low p-12 rounded-3xl border border-outline-variant/30 text-center flex flex-col items-center">
                   <FileText className="w-12 h-12 text-on-surface-variant/30 mb-4" />
-                  <p className="font-label font-bold text-on-surface-variant">{activeTab === 'active' ? 'No active assignments.' : 'No assignment history.'}</p>
+                  <p className="font-label font-bold text-on-surface-variant">{activeTab === 'active' ? t('No active assignments.') : t('No assignment history.')}</p>
                 </div>
               );
             }
@@ -507,14 +509,14 @@ export default function TeacherAssignmentBoard() {
                       className="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-full font-label font-bold transition-colors cursor-pointer"
                     >
                       <Users className="w-4 h-4" />
-                      View Submissions ({a.assignment_students?.length || 0})
+                      View Submissions ({(a.assignment_students || []).filter((as: any) => students.some(s => s.user_id === as.student_id)).length})
                     </button>
                   </div>
                   
                   {expandedAssignId === a.assignment_id && (
                      <div className="mt-4 pt-4 border-t border-outline-variant/30 flex flex-col gap-2">
                         <h4 className="font-label font-bold text-on-surface text-sm mb-1">Student Status</h4>
-                        {(a.assignment_students || []).map((as: any) => {
+                        {(a.assignment_students || []).filter((as: any) => students.some(s => s.user_id === as.student_id)).map((as: any) => {
                            const student = students.find(s => s.user_id === as.student_id);
                            const isSubmitted = as.status === 'submitted' || as.status === 'completed';
                            return (
@@ -626,7 +628,7 @@ return (
               <h2 className="text-xl font-display font-bold text-on-surface mb-2">Delete Assignment?</h2>
               <p className="text-on-surface-variant font-body mb-6">This action cannot be undone. All student submissions will also be deleted.</p>
               <div className="flex gap-3 justify-end">
-                 <button onClick={() => setAssignmentToDelete(null)} className="px-4 py-2 font-label font-bold text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors">Cancel</button>
+                 <button onClick={() => setAssignmentToDelete(null)} className="px-4 py-2 font-label font-bold text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors">{t("Cancel")}</button>
                  <button onClick={() => handleDelete(assignmentToDelete)} className="px-4 py-2 font-label font-bold bg-error text-on-error hover:bg-error/90 rounded-full transition-colors">Delete</button>
               </div>
            </div>
@@ -654,7 +656,7 @@ return (
                  )}
                  {viewingSubmission.attachments && viewingSubmission.attachments.length > 0 && (
                      <div>
-                         <h3 className="font-label text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">Attachments</h3>
+                         <h3 className="font-label text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">{t("Attachments")}</h3>
                          <div className="flex flex-col gap-4">
                              {viewingSubmission.attachments.map((att, i) => {
                                  const isImage = att.url?.startsWith('data:image/') || att.name?.match(/\.(jpeg|jpg|gif|png)$/i);

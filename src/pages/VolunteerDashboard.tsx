@@ -7,8 +7,12 @@ import { QRCodeBadge } from "../components/QRCodeBadge";
 import { QrCode } from "lucide-react";
 import { formatTeacherName } from "../lib/utils";
 import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";
+import { useLanguage } from "../lib/i18n";
+
 
 export default function VolunteerDashboard() {
+  const { t } = useLanguage();
+
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,7 +172,7 @@ export default function VolunteerDashboard() {
           <div className="flex items-center gap-3 overflow-hidden">
             <Megaphone className="w-5 h-5 shrink-0 text-primary" />
             <div className="truncate">
-              <span className="font-bold mr-2">New Announcement:</span>
+              <span className="font-bold mr-2">{t("New Announcement")}:</span>
               <span className="font-body text-sm truncate">{announcements[0].title}</span>
             </div>
           </div>
@@ -195,7 +199,7 @@ export default function VolunteerDashboard() {
                 }`}
             >
                <Clock className="w-5 h-5 fill-current opacity-80" />
-               {clockStatus === 'loading' ? 'Loading...' : clockStatus === 'clocked_in' ? 'Clock Out' : 'Clock In'}
+               {clockStatus === 'loading' ? 'Loading...' : clockStatus === 'clocked_in' ? t("Clock Out") : t("Clock In")}
             </button>
             <button onClick={() => setShowQrCode(true)} className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-label font-bold transition-colors shadow-sm bg-primary-container text-on-primary-container hover:bg-primary-container/80">
                <QrCode className="w-5 h-5" /> 
@@ -220,7 +224,7 @@ export default function VolunteerDashboard() {
                      <QrCode className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="font-title text-lg font-bold text-on-surface">QR Scanner</h4>
+                    <h4 className="font-title text-lg font-bold text-on-surface">{t('QR Scanner')}</h4>
                     <p className="font-body text-sm text-on-surface-variant mt-1">Scan student or staff ID badges</p>
                   </div>
                </button>
@@ -262,7 +266,7 @@ export default function VolunteerDashboard() {
                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                   </div>
                   <div>
-                    <h4 className="font-label font-bold text-on-surface">Messages</h4>
+                    <h4 className="font-label font-bold text-on-surface">{t('Messages')}</h4>
                     <p className="font-body text-xs text-on-surface-variant mt-0.5">Contact staff and teachers</p>
                   </div>
                </button>

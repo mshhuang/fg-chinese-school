@@ -3,53 +3,51 @@ import re
 with open('src/pages/TeacherDashboard.tsx', 'r') as f:
     content = f.read()
 
-# Add usersMap state
-state_pattern = r"const \[assignedClasses, setAssignedClasses\] = useState<any\[\]>\(\[\]\);"
-state_replacement = """const [assignedClasses, setAssignedClasses] = useState<any[]>([]);
-  const [usersMap, setUsersMap] = useState<Record<string, any>>({});"""
-content = re.sub(state_pattern, state_replacement, content)
+# Import useLanguage
+if 'useLanguage' not in content:
+    content = content.replace(
+        'import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";',
+        'import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";\nimport { useLanguage } from "../lib/i18n";'
+    )
 
-# Fetch all users
-fetch_pattern = r"const \{ data \} = await supabase.from\('classes'\).select\('\*, programs\(program_name\), users:primary_teacher_id\(first_name, last_name\), co_teacher:co_teacher_id\(first_name, last_name\)'\);"
-fetch_replacement = """const { data: userData } = await supabase.from('users').select('user_id, first_name, last_name, user_roles(roles(role_name))');
-     const uMap: Record<string, any> = {};
-     if (userData) {
-        userData.forEach((u: any) => {
-           const isVolunteer = u.user_roles?.some((ur: any) => ur.roles?.role_name === 'Volunteer');
-           uMap[u.user_id] = { ...u, isVolunteer };
-        });
-        setUsersMap(uMap);
-     }
-     
-     const { data } = await supabase.from('classes').select('*, programs(program_name), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name), co_teachers');"""
-content = re.sub(fetch_pattern, fetch_replacement, content)
+# Add t to component
+if 'const { t } = useLanguage();' not in content:
+    content = content.replace(
+        'const navigate = useNavigate();',
+        'const navigate = useNavigate();\n  const { t } = useLanguage();'
+    )
 
-# Update myClasses filter
-filter_pattern = r"const myClasses = data\.filter\(c => c\.primary_teacher_id === teacherId \|\| c\.co_teacher_id === teacherId\);"
-filter_replacement = """const myClasses = data.filter(c => c.primary_teacher_id === teacherId || c.co_teacher_id === teacherId || (c.co_teachers || []).includes(teacherId));"""
-content = re.sub(filter_pattern, filter_replacement, content)
+# Use t for Good morning
+content = content.replace('setGreeting("Good morning")', 'setGreeting(t("Good morning"))')
+content = content.replace('setGreeting("Good afternoon")', 'setGreeting(t("Good afternoon"))')
+content = content.replace('setGreeting("Good evening")', 'setGreeting(t("Good evening"))')
 
+content = content.replace('{greeting}, {user?.first_name || "Teacher"}!', '{greeting}, {user?.first_name || "Teacher"}!') # This is fine
 
-# Update the display logic
-display_pattern = r"\{cls\.co_teacher_id === \(user\?\.user_id \|\| user\?\.id\).*?\n.*?\}</span"
-display_replacement = """{(() => {
-                                 const currentUserId = user?.user_id || user?.id;
-                                 const allCoTeachers = [
-                                    ...(cls.co_teacher_id && !(cls.co_teachers || []).includes(cls.co_teacher_id) ? [cls.co_teacher_id] : []),
-                                    ...(cls.co_teachers || [])
-                                 ];
-                                 if (allCoTeachers.length === 0) return 'TBD';
-                                 
-                                 return allCoTeachers.map(id => {
-                                    if (id === currentUserId) return `You (${formatTeacherName(user?.first_name, user?.last_name, 'Teacher')})`;
-                                    const u = usersMap[id];
-                                    if (!u) return 'Unknown';
-                                    if (u.isVolunteer) return `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Volunteer';
-                                    return formatTeacherName(u.first_name, u.last_name, 'Teacher');
-                                 }).join(', ');
-                               })()}
-                              </span"""
-content = re.sub(display_pattern, display_replacement, content, flags=re.DOTALL)
+content = content.replace('<p className="font-body text-lg text-on-surface-variant mt-2">You have {assignedClasses.filter', '<p className="font-body text-lg text-on-surface-variant mt-2">{t("You have")} {assignedClasses.filter')
+
+# Wait, "You have" isn't in translations. Let's fix the specific text logic.
+old_class_counts = '<p className="font-body text-lg text-on-surface-variant mt-2">You have {assignedClasses.filter(c => c.primary_teacher_id === (user?.user_id || user?.id)).length} homeroom classes and {assignedClasses.filter(c => c.primary_teacher_id !== (user?.user_id || user?.id)).length} co-teacher classes.</p>'
+new_class_counts = '<p className="font-body text-lg text-on-surface-variant mt-2">{assignedClasses.filter(c => c.primary_teacher_id === (user?.user_id || user?.id)).length} {t("homeroom classes and")} {assignedClasses.filter(c => c.primary_teacher_id !== (user?.user_id || user?.id)).length} {t("co-teacher classes.")}</p>'
+
+content = content.replace(old_class_counts, new_class_counts)
+
+# Button strings
+content = content.replace('Check-in QR Code', '{t("Check-in QR Code")}')
+content = content.replace('Scan QR', '{t("Scan QR")}')
+content = content.replace('My Classes', '{t("My Classes")}')
+content = content.replace("Today\\'s Schedule", "{t(\"Today's Schedule\")}")
+content = content.replace('Latest Announcement', '{t("Latest Announcement")}')
+content = content.replace('Recent Submissions', '{t("Recent Submissions")}')
+content = content.replace('Active Clock-In Session Detected', '{t("Active Clock-In Session Detected")}')
+content = content.replace('Clock Out Now', '{t("Clock Out Now")}')
+content = content.replace('No classes assigned yet.', '{t("No classes assigned yet.")}')
+
+# Replace Clock In / Clock Out text manually carefully
+content = re.sub(r'>\s*Clock In\s*<', '>{t("Clock In")}<', content)
+content = re.sub(r'>\s*Clock Out\s*<', '>{t("Clock Out")}<', content)
+content = re.sub(r'>\s*View All\s*<', '>{t("View All")}<', content)
 
 with open('src/pages/TeacherDashboard.tsx', 'w') as f:
     f.write(content)
+

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../lib/i18n';
 import { AlertTriangle, Clock, Save, Plus, X, Loader2, Trash2 } from 'lucide-react';
 
 export interface ExistingClockRecord {
@@ -31,6 +32,7 @@ export const DuplicateClockWarningModal: React.FC<DuplicateClockWarningModalProp
   onCreateNew,
   onDelete
 }) => {
+  const { t } = useLanguage();
   const [selectedTime, setSelectedTime] = useState('');
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export const DuplicateClockWarningModal: React.FC<DuplicateClockWarningModalProp
   if (!isOpen) return null;
 
   const isCheckIn = actionType === 'clock_in' || actionType === 'school_check_in';
-  const actionLabel = isCheckIn ? 'Clock In' : (actionType === 'school_check_out' ? 'Ready to Go Home' : 'Clock Out');
+  const actionLabel = isCheckIn ? t("Clock In") : (actionType === "school_check_out" ? t("Ready to Go Home") : t("Clock Out"));
 
   const formatExistingTime = (isoString?: string) => {
     if (!isoString) return 'earlier today';

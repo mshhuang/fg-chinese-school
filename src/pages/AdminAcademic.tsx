@@ -63,7 +63,9 @@ export default function AdminAcademic() {
   async function fetchData() {
     setLoading(true);
     let table = activeTab;
-    const { data: res, error } = await supabase.from(table).select('*').order(table === 'programs' ? 'program_id' : table === 'classes' ? 'class_id' : table === 'subjects' ? 'subject_id' : table === 'periods' ? 'period_id' : 'room_id', { ascending: false });
+    let cols = '*';
+    if (table === 'classes') cols = 'class_id, class_name';
+    const { data: res, error } = await supabase.from(table).select(cols).order(table === 'programs' ? 'program_id' : table === 'classes' ? 'class_id' : table === 'subjects' ? 'subject_id' : table === 'periods' ? 'period_id' : 'room_id', { ascending: false });
     if (res) setData(res);
     setLoading(false);
   }

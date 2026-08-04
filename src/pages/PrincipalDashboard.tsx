@@ -6,6 +6,7 @@ import { Users, BookOpen, ClipboardCheck, Coins, UserCheck, UserPlus, Megaphone,
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { formatTeacherName, extractPlainText } from "../lib/utils";
+import { useLanguage } from "../lib/i18n";
 
 const data = [
   { name: 'Mon', students: 500 },
@@ -20,15 +21,16 @@ export default function PrincipalDashboard() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [greeting, setGreeting] = useState("Good morning");
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning");
-    else if (hour < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
+    if (hour < 12) setGreeting(t("Good morning"));
+    else if (hour < 18) setGreeting(t("Good afternoon"));
+    else setGreeting(t("Good evening"));
 
     const u = localStorage.getItem('user');
     if (u) {
@@ -39,7 +41,7 @@ export default function PrincipalDashboard() {
 
     async function loadData() {
       // Load Stats
-      const { count: classesCount } = await supabase.from('classes').select('*', { count: 'exact', head: true });
+      const { count: classesCount } = await supabase.from('classes').select('class_id', { count: 'exact', head: true });
       
       let studentCount = 0;
       const { data: roleData } = await supabase.from('roles').select('role_id').ilike('role_name', '%student%');
@@ -49,7 +51,7 @@ export default function PrincipalDashboard() {
         studentCount = sCount || 0;
       }
       
-      // Load Absences Today
+      // Load {t("Absences Today")}
       const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
       
       const { data: attData } = await supabase.from('attendance')
@@ -100,9 +102,9 @@ export default function PrincipalDashboard() {
 
       {/* Summary Cards Bento */}
       <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-        <StatCard icon={Users} label="Total Students" value={stats.totalStudents} colorClass="text-primary" />
-        <StatCard icon={BookOpen} label="Active Classes" value={stats.activeClasses} colorClass="text-primary" />
-        <StatCard icon={ClipboardCheck} label="Absences Today" value={stats.absencesToday} colorClass="text-error" opacity="opacity-50 grayscale" title="Data coming soon" />
+        <StatCard icon={Users} label={t("Total Students")} value={stats.totalStudents} colorClass="text-primary" />
+        <StatCard icon={BookOpen} label={t("Active Classes")} value={stats.activeClasses} colorClass="text-primary" />
+        <StatCard icon={ClipboardCheck} label={t("Absences Today")} value={stats.absencesToday} colorClass="text-error" opacity="opacity-50 grayscale" title="Data coming soon" />
         <StatCard icon={Coins} label="Tuition Paid" value="--" colorClass="text-tertiary" opacity="opacity-50 grayscale" title="Data coming soon" />
         <StatCard icon={UserCheck} label="Teacher Attendance" value="--" colorClass="text-tertiary" opacity="opacity-50 grayscale" title="Data coming soon" />
         <StatCard icon={UserPlus} label="New Registration" value="--" colorClass="text-secondary-container" bgClass="bg-surface-container-high" opacity="opacity-50 grayscale" title="Data coming soon" />
