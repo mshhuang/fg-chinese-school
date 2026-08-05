@@ -1,0 +1,3 @@
+sed -i 's/const fetchCheckInStatus = async (studentId: string) => {/const fetchCheckInStatus = async (studentId: string) => {\n     if (!studentId) {\n        setCheckInStatus("not_checked_in");\n        return;\n     }\n/g' src/pages/StudentPortal.tsx
+sed -i 's/const { data } = await supabase/try {\n       const { data, error } = await supabase/g' src/pages/StudentPortal.tsx
+sed -i 's/setCheckInStatus('\''not_checked_in'\'');\n     }/setCheckInStatus('\''not_checked_in'\'');\n     }\n     if (error) throw error;\n     } catch (err) { setCheckInStatus('\''not_checked_in'\''); }/g' src/pages/StudentPortal.tsx

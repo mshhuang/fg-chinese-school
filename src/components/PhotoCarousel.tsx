@@ -105,46 +105,64 @@ export function PhotoCarousel({
     let roleAll = await getPhotos(viewerRole, 'all_unfiltered');
     let data = await getPhotos(viewerRole, selectedClassFilter);
     
-    // Additional filtering for teachers
-    if (viewerRole === 'teacher' && currentUser) {
+    // Additional filtering for specific roles (teachers, students, parents)
+    const userStr = localStorage.getItem('user');
+    const localUser = currentUser || (userStr ? JSON.parse(userStr) : null);
+    const currentUserId = localUser?.id || localUser?.user_id;
+
+    if (currentUserId) {
         try {
-            const currentUserId = currentUser.id || currentUser.user_id;
-            const realUserId = currentUserId?.startsWith('user_') ? currentUserId.replace('user_', '') : currentUserId;
-            
-            // Fetch all classes and filter locally to avoid Supabase array syntax issues
-            const { data: clsData } = await supabase.from('classes').select('class_name, primary_teacher_id, co_teacher_id, co_teachers');
-                
-            if (clsData) {
-                const teacherClasses = clsData.filter((c: any) => {
-                    if (c.primary_teacher_id === realUserId || c.co_teacher_id === realUserId) return true;
-                    if (c.co_teachers && Array.isArray(c.co_teachers) && c.co_teachers.includes(realUserId)) return true;
-                    return false;
-                });
-                const teacherClassNames = teacherClasses.map((c: any) => c.class_name);
-                
-                const filterTeacherPhotos = (photos: any[]) => {
+            const realUserId = currentUserId.startsWith('user_') ? currentUserId.replace('user_', '') : currentUserId;
+            let myClassNames: string[] = [];
+
+            if (viewerRole === 'teacher') {
+                const { data: clsData } = await supabase.from('classes').select('class_name, primary_teacher_id, co_teacher_id, co_teachers');
+                if (clsData) {
+                    const teacherClasses = clsData.filter((c: any) => {
+                        if (c.primary_teacher_id === realUserId || c.co_teacher_id === realUserId) return true;
+                        if (c.co_teachers && Array.isArray(c.co_teachers) && c.co_teachers.includes(realUserId)) return true;
+                        return false;
+                    });
+                    myClassNames = teacherClasses.map((c: any) => c.class_name).filter(Boolean);
+                }
+            } else if (viewerRole === 'student') {
+                const { data: enrollData } = await supabase.from('enrollments').select('classes(class_name)').eq('student_id', realUserId);
+                if (enrollData) {
+                    myClassNames = enrollData.map((e: any) => e.classes?.class_name).filter(Boolean);
+                }
+            } else if (viewerRole === 'parent') {
+                const { data: pcData } = await supabase.from('parent_child').select('child_id').eq('parent_id', realUserId);
+                if (pcData && pcData.length > 0) {
+                    const childIds = pcData.map((pc: any) => pc.child_id);
+                    const { data: enrollData } = await supabase.from('enrollments').select('classes(class_name)').in('student_id', childIds);
+                    if (enrollData) {
+                        myClassNames = enrollData.map((e: any) => e.classes?.class_name).filter(Boolean);
+                    }
+                }
+            }
+
+            if (viewerRole === 'teacher' || viewerRole === 'student' || viewerRole === 'parent') {
+                const currentUserName = localUser?.name || localUser?.full_name || '';
+                const filterPhotosByClasses = (photos: any[]) => {
                     return photos.filter(p => {
-                        if (p.audience_type === 'all') return true;
-                        
-                        // Check if photo belongs to teacher's classes
+                        if (p.teacher_id === realUserId || (p.teacher_name && p.teacher_name === currentUserName)) return true;
+                        if (p.audience_type === 'all' || p.class_name === 'School-Wide') return true;
                         if (p.class_names && Array.isArray(p.class_names)) {
-                            if (p.class_names.some((cn: string) => teacherClassNames.includes(cn))) return true;
+                            if (p.class_names.some((cn: string) => myClassNames.includes(cn))) return true;
                         }
                         if (p.class_name) {
                             const parts = p.class_name.split(',').map((s: string) => s.trim());
-                            if (parts.some((cn: string) => teacherClassNames.includes(cn))) return true;
+                            if (parts.some((cn: string) => myClassNames.includes(cn))) return true;
                         }
-                        
                         return false;
                     });
                 };
                 
-                roleAll = filterTeacherPhotos(roleAll);
-                data = filterTeacherPhotos(data);
+                roleAll = filterPhotosByClasses(roleAll);
+                data = filterPhotosByClasses(data);
             }
-
         } catch (e) {
-            console.error("Error filtering teacher classes", e);
+            console.error("Error filtering classes", e);
         }
     }
     
@@ -156,23 +174,43 @@ export function PhotoCarousel({
   };
 
   useEffect(() => {
-        async function fetchClasses() {
+    async function fetchClasses() {
       try {
-        const { data } = await supabase.from('classes').select('class_name, primary_teacher_id, co_teacher_id, co_teachers');
-        if (data) {
-          let filteredClasses = data;
-          if (viewerRole === 'teacher' && currentUser) {
-              const currentUserId = currentUser.id || currentUser.user_id;
-              const realUserId = currentUserId?.startsWith('user_') ? currentUserId.replace('user_', '') : currentUserId;
-              
-              filteredClasses = data.filter((c: any) => {
-                  if (c.primary_teacher_id === realUserId || c.co_teacher_id === realUserId) return true;
-                  if (c.co_teachers && Array.isArray(c.co_teachers) && c.co_teachers.includes(realUserId)) return true;
-                  return false;
-              });
-          }
-          const names = filteredClasses.map((c: any) => c.class_name).filter(Boolean);
-          setDbClasses(names);
+        const userStr = localStorage.getItem('user');
+        const localUser = currentUser || (userStr ? JSON.parse(userStr) : null);
+        const currentUserId = localUser?.id || localUser?.user_id;
+        const realUserId = currentUserId ? (currentUserId.startsWith('user_') ? currentUserId.replace('user_', '') : currentUserId) : null;
+
+        if (viewerRole === 'teacher') {
+            const { data } = await supabase.from('classes').select('class_name, primary_teacher_id, co_teacher_id, co_teachers');
+            if (data && realUserId) {
+                const filteredClasses = data.filter((c: any) => {
+                    if (c.primary_teacher_id === realUserId || c.co_teacher_id === realUserId) return true;
+                    if (c.co_teachers && Array.isArray(c.co_teachers) && c.co_teachers.includes(realUserId)) return true;
+                    return false;
+                });
+                setDbClasses(filteredClasses.map((c: any) => c.class_name).filter(Boolean));
+            }
+        } else if (viewerRole === 'student' && realUserId) {
+            const { data } = await supabase.from('enrollments').select('classes(class_name)').eq('student_id', realUserId);
+            if (data) {
+                setDbClasses(data.map((e: any) => e.classes?.class_name).filter(Boolean));
+            }
+        } else if (viewerRole === 'parent' && realUserId) {
+            const { data: pcData } = await supabase.from('parent_child').select('child_id').eq('parent_id', realUserId);
+            if (pcData && pcData.length > 0) {
+                const childIds = pcData.map((pc: any) => pc.child_id);
+                const { data } = await supabase.from('enrollments').select('classes(class_name)').in('student_id', childIds);
+                if (data) {
+                    setDbClasses(data.map((e: any) => e.classes?.class_name).filter(Boolean));
+                }
+            }
+        } else {
+            // Admin or other roles, fetch all classes
+            const { data } = await supabase.from('classes').select('class_name');
+            if (data) {
+                setDbClasses(data.map((c: any) => c.class_name).filter(Boolean));
+            }
         }
       } catch (e) {}
     }
@@ -214,7 +252,7 @@ export function PhotoCarousel({
   };
 
   const selectAllClasses = () => {
-    const allCls = viewerRole === "teacher" ? dbClasses : Array.from(new Set([...SCHOOL_CLASSES, ...dbClasses]));
+    const allCls = viewerRole === "teacher" && dbClasses.length > 0 ? dbClasses : Array.from(new Set([...SCHOOL_CLASSES, ...dbClasses]));
     setSelectedClasses(allCls);
   };
 
@@ -225,7 +263,7 @@ export function PhotoCarousel({
     setImageUrl('');
     setPreviewImage(null);
     setAudienceTarget('all');
-    setSelectedClasses([SCHOOL_CLASSES[0]]);
+    setSelectedClasses(viewerRole === 'teacher' && dbClasses.length > 0 ? [dbClasses[0]] : [SCHOOL_CLASSES[0]]);
     setCustomClass('');
     setUseCustomClass(false);
     setShowUploadModal(true);
@@ -247,7 +285,7 @@ export function PhotoCarousel({
       
       setSelectedClasses(existingClasses);
 
-      const predefined = new Set(viewerRole === "teacher" ? dbClasses : [...SCHOOL_CLASSES, ...dbClasses]);
+      const predefined = new Set(viewerRole === "teacher" && dbClasses.length > 0 ? dbClasses : [...SCHOOL_CLASSES, ...dbClasses]);
       const customItems = existingClasses.filter(c => !predefined.has(c));
       if (customItems.length > 0) {
         setCustomClass(customItems.join(', '));
@@ -258,7 +296,7 @@ export function PhotoCarousel({
       }
     } else {
       setAudienceTarget('all');
-      setSelectedClasses([SCHOOL_CLASSES[0]]);
+      setSelectedClasses(viewerRole === 'teacher' && dbClasses.length > 0 ? [dbClasses[0]] : [SCHOOL_CLASSES[0]]);
     }
 
     setShowUploadModal(true);
@@ -514,11 +552,11 @@ export function PhotoCarousel({
     )
   ).filter(c => c && c !== 'School-Wide');
 
-  const isStudentOrParent = viewerRole === 'student' || viewerRole === 'parent' || !showTeacherUpload;
-
-  const filterClassOptions = isStudentOrParent
-    ? availableClassesInRolePhotos
-    : Array.from(new Set(viewerRole === "teacher" ? [...dbClasses, ...availableClassesInRolePhotos] : [...SCHOOL_CLASSES, ...dbClasses, ...availableClassesInRolePhotos])).filter(c => c !== 'School-Wide');
+  const filterClassOptions = Array.from(new Set(
+    viewerRole === "teacher" || viewerRole === "student" || viewerRole === "parent" 
+      ? [...dbClasses, ...availableClassesInRolePhotos] 
+      : [...SCHOOL_CLASSES, ...dbClasses, ...availableClassesInRolePhotos]
+  )).filter(c => c && c !== 'School-Wide');
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
@@ -565,7 +603,7 @@ export function PhotoCarousel({
               onChange={(e) => setSelectedClassFilter(e.target.value)}
               className="bg-transparent border-none outline-none font-bold text-xs text-on-surface cursor-pointer pr-1"
             >
-              <option value="all">{t("All Classes & Audience")}</option>
+              <option value="all">{t("School-Wide")}</option>
               {filterClassOptions.map(cls => (
                 <option key={cls} value={cls}>{cls}</option>
               ))}
@@ -587,7 +625,7 @@ export function PhotoCarousel({
               onClick={openNewPhotoModal}
               className="px-4 py-2 rounded-full bg-primary text-on-primary font-label font-bold text-xs flex items-center gap-1.5 shadow-sm hover:opacity-95 transition-all"
             >
-              <Plus className="w-4 h-4" /> Post Photo
+              <Plus className="w-4 h-4" /> {t("Post Photo")}
             </button>
           )}
         </div>
@@ -597,16 +635,16 @@ export function PhotoCarousel({
       {photos.length === 0 ? (
         <div className="p-10 rounded-3xl bg-surface-container border border-outline-variant/30 text-center flex flex-col items-center justify-center gap-3">
           <ImageIcon className="w-12 h-12 text-on-surface-variant/40" />
-          <h3 className="font-title text-lg font-bold text-on-surface">No Photo Highlights Found</h3>
+          <h3 className="font-title text-lg font-bold text-on-surface">{t("No Photo Highlights Found")}</h3>
           <p className="text-xs text-on-surface-variant max-w-md">
-            No photo highlights match the selected class filter. Teachers can post classroom photos with target audience settings.
+            {t("No photo highlights match the selected class filter. Teachers can post classroom photos with target audience settings.")}
           </p>
           {showTeacherUpload && (
             <button
               onClick={openNewPhotoModal}
               className="mt-2 px-5 py-2.5 rounded-full bg-primary text-on-primary font-bold text-xs flex items-center gap-2 hover:opacity-90 transition-opacity"
             >
-              <Plus className="w-4 h-4" /> Post First Photo
+              <Plus className="w-4 h-4" /> {t("Post First Photo")}
             </button>
           )}
         </div>
@@ -1098,7 +1136,7 @@ export function PhotoCarousel({
 
                       {/* Class Choice Chips / Checkboxes */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1.5 border border-outline-variant/30 rounded-2xl bg-surface-container-low">
-                        {Array.from(new Set(viewerRole === "teacher" ? dbClasses : [...SCHOOL_CLASSES, ...dbClasses])).map(cls => {
+                        {Array.from(new Set(viewerRole === "teacher" && dbClasses.length > 0 ? dbClasses : [...SCHOOL_CLASSES, ...dbClasses])).map(cls => {
                           const isSelected = selectedClasses.includes(cls);
                           return (
                             <button

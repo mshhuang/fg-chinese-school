@@ -1,0 +1,1 @@
+sed -i 's/setCheckInStatus('\''not_checked_in'\'');\n     }/setCheckInStatus('\''not_checked_in'\'');\n     }\n     if (error) throw error;\n     } catch (err) { setCheckInStatus('\''not_checked_in'\''); }/g' src/pages/StudentPortal.tsx

@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { BookOpen, Clock, CheckCircle2, ChevronRight, AlertCircle, FileText, Upload, X } from "lucide-react";
 import { cn, formatTeacherName } from "../lib/utils";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/i18n";
 
 export default function StudentAssignments() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("all");
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,8 +141,8 @@ export default function StudentAssignments() {
        {/* Header */}
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
          <div>
-           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">Assignments</h1>
-           <p className="font-body text-lg text-on-surface-variant mt-2">Manage your homework and projects.</p>
+           <h1 className="font-display text-4xl text-primary font-bold tracking-tight">{t('Assignments')}</h1>
+           <p className="font-body text-lg text-on-surface-variant mt-2">{t('Manage your homework and projects.')}</p>
          </div>
        </header>
 
@@ -150,19 +152,19 @@ export default function StudentAssignments() {
             onClick={() => setActiveTab("all")}
             className={cn("pb-4 font-label font-bold text-sm transition-all border-b-2", activeTab === "all" ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface")}
           >
-            All Assignments
+            {t('All Assignments')}
           </button>
           <button 
             onClick={() => setActiveTab("pending")}
             className={cn("pb-4 font-label font-bold text-sm transition-all border-b-2", activeTab === "pending" ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface")}
           >
-            To Do
+            {t('To Do')}
           </button>
           <button 
             onClick={() => setActiveTab("completed")}
             className={cn("pb-4 font-label font-bold text-sm transition-all border-b-2", activeTab === "completed" ? "border-primary text-primary" : "border-transparent text-on-surface-variant hover:text-on-surface")}
           >
-            Completed
+            {t('Completed')}
           </button>
        </div>
 
@@ -173,7 +175,7 @@ export default function StudentAssignments() {
           ) : filteredAssignments.length === 0 ? (
              <div className="col-span-full py-12 text-center flex flex-col items-center justify-center bg-surface-container-low rounded-3xl border border-outline-variant/30">
                 <CheckCircle2 className="w-12 h-12 text-primary opacity-50 mb-4" />
-                <p className="font-label font-bold text-on-surface-variant text-lg">All caught up!</p>
+                <p className="font-label font-bold text-on-surface-variant text-lg">{t('All caught up!')}</p>
              </div>
           ) : filteredAssignments.map(a => {
              const assignData = a.assignments;

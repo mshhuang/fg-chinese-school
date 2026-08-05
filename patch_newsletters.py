@@ -1,12 +1,19 @@
-import re
-
 with open('src/pages/TeacherNewsletters.tsx', 'r') as f:
-    content = f.read()
+    text = f.read()
 
-content = content.replace(
-    "const { data: classData } = await supabase.from('classes').select('class_id').eq('primary_teacher_id', authorId).maybeSingle();",
-    "const { data: classData } = await supabase.from('classes').select('class_id').or(`primary_teacher_id.eq.${authorId},co_teacher_id.eq.${authorId},co_teachers.cs.{${authorId}}`).limit(1).maybeSingle();"
-)
+replacements = [
+    ('Title</label>', '{t("Title")}</label>'),
+    ('Target Audience</label>', '{t("Target Audience")}</label>'),
+    ('Brief Context (Optional)</label>', '{t("Brief Context (Optional)")}</label>'),
+    ('Attachments</label>', '{t("Attachments")}</label>'),
+    ('Click to attach files</p>', '{t("Click to attach files")}</p>'),
+    ('Supported: PDF, Word, Text, Images, HEIC (Max 10MB each)</p>', '{t("Supported: PDF, Word, Text, Images, HEIC (Max 10MB each)")}</p>'),
+    ("{isUploading ? 'Saving...' : 'Save as Draft'}", "{isUploading ? t('Saving...') : t('Save as Draft')}"),
+    ("{isUploading ? 'Saving...' : 'Submit for Approval'}", "{isUploading ? t('Saving...') : t('Submit for Approval')}"),
+]
+
+for old, new in replacements:
+    text = text.replace(old, new)
 
 with open('src/pages/TeacherNewsletters.tsx', 'w') as f:
-    f.write(content)
+    f.write(text)

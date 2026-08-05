@@ -11,6 +11,73 @@ interface Translations {
 }
 
 const translations: Translations = {
+  "e.g. March Updates": { en: "e.g. March Updates", 'zh-CN': "例如：三月更新", 'zh-TW': "例如：三月更新" },
+  "e.g. All Parents": { en: "e.g. All Parents", 'zh-CN': "例如：所有家长", 'zh-TW': "例如：所有家長" },
+  "Provide a short summary...": { en: "Provide a short summary...", 'zh-CN': "提供简短的摘要...", 'zh-TW': "提供簡短的摘要..." },
+  "Brief Context (Optional)": { en: "Brief Context (Optional)", 'zh-CN': "简短的背景信息（可选）", 'zh-TW': "簡短的背景資訊（可選）" },
+  "Click to attach files": { en: "Click to attach files", 'zh-CN': "点击添加附件", 'zh-TW': "點擊添加附件" },
+  "Supported: PDF, Word, Text, Images, HEIC (Max 10MB each)": { en: "Supported: PDF, Word, Text, Images, HEIC (Max 10MB each)", 'zh-CN': "支持的格式：PDF、Word、文本、图像、HEIC（每个最大 10MB）", 'zh-TW': "支援的格式：PDF、Word、文字、圖像、HEIC（每個最大 10MB）" },
+  "Save as Draft": { en: "Save as Draft", 'zh-CN': "保存为草稿", 'zh-TW': "儲存為草稿" },
+  "Submit for Approval": { en: "Submit for Approval", 'zh-CN': "提交以供批准", 'zh-TW': "提交以供批准" },
+
+  "No file linked yet.": { en: "No file linked yet.", 'zh-CN': "尚未链接文件。", 'zh-TW': "尚未連結檔案。" },
+  "Google File": { en: "Google File", 'zh-CN': "Google 文件", 'zh-TW': "Google 檔案" },
+
+  "Sharing Instructions": { en: "Sharing Instructions", 'zh-CN': "分享说明", 'zh-TW': "分享說明" },
+  "Open your Google Doc or Slide.": { en: "Open your Google Doc or Slide.", 'zh-CN': "打开您的 Google 文档或幻灯片。", 'zh-TW': "打開您的 Google 文件或幻燈片。" },
+  "step_2": { en: "Click the blue <strong>Share</strong> button in the top right.", 'zh-CN': "点击右上角蓝色的<strong>分享</strong>按钮。", 'zh-TW': "點擊右上角藍色的<strong>分享</strong>按鈕。" },
+  "step_3": { en: "Under \"General access\", change Restricted to <strong>Anyone with the link</strong>.", 'zh-CN': "在“常规访问权限”下，将“受限”更改为<strong>任何知道链接的人</strong>。", 'zh-TW': "在「一般存取權」下，將「受限」更改為<strong>知道連結的任何人</strong>。" },
+  "step_4": { en: "Ensure the role on the right is set to <strong>Viewer</strong>.", 'zh-CN': "确保右侧的角色设置为<strong>查看者</strong>。", 'zh-TW': "確保右側的角色設置為<strong>檢視者</strong>。" },
+  "step_5": { en: "Click <strong>Copy link</strong> and paste it into the field below.", 'zh-CN': "点击<strong>复制链接</strong>并将其粘贴到下方的输入框中。", 'zh-TW': "點擊<strong>複製連結</strong>並將其貼上到下方的輸入框中。" },
+
+  "Post First Photo": { en: "Post First Photo", 'zh-CN': "发布第一张照片", 'zh-TW': "發佈第一張照片" },
+
+  "No Photo Highlights Found": { en: "No Photo Highlights Found", 'zh-CN': "未找到照片集锦", 'zh-TW': "未找到照片集錦" },
+  "No photo highlights match the selected class filter. Teachers can post classroom photos with target audience settings.": { en: "No photo highlights match the selected class filter. Teachers can post classroom photos with target audience settings.", 'zh-CN': "没有与所选班级过滤器匹配的照片。教师可以发布包含目标受众设置的课堂照片。", 'zh-TW': "沒有與所選班級過濾器匹配的照片。教師可以發佈包含目標受眾設置的課堂照片。" },
+
+  "Start Camera": { en: "Start Camera", 'zh-CN': "开启相机", 'zh-TW': "開啟相機" },
+  "Upload QR Image": { en: "Upload QR Image", 'zh-CN': "上传二维码图片", 'zh-TW': "上傳二維碼圖片" },
+
+  "Switch Role View": { en: "Switch Role View", 'zh-CN': "切换角色", 'zh-TW': "切換角色" },
+  "Teacher": { en: "Teacher", 'zh-CN': "老师", 'zh-TW': "老師" },
+  "Student": { en: "Student", 'zh-CN': "学生", 'zh-TW': "學生" },
+  "Parent": { en: "Parent", 'zh-CN': "家长", 'zh-TW': "家長" },
+  "School Admin": { en: "School Admin", 'zh-CN': "学校管理员", 'zh-TW': "學校管理員" },
+  "Volunteer": { en: "Volunteer", 'zh-CN': "志愿者", 'zh-TW': "志工" },
+  "Builder": { en: "Builder", 'zh-CN': "系统管理员", 'zh-TW': "系統管理員" },
+  "Staff": { en: "Staff", 'zh-CN': "教职员工", 'zh-TW': "教職員工" },
+
+  "School Check-in Scanner": { en: "School Check-in Scanner", 'zh-CN': "学校签到扫描仪", 'zh-TW': "學校簽到掃描儀" },
+  "Scan QR codes to record daily building arrival for students, teachers, and staff.": { en: "Scan QR codes to record daily building arrival for students, teachers, and staff.", 'zh-CN': "扫描二维码记录学生、教师和教职员工的每日到校情况。", 'zh-TW': "掃描二維碼記錄學生、教師和教職員工的每日到校情況。" },
+
+  "Volunteer Portal": { en: "Volunteer Portal", 'zh-CN': "志愿者门户", 'zh-TW': "志工入口網站" },
+  "View your upcoming shifts, events, and manage daily operations.": { en: "View your upcoming shifts, events, and manage daily operations.", 'zh-CN': "查看您即将到来的班次、活动，并管理日常运营。", 'zh-TW': "查看您即將到來的班次、活動，並管理日常營運。" },
+  "Operations": { en: "Operations", 'zh-CN': "运营", 'zh-TW': "營運" },
+  "Scan student or staff ID badges": { en: "Scan student or staff ID badges", 'zh-CN': "扫描学生或教职员工身份证", 'zh-TW': "掃描學生或教職員工身份證" },
+  "Daily Attendance": { en: "Daily Attendance", 'zh-CN': "每日出勤", 'zh-TW': "每日出勤" },
+  "Submit student headcount and reports": { en: "Submit student headcount and reports", 'zh-CN': "提交学生人数和报告", 'zh-TW': "提交學生人數和報告" },
+  "Quick Actions": { en: "Quick Actions", 'zh-CN': "快捷操作", 'zh-TW': "快捷操作" },
+  "Contact staff and teachers": { en: "Contact staff and teachers", 'zh-CN': "联系教职员工和老师", 'zh-TW': "聯繫教職員工和老師" },
+  "View Announcements": { en: "View Announcements", 'zh-CN': "查看公告", 'zh-TW': "查看公告" },
+  "Stay updated with school news": { en: "Stay updated with school news", 'zh-CN': "随时了解学校新闻", 'zh-TW': "隨時了解學校新聞" },
+
+  "My Programs": { en: "My Programs", 'zh-CN': "我的项目", 'zh-TW': "我的項目" },
+
+  "Today's Assignment": { en: "Today's Assignment", 'zh-CN': "今日作业", 'zh-TW': "今日作業" },
+  "Tasks Left": { en: "Tasks Left", 'zh-CN': "项待办任务", 'zh-TW': "項待辦任務" },
+  "Achievements": { en: "Achievements", 'zh-CN': "成就", 'zh-TW': "成就" },
+  "Days": { en: "Days", 'zh-CN': "天", 'zh-TW': "天" },
+
+  "Open Full Calendar": { en: "Open Full Calendar", 'zh-CN': "打开完整日历", 'zh-TW': "打開完整日曆" },
+  "Manage your homework and projects.": { en: "Manage your homework and projects.", 'zh-CN': "管理你的家庭作业和项目。", 'zh-TW': "管理你的家庭作業和專案。" },
+  "All Assignments": { en: "All Assignments", 'zh-CN': "所有作业", 'zh-TW': "所有作業" },
+  "To Do": { en: "To Do", 'zh-CN': "待办事项", 'zh-TW': "待辦事項" },
+  "Completed": { en: "Completed", 'zh-CN': "已完成", 'zh-TW': "已完成" },
+  "All caught up!": { en: "All caught up!", 'zh-CN': "一切都已完成！", 'zh-TW': "一切都已完成！" },
+
+  "Your journey of knowledge continues. You're doing great!": { en: "Your journey of knowledge continues. You're doing great!", 'zh-CN': "你的求知之旅还在继续，你做得很棒！", 'zh-TW': "你的求知之旅還在繼續，你做得很棒！" },
+  "Linked Family:": { en: "Linked Family:", 'zh-CN': "关联的家庭成员:", 'zh-TW': "關聯的家庭成員:" },
+
 
   "Room": { en: "Room", 'zh-CN': "教室", 'zh-TW': "教室" },
   "TBD": { en: "TBD", 'zh-CN': "待定", 'zh-TW': "待定" },
@@ -300,7 +367,7 @@ const translations: Translations = {
   "My Classes": { en: "My Classes", 'zh-CN': "我的班级", 'zh-TW': "我的班級" },
   "Latest Announcement": { en: "Latest Announcement", 'zh-CN': "最新公告", 'zh-TW': "最新公告" },
   "Recent Submissions": { en: "Recent Submissions", 'zh-CN': "最近提交", 'zh-TW': "最近提交" },
-  "Clock In": { en: "Clock In", 'zh-CN': "打卡上班", 'zh-TW': "打卡上班" },
+  "Clock In": { en: "Clock In", 'zh-CN': "打卡", 'zh-TW': "打卡" },
   "Active Clock-In Session Detected": { en: "Active Clock-In Session Detected", 'zh-CN': "检测到活跃的打卡记录", 'zh-TW': "檢測到活躍的打卡記錄" },
   "Clock Out Now": { en: "Clock Out Now", 'zh-CN': "立即下班打卡", 'zh-TW': "立即下班打卡" },
   "No classes assigned yet.": { en: "No classes assigned yet.", 'zh-CN': "暂未分配班级。", 'zh-TW': "暫未分配班級。" },

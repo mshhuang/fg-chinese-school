@@ -73,24 +73,32 @@ export default function TeacherDashboard() {
   
   
   const fetchClockStatus = async (currentUser: any) => {
-    if (!currentUser || currentUser.id === 'demo') {
+    const realId = currentUser?.id || currentUser?.user_id;
+    if (!currentUser || !realId || realId === 'demo') {
        setClockStatus('clocked_out');
        return;
     }
     const startOfDay = new Date();
     startOfDay.setHours(0,0,0,0);
-    const { data } = await supabase
-       .from('staff_clock_ins')
-       .select('*')
-       .eq('user_id', currentUser.id)
-       .gte('created_at', startOfDay.toISOString())
-       .order('created_at', { ascending: false })
-       .limit(1);
-    
-    if (data && data.length > 0) {
-       setClockStatus(data[0].action_type === 'clock_in' ? 'clocked_in' : 'clocked_out');
-    } else {
-       setClockStatus('clocked_out');
+    try {
+      const { data, error } = await supabase
+         .from('staff_clock_ins')
+         .select('*')
+         .eq('user_id', realId)
+         .gte('created_at', startOfDay.toISOString())
+         .order('created_at', { ascending: false })
+         .limit(1);
+         
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+         setClockStatus(data[0].action_type === 'clock_in' ? 'clocked_in' : 'clocked_out');
+      } else {
+         setClockStatus('clocked_out');
+      }
+    } catch (err) {
+      console.error("Error fetching clock status", err);
+      setClockStatus('clocked_out');
     }
   };
 

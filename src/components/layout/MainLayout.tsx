@@ -464,7 +464,7 @@ export default function MainLayout() {
             {isRoleMenuOpen && (
                <div className="absolute bottom-[100%] mb-2 left-4 right-4 bg-surface-container-highest border border-outline-variant/40 rounded-2xl shadow-xl z-50 overflow-hidden transform-gpu animate-in fade-in slide-in-from-bottom-2 duration-200">
                   <div className="p-2 border-b border-outline-variant/20 bg-surface-container-low">
-                     <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Switch Role View</span>
+                     <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{t("Switch Role View")}</span>
                   </div>
                   <div className="p-1 flex flex-col">
                   {Object.entries(ROLE_CONFIGS)
@@ -476,7 +476,7 @@ export default function MainLayout() {
                      })
                      .map(([key, roleInfo]) => (
                         <button key={key} onClick={() => handleRoleSelect(key)} className={cn("flex items-center justify-between px-3 py-2 rounded-xl text-left hover:bg-surface-variant/50", currentRoleKey === key && "bg-surface-variant/80")}>
-                           <span className="text-sm font-label font-bold text-on-surface">{roleInfo.roleLabel}</span>
+                           <span className="text-sm font-label font-bold text-on-surface">{t(roleInfo.roleLabel)}</span>
                         </button>
                      ))}
                   </div>
@@ -489,19 +489,17 @@ export default function MainLayout() {
                   </div>
                   <div className="text-left">
                      <p className="font-bold text-sm text-on-surface">{userInfo?.first_name || "User"} {userInfo?.last_name || ""}</p>
-                     <p className="text-xs text-on-surface-variant font-label">{currentRole.roleLabel}</p>
+                     <p className="text-xs text-on-surface-variant font-label">{t(currentRole.roleLabel)}</p>
                   </div>
                </div>
                <ChevronDown className="w-4 h-4 text-on-surface-variant" />
             </button>
             <div className="mt-2 flex flex-col gap-1">
-               {/* 
                <div className="flex w-full bg-surface-container-high rounded-xl p-1 gap-1 mb-2">
                    <button onClick={() => setLanguage('en')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'en' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>Eng</button>
                    <button onClick={() => setLanguage('zh-CN')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'zh-CN' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>简体</button>
                    <button onClick={() => setLanguage('zh-TW')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'zh-TW' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>繁體</button>
                </div>
-               */}
                <button onClick={handleLogout} className="flex items-center w-full gap-3 px-4 py-3 rounded-full text-error hover:bg-error-container/20 transition-all font-label font-bold">
                  <LogOut className="w-5 h-5" />
                  {t('Logout')}
@@ -572,7 +570,7 @@ export default function MainLayout() {
                </div>
                {/* Mobile Role Switcher */}
                <div className="p-4 border-t border-outline-variant/20">
-                   <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2 px-2">Switch Role</p>
+                   <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2 px-2">{t("Switch Role")}</p>
                    <div className="flex flex-col gap-1">
                       {Object.entries(ROLE_CONFIGS)
                          .filter(([key]) => {
@@ -583,19 +581,17 @@ export default function MainLayout() {
                          })
                          .map(([key, roleInfo]) => (
                             <button key={key} onClick={() => handleRoleSelect(key)} className={cn("flex items-center justify-between px-3 py-3 rounded-xl text-left hover:bg-surface-variant/50", currentRoleKey === key && "bg-surface-variant/80")}>
-                               <span className="text-sm font-label font-bold text-on-surface">{roleInfo.roleLabel}</span>
+                               <span className="text-sm font-label font-bold text-on-surface">{t(roleInfo.roleLabel)}</span>
                             </button>
                          ))}
                    </div>
                    
                    <div className="mt-4 pt-4 border-t border-outline-variant/20 flex flex-col gap-2">
-                       {/*
                        <div className="flex w-full bg-surface-container-high rounded-xl p-1 gap-1 mb-2 mt-1">
                            <button onClick={() => { setLanguage('en'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'en' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>Eng</button>
                            <button onClick={() => { setLanguage('zh-CN'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'zh-CN' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>简体</button>
                            <button onClick={() => { setLanguage('zh-TW'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'zh-TW' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>繁體</button>
                        </div>
-                       */}
                      <button onClick={handleLogout} className="flex items-center w-full gap-3 px-3 py-3 rounded-xl text-error hover:bg-error-container/20 transition-all font-label font-bold">
                        <LogOut className="w-5 h-5" />
                        {t('Logout')}

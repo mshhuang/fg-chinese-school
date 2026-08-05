@@ -66,24 +66,32 @@ export default function VolunteerDashboard() {
 
 
   const fetchClockStatus = async (currentUser: any) => {
-    if (!currentUser || currentUser.id === 'demo') {
+    const realId = currentUser?.id || currentUser?.user_id;
+    if (!currentUser || !realId || realId === 'demo') {
        setClockStatus('clocked_out');
        return;
     }
     const startOfDay = new Date();
     startOfDay.setHours(0,0,0,0);
-    const { data } = await supabase
-       .from('staff_clock_ins')
-       .select('*')
-       .eq('user_id', currentUser.id)
-       .gte('created_at', startOfDay.toISOString())
-       .order('created_at', { ascending: false })
-       .limit(1);
-       
-    if (data && data.length > 0) {
-       setClockStatus(data[0].action_type === 'clock_in' ? 'clocked_in' : 'clocked_out');
-    } else {
-       setClockStatus('clocked_out');
+    try {
+      const { data, error } = await supabase
+         .from('staff_clock_ins')
+         .select('*')
+         .eq('user_id', realId)
+         .gte('created_at', startOfDay.toISOString())
+         .order('created_at', { ascending: false })
+         .limit(1);
+         
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+         setClockStatus(data[0].action_type === 'clock_in' ? 'clocked_in' : 'clocked_out');
+      } else {
+         setClockStatus('clocked_out');
+      }
+    } catch (err) {
+      console.error("Error fetching clock status", err);
+      setClockStatus('clocked_out');
     }
   };
 
@@ -183,9 +191,9 @@ export default function VolunteerDashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 gap-4">
         <div>
-          <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">Volunteer Portal</h1>
+          <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">{t('Volunteer Portal')}</h1>
           <p className="font-body text-on-surface-variant max-w-2xl text-lg">
-            View your upcoming shifts, events, and manage daily operations.
+            {t('View your upcoming shifts, events, and manage daily operations.')}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
@@ -216,7 +224,7 @@ export default function VolunteerDashboard() {
           <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-[0_8px_30px_rgba(212,175,55,0.05)]">
             <h2 className="font-title text-2xl text-on-surface mb-6 font-bold flex items-center gap-3">
                <Building className="text-secondary w-6 h-6" /> 
-               Operations
+               {t('Operations')}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <button onClick={() => navigate('/volunteer/scanner')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
@@ -225,7 +233,7 @@ export default function VolunteerDashboard() {
                   </div>
                   <div>
                     <h4 className="font-title text-lg font-bold text-on-surface">{t('QR Scanner')}</h4>
-                    <p className="font-body text-sm text-on-surface-variant mt-1">Scan student or staff ID badges</p>
+                    <p className="font-body text-sm text-on-surface-variant mt-1">{t('Scan student or staff ID badges')}</p>
                   </div>
                </button>
                <button onClick={() => {}} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 transition-all text-left opacity-50 grayscale pointer-events-none cursor-not-allowed">
@@ -233,8 +241,8 @@ export default function VolunteerDashboard() {
                      <ClipboardEdit className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="font-title text-lg font-bold text-on-surface">Daily Attendance</h4>
-                    <p className="font-body text-sm text-on-surface-variant mt-1">Submit student headcount and reports</p>
+                    <h4 className="font-title text-lg font-bold text-on-surface">{t('Daily Attendance')}</h4>
+                    <p className="font-body text-sm text-on-surface-variant mt-1">{t('Submit student headcount and reports')}</p>
                   </div>
                </button>
                <button onClick={() => navigate('/volunteer/availability')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
@@ -258,7 +266,7 @@ export default function VolunteerDashboard() {
           <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-[0_8px_30px_rgba(212,175,55,0.05)]">
             <h2 className="font-title text-2xl text-on-surface mb-6 font-bold flex items-center gap-3">
                <Users className="text-secondary w-6 h-6" /> 
-               Quick Actions
+               {t('Quick Actions')}
             </h2>
             <div className="flex flex-col gap-3">
                <button onClick={() => navigate('/volunteer/messages')} className="flex items-center gap-3 p-4 bg-surface-container-low rounded-xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
@@ -267,7 +275,7 @@ export default function VolunteerDashboard() {
                   </div>
                   <div>
                     <h4 className="font-label font-bold text-on-surface">{t('Messages')}</h4>
-                    <p className="font-body text-xs text-on-surface-variant mt-0.5">Contact staff and teachers</p>
+                    <p className="font-body text-xs text-on-surface-variant mt-0.5">{t('Contact staff and teachers')}</p>
                   </div>
                </button>
                <button onClick={() => navigate('/volunteer/announcements')} className="flex items-center gap-3 p-4 bg-surface-container-low rounded-xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
@@ -275,8 +283,8 @@ export default function VolunteerDashboard() {
                      <Megaphone className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="font-label font-bold text-on-surface">View Announcements</h4>
-                    <p className="font-body text-xs text-on-surface-variant mt-0.5">Stay updated with school news</p>
+                    <h4 className="font-label font-bold text-on-surface">{t('View Announcements')}</h4>
+                    <p className="font-body text-xs text-on-surface-variant mt-0.5">{t('Stay updated with school news')}</p>
                   </div>
                </button>
             </div>

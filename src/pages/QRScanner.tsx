@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { CheckCircle2, XCircle, Loader2, Camera, UploadCloud, StopCircle, User, Activity, Clock } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { useLanguage } from "../lib/i18n";
 import { formatTeacherName } from "../lib/utils";
 import { DuplicateClockWarningModal, ExistingClockRecord } from "../components/DuplicateClockWarningModal";
 
 export default function QRScanner() {
+  const { t } = useLanguage();
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [scannedUser, setScannedUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -482,9 +484,9 @@ export default function QRScanner() {
 
   return (
     <div className="p-6 md:p-8 max-w-4xl mx-auto w-full">
-      <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">School Check-in Scanner</h1>
+      <h1 className="font-display text-4xl text-on-surface font-bold tracking-tight mb-2">{t('School Check-in Scanner')}</h1>
       <p className="font-body text-on-surface-variant max-w-2xl text-lg mb-8">
-        Scan QR codes to record daily building arrival for students, teachers, and staff.
+        {t('Scan QR codes to record daily building arrival for students, teachers, and staff.')}
       </p>
 
       <div className="bg-surface-container-lowest rounded-3xl p-8 border border-outline-variant/30 shadow-sm max-w-md mx-auto">
@@ -558,12 +560,12 @@ export default function QRScanner() {
         {!isScanning && !loading && !scannedUser && (
             <div className="flex flex-col gap-4 mb-6">
                 <button onClick={startCamera} className="flex items-center justify-center gap-2 w-full py-4 bg-primary text-on-primary rounded-2xl font-label font-bold hover:bg-primary/90 transition-all shadow-sm active:scale-95">
-                    <Camera className="w-5 h-5" /> Start Camera
+                    <Camera className="w-5 h-5" /> {t('Start Camera')}
                 </button>
                 <div className="relative">
                     <input type="file" accept=".jpg,.jpeg,.png,.gif" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                     <button className="flex items-center justify-center gap-2 w-full py-4 bg-secondary-container text-on-secondary-container rounded-2xl font-label font-bold hover:bg-secondary-container/90 transition-all shadow-sm pointer-events-none active:scale-95">
-                        <UploadCloud className="w-5 h-5" /> Upload QR Image
+                        <UploadCloud className="w-5 h-5" /> {t('Upload QR Image')}
                     </button>
                 </div>
             </div>

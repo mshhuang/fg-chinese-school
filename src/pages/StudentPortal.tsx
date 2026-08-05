@@ -170,35 +170,44 @@ export default function StudentPortal() {
     fetchStudentData();
   }, []);
 
-  
-  const fetchCheckInStatus = async (studentId: string) => {
+    const fetchCheckInStatus = async (studentId: string) => {
+     if (!studentId) {
+        setCheckInStatus("not_checked_in");
+        return;
+     }
      setCheckInStatus('loading');
      setCheckInTime('');
      const startOfDay = new Date();
      startOfDay.setHours(0,0,0,0);
-     const { data } = await supabase
-       .from('student_clock_ins')
-       .select('*')
-       .eq('student_id', studentId)
-       .gte('created_at', startOfDay.toISOString())
-       .order('created_at', { ascending: false })
-       .limit(1);
-     
-          if (data && data.length > 0) {
-        if (data[0].action_type === 'school_check_in') {
-            setCheckInStatus('checked_in');
-            setCheckInTime(data[0].created_at);
-        } else if (data[0].action_type === 'school_check_out') {
-            setCheckInStatus('checked_out');
-            setCheckInTime(data[0].created_at);
-        } else {
-            setCheckInStatus('not_checked_in');
-        }
-     } else {
-        setCheckInStatus('not_checked_in');
+     try {
+       const { data, error } = await supabase
+         .from('student_clock_ins')
+         .select('*')
+         .eq('student_id', studentId)
+         .gte('created_at', startOfDay.toISOString())
+         .order('created_at', { ascending: false })
+         .limit(1);
+         
+       if (error) throw error;
+       
+       if (data && data.length > 0) {
+          if (data[0].action_type === 'school_check_in') {
+              setCheckInStatus('checked_in');
+              setCheckInTime(data[0].created_at);
+          } else if (data[0].action_type === 'school_check_out') {
+              setCheckInStatus('checked_out');
+              setCheckInTime(data[0].created_at);
+          } else {
+              setCheckInStatus('not_checked_in');
+          }
+       } else {
+          setCheckInStatus('not_checked_in');
+       }
+     } catch (err) {
+       console.error("Error fetching check in status:", err);
+       setCheckInStatus('not_checked_in');
      }
   };
-
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-10 w-full pb-32 md:pb-8">
       {/* Welcome Hero */}
@@ -214,13 +223,13 @@ export default function StudentPortal() {
             className="w-full h-full rounded-full border-4 border-primary-container object-cover"
           />
           <div className="absolute -bottom-2 -right-2 bg-secondary-container text-on-secondary px-3 py-1 rounded-full border-[3px] border-surface font-caption text-xs font-bold flex items-center gap-1 shadow-md">
-            🔥 {programDays} Days
+            🔥 {programDays} {t('Days')}
           </div>
         </div>
         
         <div className="flex-1 text-center md:text-left z-10">
           <h1 className="font-title text-2xl md:text-4xl text-primary font-bold mb-2">{t('Welcome back,')} {userName}!</h1>
-          <p className="font-body text-lg text-on-surface-variant mb-4">Your journey of knowledge continues. You're doing great!</p>
+          <p className="font-body text-lg text-on-surface-variant mb-4">{t("Your journey of knowledge continues. You're doing great!")}</p>
 
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-4">
             <button onClick={() => setShowQrCode(true)} className="font-caption text-sm bg-primary-container hover:bg-primary-container/80 text-on-primary-container px-4 py-1.5 rounded-full flex items-center gap-2 transition-colors font-bold shadow-sm">
@@ -246,7 +255,7 @@ export default function StudentPortal() {
           {parents.length > 0 && (
              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
                 <Users className="w-4 h-4 text-on-surface-variant" />
-                <span className="font-label text-sm font-bold text-on-surface-variant">Linked Family:</span>
+                <span className="font-label text-sm font-bold text-on-surface-variant">{t("Linked Family:")}</span>
                 {parents.map((p, idx) => (
                     <span key={idx} className="font-body text-sm bg-surface-container-high px-2 py-1 rounded-md text-on-surface">
                        {p.first_name} {p.last_name} <span className="text-on-surface-variant text-xs opacity-70">({p.relationship_type || 'Parent'})</span>
@@ -287,14 +296,14 @@ export default function StudentPortal() {
         {/* Main Column */}
         <div className="lg:col-span-8 space-y-8">
           
-          {/* Today's Path */}
+          {/* {t("Today's Assignment")} */}
           <section className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-8 shadow-sm">
             <div className="flex justify-between items-center mb-8">
               <h2 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold">
                 <BookOpen className="text-tertiary w-6 h-6" />
-                Today's Path
+                {t("Today's Assignment")}
               </h2>
-              <span className="font-caption bg-tertiary-container/30 text-tertiary font-bold px-4 py-1.5 rounded-full border border-tertiary-container/50">{assignments.length} Tasks Left</span>
+              <span className="font-caption bg-tertiary-container/30 text-tertiary font-bold px-4 py-1.5 rounded-full border border-tertiary-container/50">{assignments.length} {t('Tasks Left')}</span>
             </div>
             
             <div className="space-y-4">
@@ -325,7 +334,7 @@ export default function StudentPortal() {
            {/* My Programs */}
            <section className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-8 shadow-sm">
              <div className="flex justify-between items-center mb-6">
-                <h2 className="font-title text-xl font-bold text-on-surface">My Programs</h2>
+                <h2 className="font-title text-xl font-bold text-on-surface">{t('My Programs')}</h2>
              </div>
              
              <div className="flex flex-col gap-3">
@@ -335,7 +344,7 @@ export default function StudentPortal() {
                       <div className="flex justify-between items-center">
                         <p className="font-caption text-xs text-on-surface-variant">{prog.status || 'Enrolled'}</p>
                         {prog.days !== undefined && (
-                          <span className="text-xs font-bold text-primary flex items-center gap-1">🔥 {prog.days} Days</span>
+                          <span className="text-xs font-bold text-primary flex items-center gap-1">🔥 {prog.days} {t('Days')}</span>
                         )}
                       </div>
                    </div>
@@ -350,8 +359,8 @@ export default function StudentPortal() {
            {/* Achievements */}
            <section className="bg-surface-container-lowest rounded-3xl border border-outline-variant/30 p-8 shadow-sm">
              <div className="flex justify-between items-center mb-6">
-                <h2 className="font-title text-xl font-bold text-on-surface">Achievements</h2>
-                <button className="font-label text-sm text-primary hover:underline font-bold">View All</button>
+                <h2 className="font-title text-xl font-bold text-on-surface">{t('Achievements')}</h2>
+                <button className="font-label text-sm text-primary hover:underline font-bold">{t('View All')}</button>
              </div>
              
              <div className="grid grid-cols-2 gap-4">

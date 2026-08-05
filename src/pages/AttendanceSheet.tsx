@@ -391,7 +391,7 @@ export default function AttendanceSheet() {
                                            onClick={() => toggleClockIn(s.student_id, 'not_checked_in')}
                                            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all border ${clockIns[s.student_id] === 'checked_in' ? 'bg-green-500 border-green-600 text-white shadow-md scale-105' : 'bg-surface-variant border-outline-variant/30 text-on-surface-variant hover:bg-surface-variant/80'}`}
                                         >
-                                           Clock In
+                                           {t("Clock In")}
                                         </button>
                                         <button
                                            onClick={() => toggleClockIn(s.student_id, 'checked_in')}

@@ -512,36 +512,36 @@ export default function TeacherNewsletters() {
 
                 <div className="flex-1 overflow-y-auto pr-2 space-y-6">
                     <div>
-                       <label className="block text-sm font-label font-bold text-on-surface mb-2">Title</label>
+                       <label className="block text-sm font-label font-bold text-on-surface mb-2">{t("Title")}</label>
                        <input 
                           type="text" 
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           className="w-full bg-surface-container px-4 py-3 rounded-xl border border-outline-variant/30 focus:border-primary outline-none transition-colors"
-                          placeholder="e.g. March Updates" 
+                          placeholder={t("e.g. March Updates")} 
                        />
                     </div>
                     <div>
-                         <label className="block text-sm font-label font-bold text-on-surface mb-2">Target Audience</label>
+                         <label className="block text-sm font-label font-bold text-on-surface mb-2">{t("Target Audience")}</label>
                          <input 
                             type="text"
                             value={audience}
                             onChange={(e) => setAudience(e.target.value)}
                             className="w-full bg-surface-container px-4 py-3 rounded-xl border border-outline-variant/30 focus:border-primary outline-none transition-colors"
-                            placeholder="e.g. All Parents"
+                            placeholder={t("e.g. All Parents")}
                          />
                     </div>
                     <div>
-                       <label className="block text-sm font-label font-bold text-on-surface mb-2">Brief Context (Optional)</label>
+                       <label className="block text-sm font-label font-bold text-on-surface mb-2">{t("Brief Context (Optional)")}</label>
                        <textarea 
                           value={content}
                           onChange={(e) => setContent(e.target.value)}
                           className="w-full bg-surface-container px-4 py-3 rounded-xl border border-outline-variant/30 focus:border-primary outline-none transition-colors min-h-[100px] resize-y"
-                          placeholder="Provide a short summary..." 
+                          placeholder={t("Provide a short summary...")} 
                        />
                     </div>
                     <div>
-                       <label className="block text-sm font-label font-bold text-on-surface mb-2">Attachments</label>
+                       <label className="block text-sm font-label font-bold text-on-surface mb-2">{t("Attachments")}</label>
                        <input 
                            type="file" 
                            multiple
@@ -555,8 +555,8 @@ export default function TeacherNewsletters() {
                            className="w-full border-2 border-dashed border-outline-variant/50 hover:border-primary/50 bg-surface-container-low hover:bg-primary/5 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors mb-4"
                        >
                            <FileText className="w-8 h-8 text-on-surface-variant mb-2" />
-                           <p className="text-sm font-bold text-on-surface">Click to attach files</p>
-                           <p className="text-xs text-on-surface-variant mt-1">Supported: PDF, Word, Text, Images, HEIC (Max 10MB each)</p>
+                           <p className="text-sm font-bold text-on-surface">{t("Click to attach files")}</p>
+                           <p className="text-xs text-on-surface-variant mt-1">{t("Supported: PDF, Word, Text, Images, HEIC (Max 10MB each)")}</p>
                        </div>
                        
                        {(pdfName || attachments.length > 0) && (
@@ -590,11 +590,11 @@ export default function TeacherNewsletters() {
 
                 <div className="flex items-center gap-3 mt-6 pt-6 border-t border-outline-variant/20">
                    <button disabled={isUploading} onClick={() => handleSave("Draft")} className="flex-1 bg-surface-container hover:bg-surface-variant text-on-surface font-bold py-3 px-6 rounded-full transition-colors text-sm disabled:opacity-50">
-                      {isUploading ? 'Saving...' : 'Save as Draft'}
+                      {isUploading ? t('Saving...') : t('Save as Draft')}
                    </button>
                    <button disabled={isUploading} onClick={() => handleSave("Pending Approval")} className="flex-[2] bg-primary hover:bg-primary/90 text-on-primary font-bold py-3 px-6 rounded-full transition-colors text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                        <Send className="w-4 h-4" />
-                       {isUploading ? 'Saving...' : 'Submit for Approval'}
+                       {isUploading ? t('Saving...') : t('Submit for Approval')}
                    </button>
                 </div>
              </div>

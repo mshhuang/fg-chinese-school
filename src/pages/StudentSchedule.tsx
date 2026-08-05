@@ -95,7 +95,7 @@ export default function StudentSchedule() {
            {/* Schedule List */}
            <div className="flex flex-col gap-6 w-full">
               <h3 className="font-title text-xl text-on-surface flex items-center gap-3 font-bold uppercase tracking-wider">
-                 MY SCHEDULE
+                 {t('MY SCHEDULE')}
               </h3>
               {classesWithImages.length > 0 ? (
                 <div className="flex flex-col gap-6">
@@ -215,7 +215,7 @@ export default function StudentSchedule() {
                     onClick={() => setShowFullCalendar(true)}
                     className="mt-4 flex items-center justify-center gap-2 w-full py-3 rounded-[16px] bg-[#0b1f3f] text-white hover:bg-[#0b1f3f]/90 shadow-[3px_3px_0_#0b1f3f] active:translate-y-1 active:shadow-none transition-all font-display font-bold text-sm md:text-base uppercase tracking-wider"
                  >
-                    <Calendar className="w-4 h-4 md:w-5 md:h-5" /> Open Full Calendar
+                    <Calendar className="w-4 h-4 md:w-5 md:h-5" /> {t('Open Full Calendar')}
                  </button>
              </div>
            </div>

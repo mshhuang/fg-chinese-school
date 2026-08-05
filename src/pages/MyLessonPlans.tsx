@@ -244,13 +244,13 @@ export default function MyLessonPlans() {
                    </div>
                    <div className="absolute right-0 top-full mt-3 hidden group-hover:block w-80 bg-surface-container-highest text-on-surface text-sm p-5 rounded-2xl shadow-xl border border-outline-variant/50 z-[100] pointer-events-none transform transition-all duration-200 origin-top-right">
                       <div className="absolute -top-2 right-6 w-4 h-4 bg-surface-container-highest border-t border-l border-outline-variant/50 rotate-45"></div>
-                      <p className="font-bold font-display text-primary mb-3 text-base flex items-center gap-2"><Sparkles className="w-4 h-4" /> Sharing Instructions</p>
+                      <p className="font-bold font-display text-primary mb-3 text-base flex items-center gap-2"><Sparkles className="w-4 h-4" /> {t("Sharing Instructions")}</p>
                       <ol className="list-decimal pl-5 space-y-2 font-body text-on-surface-variant">
-                        <li>Open your Google Doc or Slide.</li>
-                        <li>Click the blue <strong>Share</strong> button in the top right.</li>
-                        <li>Under "General access", change Restricted to <strong>Anyone with the link</strong>.</li>
-                        <li>Ensure the role on the right is set to <strong>Viewer</strong>.</li>
-                        <li>Click <strong>Copy link</strong> and paste it into the field below.</li>
+                        <li>{t("Open your Google Doc or Slide.")}</li>
+                        <li dangerouslySetInnerHTML={{ __html: t("step_2") }}></li>
+                        <li dangerouslySetInnerHTML={{ __html: t("step_3") }}></li>
+                        <li dangerouslySetInnerHTML={{ __html: t("step_4") }}></li>
+                        <li dangerouslySetInnerHTML={{ __html: t("step_5") }}></li>
                       </ol>
                    </div>
                  </div>
@@ -281,7 +281,7 @@ export default function MyLessonPlans() {
                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                        <FileText className="w-4 h-4 text-blue-600" />
                      </div>
-                     <span className="font-body text-on-surface truncate text-sm md:text-base">{savedUrl ? "Google File" : "No file linked yet."}</span>
+                     <span className="font-body text-on-surface truncate text-sm md:text-base">{savedUrl ? t("Google File") : t("No file linked yet.")}</span>
                    </div>
                    <div className="flex gap-2 shrink-0">
                      {!isAdmin && (
