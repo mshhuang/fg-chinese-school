@@ -82,15 +82,16 @@ export default function BuilderDatabase() {
 
   useEffect(() => {
     fetchStats();
+    if (supabasePat) fetchUsage();
     // Stopped pulling usage from supabase to reduce egress
-    setFetchingUsage(false);
+    // setFetchingUsage(false);
   }, []);
 
   
   const [supabasePat, setSupabasePat] = useState(localStorage.getItem('supabase_pat') || '');
   const [usageData, setUsageData] = useState<any>(null);
   const [usageChartData, setUsageChartData] = useState<any[]>([]);
-  const egressChartData = [
+  const [egressChartData, setEgressChartData] = useState<any[]>([
   { date: '30 Jun', egress: 0.01 },
   { date: '01 Jul', egress: 0.02 },
   { date: '02 Jul', egress: 0.01 },
@@ -106,11 +107,15 @@ export default function BuilderDatabase() {
   { date: '12 Jul', egress: 0.55 },
   { date: '13 Jul', egress: 0.8 },
   { date: '14 Jul', egress: 1.8 },
-];
+  ]);
   const [fetchingUsage, setFetchingUsage] = useState(false);
   const [usageError, setUsageError] = useState('');
 
   const [clearingTable, setClearingTable] = useState<string | null>(null);
+
+  const totalEgress = egressChartData.reduce((acc, curr) => acc + (parseFloat(curr.egress) || 0), 0);
+  const overage = Math.max(0, totalEgress - 5);
+
   
   const handleClearTable = async (tableName: string) => {
     if (!window.confirm(`Are you sure you want to delete ALL records in ${tableName}? This cannot be undone.`)) return;
@@ -186,8 +191,32 @@ export default function BuilderDatabase() {
           path: '/analytics/endpoints/usage.api-counts?interval=1day'
         })
       });
-      
       const data = await response.json();
+      
+      try {
+        const egressRes = await fetch('/api/supabase/proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ref,
+                pat: supabasePat,
+                path: '/analytics/endpoints/usage.egress-total?interval=1day'
+            })
+        });
+        if (egressRes.ok) {
+            const egressData = await egressRes.json();
+            let parsedEgress = Array.isArray(egressData) ? egressData : (egressData.result || []);
+            if (parsedEgress.length > 0) {
+                setEgressChartData(parsedEgress.map((item: any) => ({
+                    date: item.timestamp ? new Date(item.timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'Unknown',
+                    egress: item.total_egress || item.egress || (item.total_bytes ? (item.total_bytes / 1073741824).toFixed(2) : 0) || 0
+                })));
+            }
+        }
+      } catch(e) {
+         console.error("Egress fetch failed", e);
+      }
+
       
       if (!response.ok) {
          throw new Error(data.error || data.message || response.statusText);
@@ -517,11 +546,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;`}
                  </div>
                  <div className="flex justify-between items-center py-2 border-b border-outline-variant/30">
                     <span className="text-sm text-on-surface-variant">Used in period</span>
-                    <span className="text-sm font-mono text-on-surface">12.81 GB</span>
+                    <span className="text-sm font-mono text-on-surface">{totalEgress.toFixed(2)} GB</span>
                  </div>
                  <div className="flex justify-between items-center py-2 border-b border-outline-variant/30">
                     <span className="text-sm text-on-surface-variant">Overage in period</span>
-                    <span className="text-sm font-mono text-on-surface">7.81 GB</span>
+                    <span className="text-sm font-mono text-on-surface">{overage.toFixed(2)} GB</span>
                  </div>
               </div>
            </div>

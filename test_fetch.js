@@ -1,1 +1,2 @@
-import { supabase } from './src/lib/supabase.ts'; // wait it's ts
+const pat = localStorage.getItem('supabase_pat');
+console.log(pat);

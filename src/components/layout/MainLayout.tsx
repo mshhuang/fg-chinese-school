@@ -495,11 +495,7 @@ export default function MainLayout() {
                <ChevronDown className="w-4 h-4 text-on-surface-variant" />
             </button>
             <div className="mt-2 flex flex-col gap-1">
-               <div className="flex w-full bg-surface-container-high rounded-xl p-1 gap-1 mb-2">
-                   <button onClick={() => setLanguage('en')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'en' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>Eng</button>
-                   <button onClick={() => setLanguage('zh-CN')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'zh-CN' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>简体</button>
-                   <button onClick={() => setLanguage('zh-TW')} className={cn("flex-1 py-1.5 rounded-lg text-center text-xs font-bold transition-all", language === 'zh-TW' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>繁體</button>
-               </div>
+{/* Language Toggle Hidden */}
                <button onClick={handleLogout} className="flex items-center w-full gap-3 px-4 py-3 rounded-full text-error hover:bg-error-container/20 transition-all font-label font-bold">
                  <LogOut className="w-5 h-5" />
                  {t('Logout')}
@@ -587,11 +583,7 @@ export default function MainLayout() {
                    </div>
                    
                    <div className="mt-4 pt-4 border-t border-outline-variant/20 flex flex-col gap-2">
-                       <div className="flex w-full bg-surface-container-high rounded-xl p-1 gap-1 mb-2 mt-1">
-                           <button onClick={() => { setLanguage('en'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'en' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>Eng</button>
-                           <button onClick={() => { setLanguage('zh-CN'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'zh-CN' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>简体</button>
-                           <button onClick={() => { setLanguage('zh-TW'); setIsMobileMenuOpen(false); }} className={cn("flex-1 py-2 rounded-lg text-center text-sm font-bold transition-all", language === 'zh-TW' ? "bg-primary text-on-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-variant/50")}>繁體</button>
-                       </div>
+{/* Language Toggle Hidden */}
                      <button onClick={handleLogout} className="flex items-center w-full gap-3 px-3 py-3 rounded-xl text-error hover:bg-error-container/20 transition-all font-label font-bold">
                        <LogOut className="w-5 h-5" />
                        {t('Logout')}
