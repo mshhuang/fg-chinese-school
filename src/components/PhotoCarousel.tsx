@@ -28,7 +28,8 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
-  Check
+  Check,
+  Download
 } from 'lucide-react';
 import {
   ClassPhotoItem,
@@ -229,6 +230,26 @@ export function PhotoCarousel({
     }, 5000);
     return () => clearInterval(interval);
   }, [isPlaying, isHovered, photos.length, confirmDeleteId, showUploadModal]);
+
+
+  const handleDownload = async (e: React.MouseEvent, url: string, title: string) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = (title ? title.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'photo') + '.jpg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed, opening in new tab', error);
+      window.open(url, '_blank');
+    }
+  };
 
   const nextSlide = () => {
     if (photos.length === 0) return;
@@ -650,7 +671,7 @@ export function PhotoCarousel({
         </div>
       ) : (
         <div
-          className="relative w-full rounded-3xl overflow-hidden shadow-lg border border-outline-variant/30 bg-black group"
+          className="relative w-full rounded-3xl overflow-hidden shadow-lg border border-outline-variant/30 bg-surface-variant group"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
@@ -666,10 +687,17 @@ export function PhotoCarousel({
                   className="absolute inset-0 w-full h-full"
                 >
                   {/* Photo Background */}
+                  <div className="absolute inset-0 w-full h-full overflow-hidden">
+                    <img
+                      src={currentPhoto.image_url}
+                      alt={currentPhoto.title}
+                      className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-50 scale-110"
+                    />
+                  </div>
                   <img
                     src={currentPhoto.image_url}
                     alt={currentPhoto.title}
-                    className="w-full h-full object-cover"
+                    className="relative w-full h-full object-contain z-10"
                   />
 
                   {/* Soft Gradient Overlay (Lightened so photo is clear) */}
@@ -710,6 +738,13 @@ export function PhotoCarousel({
                       )}
 
                       {/* Fullscreen Lightbox Button */}
+                      <button
+                        onClick={(e) => handleDownload(e, currentPhoto.image_url, currentPhoto.title)}
+                        className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white hover:bg-black transition-all border border-white/20"
+                        title="Download Photo"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => setLightboxPhoto(currentPhoto)}
                         className="p-2 rounded-full bg-black/60 backdrop-blur-md text-white hover:bg-black transition-all border border-white/20"
@@ -878,7 +913,7 @@ export function PhotoCarousel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8"
+            className="fixed inset-0 z-50 bg-surface-variant/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-8"
             onClick={() => setLightboxPhoto(null)}
           >
             <div
@@ -886,6 +921,13 @@ export function PhotoCarousel({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+                <button
+                  onClick={(e) => handleDownload(e, lightboxPhoto.image_url, lightboxPhoto.title)}
+                  className="p-2.5 rounded-full bg-black/60 text-white hover:bg-black transition-colors border border-white/20"
+                  title="Download Photo"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
                 {showTeacherUpload && (
                   <button
                     onClick={(e) => {
@@ -920,7 +962,7 @@ export function PhotoCarousel({
                 </button>
               </div>
 
-              <div className="md:w-2/3 bg-black flex items-center justify-center min-h-[300px] max-h-[65vh] md:max-h-[80vh]">
+              <div className="md:w-2/3 bg-surface-variant flex items-center justify-center min-h-[300px] max-h-[65vh] md:max-h-[80vh]">
                 <img
                   src={lightboxPhoto.image_url}
                   alt={lightboxPhoto.title}
@@ -971,7 +1013,7 @@ export function PhotoCarousel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 bg-surface/80 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setConfirmDeleteId(null)}
           >
             <motion.div
@@ -1018,7 +1060,7 @@ export function PhotoCarousel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-surface/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -1222,8 +1264,8 @@ export function PhotoCarousel({
                   </div>
 
                   {previewImage && (
-                    <div className="mt-3 relative h-36 w-full rounded-2xl overflow-hidden border border-outline-variant/30 bg-black">
-                      <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="mt-3 relative h-36 w-full rounded-2xl overflow-hidden border border-outline-variant/30 bg-surface-container-lowest">
+                      <img src={previewImage} alt="Preview" className="w-full h-full object-contain" />
                     </div>
                   )}
                 </div>

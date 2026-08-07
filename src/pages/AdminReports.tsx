@@ -383,14 +383,7 @@ export default function AdminReports() {
           <ClipboardList className="w-4 h-4" /> Enrollments
         </button>
         
-        <button
-          onClick={() => setActiveTab('attendance')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
-            activeTab === 'attendance' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-          }`}
-        >
-          <CheckSquare className="w-4 h-4" /> Attendance
-        </button>
+
         <button
           onClick={() => setActiveTab('credentials')}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
@@ -399,14 +392,7 @@ export default function AdminReports() {
         >
           <KeyRound className="w-4 h-4" /> Credentials
         </button>
-        <button
-          onClick={() => setActiveTab('staff_attendance')}
-          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${
-            activeTab === 'staff_attendance' ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
-          }`}
-        >
-          <Clock className="w-4 h-4" /> Staff Attendance
-        </button>
+
         <button
           onClick={() => setActiveTab('login_history')}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-label font-bold text-sm transition-all ${

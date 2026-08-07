@@ -120,15 +120,7 @@ export default function StaffDashboard() {
                     <p className="font-body text-sm text-on-surface-variant mt-1">Scan student or staff ID badges</p>
                   </div>
                </button>
-               <button onClick={() => {}} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 transition-all text-left opacity-50 grayscale pointer-events-none cursor-not-allowed">
-                  <div className="bg-secondary/10 p-3 rounded-xl text-secondary">
-                     <ClipboardEdit className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="font-title text-lg font-bold text-on-surface">Daily Attendance</h4>
-                    <p className="font-body text-sm text-on-surface-variant mt-1">Submit student headcount and reports</p>
-                  </div>
-               </button>
+
                <button onClick={() => navigate('/staff/availability')} className="flex flex-col items-start gap-4 p-6 bg-surface-container-low rounded-2xl border border-outline-variant/20 hover:border-primary transition-all group text-left">
                   <div className="bg-tertiary/10 p-3 rounded-xl text-tertiary group-hover:bg-tertiary group-hover:text-on-primary transition-colors">
                      <Building className="w-6 h-6" />

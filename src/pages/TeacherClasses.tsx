@@ -52,7 +52,7 @@ export default function TeacherClasses() {
           setSchoolScheduleUrl(settingsData.content);
        }
        
-       const { data: clsData } = await supabase.from('classes').select('class_id, class_name, primary_teacher_id, co_teacher_id, co_teachers, enrollments(count), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)');
+       const { data: clsData } = await supabase.from('classes').select('class_id, class_name, primary_teacher_id, co_teacher_id, co_teachers, schedule_image_url, enrollments(count), users:primary_teacher_id(first_name, last_name), co_teacher:co_teacher_id(first_name, last_name)');
        
        if (clsData) {
          setClassesData(clsData);
@@ -212,11 +212,7 @@ export default function TeacherClasses() {
                           <span className="font-label text-sm font-bold">{cls.enrollments?.[0]?.count || 0} {t("Students Enrolled")}</span>
                        </div>
                        <div className="flex items-center gap-4">
-                          {cls.primary_teacher_id === currentUserId && (
-                             <button onClick={() => navigate('/teacher/attendance', { state: { class: cls } })} className="text-secondary font-label text-sm font-bold flex items-center gap-1 hover:underline">
-                               Attendance
-                             </button>
-                          )}
+
                           <button onClick={() => navigate('/teacher/assignments?classId=' + cls.class_id)} className="text-primary font-label text-sm font-bold flex items-center gap-1 hover:underline">
                             Assign Homework <ArrowRight className="w-4 h-4" />
                           </button>

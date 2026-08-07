@@ -31,7 +31,7 @@ export default function StudentSchedule() {
        const classIds = enrollData.map((e:any) => e.class_id).filter(Boolean);
        if (classIds.length === 0) return;
 
-       const { data: clsData } = await supabase.from('classes').select('class_id, class_name, primary_teacher_id, co_teacher_id, co_teachers').in('class_id', classIds);
+       const { data: clsData } = await supabase.from('classes').select('class_id, class_name, primary_teacher_id, co_teacher_id, co_teachers, schedule_image_url').in('class_id', classIds);
        
        if (clsData) {
          setClassesWithImages(clsData.filter((c: any) => c.schedule_image_url));

@@ -1,44 +1,15 @@
 import re
 
 with open('src/pages/TeacherClasses.tsx', 'r') as f:
-    content = f.read()
+    text = f.read()
 
-replacement = """                          <div className="text-sm">
-                            <span className="font-bold text-on-surface-variant">Co-Teacher: </span>
-                            <span className="text-on-surface font-medium">
-                               {(() => {
-                                  const allCoTeachers = [
-                                     ...(cls.co_teacher_id && !(cls.co_teachers || []).includes(cls.co_teacher_id) ? [cls.co_teacher_id] : []),
-                                     ...(cls.co_teachers || [])
-                                  ];
-                                  if (allCoTeachers.length === 0) return 'TBD';
-                                  
-                                  return allCoTeachers.map(id => {
-                                     if (id === currentUserId) {
-                                         const u = usersMap[id];
-                                         if (u) return `You (${formatTeacherName(u.first_name, u.last_name, 'Teacher')})`;
-                                         return "You";
-                                     }
-                                     const u = usersMap[id];
-                                     if (!u) {
-                                         if (id === cls.co_teacher_id && cls.co_teacher) {
-                                             return formatTeacherName(cls.co_teacher.first_name, cls.co_teacher.last_name, 'Teacher');
-                                         }
-                                         return 'Unknown';
-                                     }
-                                     if (u.isVolunteer) return `${u.first_name || ''} ${u.last_name || ''}`.trim() || 'Volunteer';
-                                     return formatTeacherName(u.first_name, u.last_name, 'Teacher');
-                                  }).join(', ');
-                               })()}
-                            </span>
-                          </div>"""
+btn_regex = r"""                          \{cls\.primary_teacher_id === currentUserId && \(
+                             <button onClick=\{\(\) => navigate\('/teacher/attendance', \{ state: \{ class: cls \} \}\)\} className="text-secondary font-label text-sm font-bold flex items-center gap-1 hover:underline">
+                               Attendance
+                             </button>
+                          \)\}"""
 
-content = re.sub(
-    r'<div className="text-sm">\s*<span className="font-bold text-on-surface-variant">Co-Teacher: </span>\s*<span className="text-on-surface font-medium">.*?</span>\s*</div>',
-    replacement,
-    content,
-    flags=re.DOTALL
-)
+text = re.sub(btn_regex, '', text)
 
 with open('src/pages/TeacherClasses.tsx', 'w') as f:
-    f.write(content)
+    f.write(text)
